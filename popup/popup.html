@@ -1791,7 +1791,7 @@
 
       .completed-tasks-controls {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr; /* Single column to prevent overflow */
         gap: 12px;
         margin-bottom: 12px;
       }
@@ -1871,6 +1871,49 @@
         opacity: 0.5;
         pointer-events: none;
         filter: grayscale(50%);
+      }
+
+      /* Completed Tasks Hover Effects */
+      .opacity-slider {
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .opacity-slider:hover {
+        background: linear-gradient(90deg, rgba(245, 158, 11, 0.3) 0%, rgba(245, 158, 11, 1) 100%);
+      }
+
+      .opacity-slider:active::-webkit-slider-thumb {
+        transform: scale(1.2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .opacity-slider:active::-moz-range-thumb {
+        transform: scale(1.2);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .completed-tasks-toggle .switch {
+        transition: all 0.2s ease;
+      }
+
+      .completed-tasks-toggle .switch:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .completed-color-group,
+      .completed-opacity-group {
+        transition: all 0.2s ease;
+        padding: 4px;
+        margin: -4px;
+        border-radius: 8px;
+      }
+
+      .completed-color-group:hover:not(.completed-tasks-disabled *),
+      .completed-opacity-group:hover:not(.completed-tasks-disabled *) {
+        background: rgba(254, 252, 232, 0.6);
+        box-shadow: 0 1px 4px rgba(245, 158, 11, 0.1);
       }
 
       /* Time Block Global Color Picker */
