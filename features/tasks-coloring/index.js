@@ -678,6 +678,8 @@ async function refreshColorCache() {
       taskToListMap: taskToListMapCache,
       listColors: listColorsCache,
       manualColors: manualColorsCache,
+      listTextColors: listTextColorsCache,
+      completedStyling: completedStylingCache,
     };
   }
 
@@ -701,6 +703,14 @@ async function refreshColorCache() {
   };
   completedStylingCache = syncData.settings?.taskListColoring?.completedStyling || {};
   cacheLastUpdated = now;
+
+  // DEBUG: Log text colors loaded
+  console.log('[Task Colors] Cache refreshed:', {
+    textColorsFromStorage: syncData['cf.taskListTextColors'],
+    textColorsFromSettings: settingsPending,
+    finalTextColorsCache: listTextColorsCache,
+    listColors: listColorsCache,
+  });
 
   return {
     taskToListMap: taskToListMapCache,
@@ -751,6 +761,17 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
+  // DEBUG: Log color lookup
+  if (listId && cache.listColors[listId]) {
+    console.log(`[Task Colors] Getting color for task ${taskId}:`, {
+      listId,
+      listBgColor: cache.listColors[listId],
+      listTextColor: pendingTextColor,
+      hasManualColor: !!manualColors?.[taskId],
+      textColorsInCache: cache.listTextColors,
+    });
+  }
+
   const manualColor = manualColors?.[taskId];
   if (manualColor) {
     // Manual background color: use auto-contrast text (not list text color)
@@ -766,13 +787,18 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
   if (listId && cache.listColors[listId]) {
     // List default background color: use list text color if available
-    return buildColorInfo({
+    const colorInfo = buildColorInfo({
       baseColor: cache.listColors[listId],
       pendingTextColor,
       overrideTextColor,
       isCompleted,
       completedStyling,
     });
+
+    // DEBUG: Log final color info
+    console.log(`[Task Colors] Built color info for task ${taskId}:`, colorInfo);
+
+    return colorInfo;
   }
 
   return null;
@@ -798,6 +824,15 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
   }
 
   const textColor = overrideTextColor || pendingTextColor || pickContrastingText(baseColor);
+
+  // DEBUG: Log text color selection
+  console.log('[Task Colors] buildColorInfo text color selection:', {
+    overrideTextColor,
+    pendingTextColor,
+    autoContrast: pickContrastingText(baseColor),
+    selected: textColor,
+  });
+
   return {
     backgroundColor: baseColor,
     textColor,
@@ -1163,14 +1198,22 @@ function initTasksColoring() {
       area === 'sync' &&
       (changes['cf.taskColors'] || changes['cf.taskListColors'] || changes['cf.taskListTextColors'])
     ) {
+      console.log('[Task Colors] Storage changed - sync colors:', {
+        taskColors: !!changes['cf.taskColors'],
+        taskListColors: !!changes['cf.taskListColors'],
+        taskListTextColors: !!changes['cf.taskListTextColors'],
+        newTextColors: changes['cf.taskListTextColors']?.newValue,
+      });
       invalidateColorCache();
       repaintSoon(); // Repaint with new colors
     }
     if (area === 'sync' && changes.settings) {
+      console.log('[Task Colors] Settings changed:', changes.settings?.newValue?.taskListColoring);
       invalidateColorCache();
       repaintSoon();
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
+      console.log('[Task Colors] Task-to-list mapping changed');
       invalidateColorCache();
       repaintSoon(); // Repaint with new mappings
     }
