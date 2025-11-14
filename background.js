@@ -782,14 +782,19 @@ async function handleNewTaskDetected(taskId) {
     }
 
     if (listId) {
-      // Get default color for this list
-      const color = await getListDefaultColor(listId);
+      // Get default colors (background and text) for this list
+      const colors = await getListDefaultColor(listId);
 
-      if (color) {
-        return { success: true, listId, color };
+      if (colors && colors.backgroundColor) {
+        return {
+          success: true,
+          listId,
+          backgroundColor: colors.backgroundColor,
+          textColor: colors.textColor
+        };
       }
 
-      return { success: true, listId, color: null };
+      return { success: true, listId, backgroundColor: null, textColor: null };
     }
 
     return { success: false, error: 'TASK_NOT_FOUND' };
@@ -799,10 +804,25 @@ async function handleNewTaskDetected(taskId) {
   }
 }
 
-// Get default color for a list
+// Get default colors (background and text) for a list
 async function getListDefaultColor(listId) {
-  const { 'cf.taskListColors': listColors } = await chrome.storage.sync.get('cf.taskListColors');
-  return listColors?.[listId] || null;
+  const [
+    { 'cf.taskListColors': listColors },
+    { 'cf.taskListTextColors': listTextColors },
+    { settings }
+  ] = await Promise.all([
+    chrome.storage.sync.get('cf.taskListColors'),
+    chrome.storage.sync.get('cf.taskListTextColors'),
+    chrome.storage.sync.get('settings')
+  ]);
+
+  const backgroundColor = listColors?.[listId] || null;
+  const textColor = listTextColors?.[listId] ||
+                    settings?.taskListColoring?.pendingTextColors?.[listId] ||
+                    settings?.taskListColoring?.textColors?.[listId] ||
+                    null;
+
+  return { backgroundColor, textColor };
 }
 
 // Apply list default color to all existing tasks in a list

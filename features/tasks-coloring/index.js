@@ -753,9 +753,11 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
   const manualColor = manualColors?.[taskId];
   if (manualColor) {
+    // Manual background color: use auto-contrast text (not list text color)
+    // unless there's an explicit override
     return buildColorInfo({
       baseColor: manualColor,
-      pendingTextColor,
+      pendingTextColor: null, // Don't use list text color for manual backgrounds
       overrideTextColor,
       isCompleted,
       completedStyling,
@@ -763,6 +765,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   }
 
   if (listId && cache.listColors[listId]) {
+    // List default background color: use list text color if available
     return buildColorInfo({
       baseColor: cache.listColors[listId],
       pendingTextColor,
@@ -851,9 +854,9 @@ async function handleNewTaskCreated(taskId, element) {
           taskId: taskId,
         });
 
-        if (response?.success && response.color) {
-          // Apply color immediately
-          paintTaskImmediately(taskId, response.color);
+        if (response?.success && response.backgroundColor) {
+          // Apply both background and text colors immediately
+          paintTaskImmediately(taskId, response.backgroundColor, response.textColor);
 
           // Invalidate cache so next repaint picks up the new task
           invalidateColorCache();
