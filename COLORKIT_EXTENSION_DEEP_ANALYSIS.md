@@ -42,10 +42,20 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
   - `weekdayColors` / `weekdayOpacity` (keys `0-6` for Sunday–Saturday).
   - `dateColors` map per ISO date.
   - Task coloring toggles + preset/inline palettes.
-  - Task list coloring state (`enabled`, `oauthGranted`, `lastSync`, `pendingTextColors` map keyed by list ID).
+  - Task list coloring state (`enabled`, `oauthGranted`, `lastSync`, `pendingTextColors` / `textColors` maps keyed by list ID).
   - Time blocking state using day keys `mon`…`sun`, each holding an array of blocks with `{ timeRange: [start,end], color?, label? }`. Date-specific overrides are keyed by `YYYY-MM-DD` and share the same structure.
   - Global time blocking options: `globalColor`, `shadingStyle` (`'solid'` or `'hashed'`).
-- Helper methods include `setEnabled`, `setWeekdayColor`, `addPresetColor`, `setTaskColoringEnabled`, `setTaskListDefaultColor`, `setTaskListTextColor`, `addTimeBlock`, `addDateSpecificTimeBlock`, and many more, each merging into the persisted settings object and emitting storage change events.
+- **Helper Methods** include:
+  - Day coloring: `setEnabled`, `setWeekdayColor`, `setWeekdayOpacity`, `setDateColor`, `clearDateColor`
+  - Task coloring: `setTaskColoringEnabled`, `setTaskColor`, `clearTaskColor`, `getTaskColor`
+  - **Task list coloring**: `setTaskListDefaultColor`, `clearTaskListDefaultColor`, `setTaskListTextColor`, `clearTaskListTextColor`, `getTaskListColors`, `getTaskListTextColors`
+    - **Text Color Storage** (`setTaskListTextColor` at line 295): Writes to TWO locations for reliability:
+      1. `cf.taskListTextColors` (direct sync storage key)
+      2. `settings.taskListColoring.pendingTextColors` and `textColors` (nested in settings)
+    - Includes debug logging to trace saves and verify storage writes
+    - Returns updated color map
+  - Time blocking: `addTimeBlock`, `removeTimeBlock`, `addDateSpecificTimeBlock`, `clearDateSpecificTimeBlocks`
+  - All methods merge into the persisted settings object and emit storage change events
 
 `content/featureRegistry.js` loads settings via `cc3Storage.getAll()` and hands each registered feature its slice. Updates flow back through `window.cc3Features.updateFeature`, ensuring every feature’s `onSettingsChanged` runs in-page immediately.
 
@@ -86,27 +96,59 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
 - `getAuthToken(interactive)` uses `chrome.identity.getAuthToken` with the read-only Tasks scope. Tokens are cached alongside an expiry timestamp (55 minutes). `clearAuthToken` removes cached tokens (with fallback to `chrome.identity.clearAllCachedAuthTokens`).
 - `isAuthGranted()` attempts `getAuthToken(false)`; failure indicates revocation.
 
-### 4.2 API Calls
+### 4.2 API Calls & Background Handlers
 - `fetchTaskLists()`: `GET https://tasks.googleapis.com/tasks/v1/users/@me/lists`.
 - `fetchTasksInList(listId, pageToken?)`: paginated read of tasks for each list.
 - `buildTaskToListMapping()`: full rescan; stores task lists metadata (`cf.taskListsMeta`) and `cf.taskToListMap` (task ID → list ID) in local storage, respecting a safety cap (`MAX_TASKS_PER_LIST` = 1000).
 - `incrementalSync(updatedMin)`: fetches lists updated since `lastSyncTime` to avoid full scans.
-- `getListIdForTask()` and `findTaskInAllLists()` support quick lookups for new tasks detected by the content script.
+- `getListIdForTask()` and `findTaskInAllLists()` support quick lookups for new tasks detected by the content script. Both fast path (recent 30 seconds) and full search automatically update the `cf.taskToListMap` cache.
 - `checkStorageQuota()` uses `chrome.storage.local.getBytesInUse()` to warn above 80% of the 10 MB quota.
+- **Background Color Retrieval** (`background.js:803`):
+  - `getListDefaultColor(listId)` retrieves both background and text colors for a task list
+  - Reads from three parallel sources: `cf.taskListColors`, `cf.taskListTextColors`, and `settings.taskListColoring`
+  - Returns `{ backgroundColor, textColor }` object with both colors or null values
+- **New Task Handler** (`background.js:770`):
+  - `handleNewTaskDetected(taskId)` performs quick cache lookup or API search to find task's list
+  - Calls `getListDefaultColor(listId)` to get both background and text colors
+  - Returns `{ success: true, listId, backgroundColor, textColor }` for successful detection
+  - Content script uses this response to invalidate cache and trigger repaint with list default colors
 
 ### 4.3 Background State Machine
 - Maintains `pollingState` (`ACTIVE` / `IDLE` / `SLEEP`) based on Calendar tab presence and recent `USER_ACTIVITY` messages (5-minute window). Transitions set the `task-list-sync` alarm cadence: 1 minute when active, 5 minutes when idle, and cleared entirely when asleep.
 - `syncTaskLists(fullSync=false)` checks `settings.taskListColoring.enabled` and `oauthGranted`. It calls either `buildTaskToListMapping()` or `incrementalSync()`, updates `settings.taskListColoring.lastSync`, invokes `checkStorageQuota()`, broadcasts `TASK_LISTS_UPDATED`, and returns stats.
 
 ### 4.4 Popup UI (`popup/popup.js`, section around lines 1138-2050)
-- Renders each Google Tasks list with stacked controls: a background swatch wired to `cf.taskListColors` and a “List text color” picker wired to `cf.taskListTextColors`. Both use the shared palette/tabs experience and write through `window.cc3Storage`.
+- Renders each Google Tasks list with stacked controls: a background color swatch wired to `cf.taskListColors` and a "List text color" picker wired to `cf.taskListTextColors`. Both use the shared palette/tabs experience and write through `window.cc3Storage`.
+- List text colors are stored in **two locations** for reliability:
+  - `cf.taskListTextColors` (direct sync storage key)
+  - `settings.taskListColoring.pendingTextColors` / `settings.taskListColoring.textColors` (nested in settings)
 - Provides buttons to grant OAuth (`GOOGLE_OAUTH_REQUEST`) and trigger resync (`SYNC_TASK_LISTS`).
 - Applying a list color updates sync storage and can send `APPLY_LIST_COLOR_TO_EXISTING` to the background to repaint existing tasks lacking manual colors.
 - `task list coloring` toggle writes to settings and, when turned on without OAuth, prompts an authorization flow.
+- Broadcasts `TASK_LIST_TEXT_COLOR_UPDATED` message to calendar tabs when text colors change.
 
 ### 4.5 Task Detection & Painting
-- `features/tasks-coloring/index.js` observes the Calendar DOM for task chips (`data-eventid` starting with `tasks.`). It resolves task IDs, fetches manual colors or list defaults, and paints the clickable element (skipping dialogs). Mutation observers, URL-change watchers, and periodic timers ensure colors persist across view changes. When `cf.taskListTextColors` contains an override for the task’s list, the renderer applies that color instead of the auto-contrast text color.
-- Before painting, the renderer inspects each task for Google’s completion styling (line-through text). Completed tasks can receive alternate styling via `taskListColoring.completedStyling[listId]` (background/text colors plus opacity), whereas pending tasks use the list’s default + `pendingTextColors` override.
+- `features/tasks-coloring/index.js` observes the Calendar DOM for task chips (`data-eventid` starting with `tasks.`). It resolves task IDs, fetches manual colors or list defaults, and paints the clickable element (skipping dialogs).
+- **Color Priority System**:
+  1. **Manual task colors**: Use auto-contrast text (white/black based on luminance)
+  2. **List default colors**: Use list text color if set, otherwise auto-contrast
+  3. **No color**: No painting applied
+- **In-Memory Cache System** (`refreshColorCache()` at line 672):
+  - Caches task→list mappings, manual colors, list colors, **list text colors**, and completion styling
+  - Cache lifetime: 30 seconds
+  - **Critical Fix**: Cache return path (line 676-683) now correctly includes `listTextColors` and `completedStyling` to prevent text colors from being lost
+  - Invalidated on storage changes (`cf.taskColors`, `cf.taskListColors`, `cf.taskListTextColors`, `settings`, `cf.taskToListMap`)
+- **Text Color Resolution** (`getColorForTask()` at line 755):
+  - Retrieves `listTextColors` from cache for the task's list
+  - Passes `pendingTextColor` to `buildColorInfo()` which selects text color via priority: override → list text color → auto-contrast
+  - Debug logging shows color lookup details, text color selection, and final applied colors
+- **New Task Detection** (`handleNewTaskCreated()` at line 817):
+  - When a new task is created, sends `NEW_TASK_DETECTED` to background
+  - Background finds list ID via API and updates `cf.taskToListMap` cache
+  - Content script invalidates cache and triggers immediate repaint
+  - Normal repaint flow applies list default colors (background + text) correctly
+- Mutation observers, URL-change watchers, and periodic timers ensure colors persist across view changes. Storage change listeners (line 1157-1181) trigger cache invalidation and repaints with debug logging.
+- Before painting, the renderer inspects each task for Google's completion styling (line-through text). Completed tasks can receive alternate styling via `taskListColoring.completedStyling[listId]` (background/text colors plus opacity), whereas pending tasks use the list's default + text color override.
 - `content/modalInjection.js` augments Google's task dialogs (but intentionally skips Google's appearance/theme dialogs). When editing existing tasks, it injects ColorKit color controls via `window.cfTasksColoring.injectTaskColorControls`.
 
 ---
@@ -175,12 +217,38 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
 
 ## 8. Task Coloring & Modal Controls
 
-### 8.1 Task Chip Detection (`features/tasks-coloring/index.js`)
-- `isTasksChip`/`getTaskIdFromChip` identify task DOM nodes from `data-eventid`, `data-taskid`, or ancestor attributes.
-- Uses cached mappings (`taskElementReferences`) and throttle/debounce logic to avoid repaint storms.
-- Pulls colors via `loadMap()` (merging manual colors from `cf.taskColors` with list defaults/resolved list IDs). Manual colors override list defaults.
-- Observes DOM (`MutationObserver`), URL mutations, `popstate`, periodic timers, and storage changes to trigger `repaintSoon()`.
-- Exposes debug helpers via `window.cfTasksColoring` (e.g., `repaint`, `getColorMap`).
+### 8.1 Task Chip Detection & Coloring (`features/tasks-coloring/index.js`)
+- **DOM Identification**: `isTasksChip`/`getTaskIdFromChip` identify task DOM nodes from `data-eventid`, `data-taskid`, or ancestor attributes.
+- **Element Caching**: Uses cached mappings (`taskElementReferences` WeakMap) and throttle/debounce logic to avoid repaint storms.
+- **Color Resolution Flow**:
+  1. `doRepaint()` (line 900) iterates all task elements on the page
+  2. Calls `getColorForTask(taskId, manualColorMap, { isCompleted })` for each task
+  3. `getColorForTask()` checks cache for:
+     - Manual color (`cf.taskColors[taskId]`) → Returns with auto-contrast text
+     - List default color (`cf.taskListColors[listId]`) → Returns with list text color if set
+  4. `buildColorInfo()` (line 797) selects text color: `overrideTextColor || pendingTextColor || pickContrastingText(baseColor)`
+  5. `applyPaintIfNeeded()` (line 649) applies background and text colors to DOM via inline styles
+- **Performance Optimizations**:
+  - In-memory cache reduces storage reads from ~33/sec to ~0.03/sec (99.9% improvement)
+  - Cache invalidation on storage changes ensures fresh data
+  - Debounced repaints (100ms) prevent excessive DOM updates
+  - Fast path for cached task element references
+- **DOM Observation**:
+  - `MutationObserver` detects navigation and new task creation (line 1095)
+  - URL mutation watcher for back/forward navigation (line 1131)
+  - `popstate` event listener (line 1143)
+  - Periodic repaint timer (3 seconds) for reliability (line 1149)
+  - Storage change listeners with debug logging (line 1157-1181)
+- **Debug Logging**: Comprehensive console logs trace:
+  - Cache refresh with text colors loaded
+  - Color lookup per task (list ID, background/text colors)
+  - Text color selection (override vs list vs auto-contrast)
+  - Storage change events and repaint triggers
+- **API**: Exposes debug helpers via `window.cfTasksColoring`:
+  - `repaint()` - Trigger manual repaint
+  - `getColorMap()` - Get manual task colors
+  - `debugRepaint()` - Force immediate repaint
+  - `getLastClickedTaskId()` - Get last clicked task ID
 
 ### 8.2 Modal Injection (`content/modalInjection.js`)
 - Watches for Google dialogs (`role="dialog"` / `[aria-modal="true"]`). Filters out appearance/theme dialogs and ensures context corresponds to an existing task (checking DOM attributes or `window.cfTasksColoring.getLastClickedTaskId`).
