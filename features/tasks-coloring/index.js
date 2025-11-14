@@ -592,6 +592,7 @@ function clearPaint(node) {
   node.style.removeProperty('--cf-task-text-color');
   node.style.removeProperty('mix-blend-mode');
   node.style.removeProperty('filter');
+  node.style.removeProperty('opacity');
   delete node.dataset.cfTaskTextColor;
   delete node.dataset.cfTaskBgColor;
   delete node.dataset.cfTaskTextActual;
@@ -601,11 +602,14 @@ function clearPaint(node) {
     textEl.style.removeProperty('-webkit-text-fill-color');
     textEl.style.removeProperty('mix-blend-mode');
     textEl.style.removeProperty('filter');
+    textEl.style.removeProperty('opacity');
+    textEl.style.removeProperty('text-decoration-color');
   });
 
   node.querySelectorAll?.('svg').forEach((svg) => {
     svg.style.removeProperty('color');
     svg.style.removeProperty('fill');
+    svg.style.removeProperty('opacity');
   });
 
   node.classList.remove(MARK);
@@ -631,6 +635,7 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   node.style.setProperty('-webkit-text-fill-color', textColorValue, 'important');
   node.style.setProperty('mix-blend-mode', 'normal', 'important');
   node.style.setProperty('filter', 'none', 'important');
+  node.style.setProperty('opacity', '1', 'important'); // Override Google's opacity on completed tasks
 
   const textElements = node.querySelectorAll('span, div, p, h1, h2, h3, h4, h5, h6');
   for (const textEl of textElements) {
@@ -638,12 +643,15 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     textEl.style.setProperty('-webkit-text-fill-color', textColorValue, 'important');
     textEl.style.setProperty('mix-blend-mode', 'normal', 'important');
     textEl.style.setProperty('filter', 'none', 'important');
+    textEl.style.setProperty('opacity', '1', 'important'); // Override text element opacity
+    textEl.style.setProperty('text-decoration-color', textColorValue, 'important'); // Match line-through color to text
   }
 
   const svgElements = node.querySelectorAll('svg');
   for (const svg of svgElements) {
     svg.style.setProperty('color', textColorValue, 'important');
     svg.style.setProperty('fill', textColorValue, 'important');
+    svg.style.setProperty('opacity', '1', 'important'); // Override SVG opacity
   }
 }
 function applyPaintIfNeeded(node, colors) {
