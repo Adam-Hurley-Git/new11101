@@ -1254,6 +1254,215 @@ checkAuthAndSubscription();
     }
   }
 
+  // ========================================
+  // COMPLETED TASKS STYLING SECTION BUILDER
+  // ========================================
+
+  async function createCompletedTasksSection(list, colorConfig = {}) {
+    const settings = await window.cc3Storage.getSettings();
+    const completedStyling = settings.taskListColoring?.completedStyling?.[list.id] || {};
+
+    const section = document.createElement('div');
+    section.className = 'completed-tasks-section';
+
+    // Header with toggle
+    const header = document.createElement('div');
+    header.className = 'completed-tasks-header';
+
+    const title = document.createElement('h4');
+    title.innerHTML = '✓ Completed Tasks Styling';
+
+    const toggleWrapper = document.createElement('div');
+    toggleWrapper.className = 'completed-tasks-toggle';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.textContent = 'Enable';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'switch';
+    if (completedStyling.enabled) {
+      toggle.classList.add('active');
+    }
+
+    toggle.onclick = async () => {
+      const newEnabled = !toggle.classList.contains('active');
+      toggle.classList.toggle('active');
+
+      await window.cc3Storage.setCompletedStylingEnabled(list.id, newEnabled);
+
+      // Update controls visibility
+      controls.classList.toggle('completed-tasks-disabled', !newEnabled);
+
+      // Trigger repaint
+      chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+    };
+
+    toggleWrapper.appendChild(toggleLabel);
+    toggleWrapper.appendChild(toggle);
+
+    header.appendChild(title);
+    header.appendChild(toggleWrapper);
+
+    // Controls container
+    const controls = document.createElement('div');
+    controls.className = 'completed-tasks-controls';
+    if (!completedStyling.enabled) {
+      controls.classList.add('completed-tasks-disabled');
+    }
+
+    // Background Color
+    const bgColorGroup = document.createElement('div');
+    bgColorGroup.className = 'completed-color-group';
+
+    const bgLabel = document.createElement('div');
+    bgLabel.className = 'completed-color-label';
+    bgLabel.textContent = 'Card Color';
+
+    const bgColorControl = createTaskListColorControl({
+      list,
+      label: '',
+      prefix: 'completedBg',
+      currentColor: completedStyling.bgColor || (colorConfig.background || '#cccccc'),
+      setColor: async (listId, color) => {
+        await window.cc3Storage.setCompletedBgColor(listId, color);
+      },
+      clearColor: async (listId) => {
+        const current = await window.cc3Storage.getSettings();
+        const styling = current.taskListColoring?.completedStyling?.[listId] || {};
+        delete styling.bgColor;
+        await window.cc3Storage.setCompletedStylingEnabled(listId, styling.enabled || false);
+      },
+      toastLabel: 'Completed card color',
+      messageType: 'TASK_LISTS_UPDATED',
+      helperText: 'Background color for completed tasks in this list.',
+      onColorChange: () => {},
+    });
+
+    bgColorGroup.appendChild(bgLabel);
+    bgColorGroup.appendChild(bgColorControl);
+
+    // Text Color
+    const textColorGroup = document.createElement('div');
+    textColorGroup.className = 'completed-color-group';
+
+    const textLabel = document.createElement('div');
+    textLabel.className = 'completed-color-label';
+    textLabel.textContent = 'Text Color';
+
+    const textColorControl = createTaskListColorControl({
+      list,
+      label: '',
+      prefix: 'completedText',
+      currentColor: completedStyling.textColor || '#666666',
+      setColor: async (listId, color) => {
+        await window.cc3Storage.setCompletedTextColor(listId, color);
+      },
+      clearColor: async (listId) => {
+        const current = await window.cc3Storage.getSettings();
+        const styling = current.taskListColoring?.completedStyling?.[listId] || {};
+        delete styling.textColor;
+        await window.cc3Storage.setCompletedStylingEnabled(listId, styling.enabled || false);
+      },
+      toastLabel: 'Completed text color',
+      messageType: 'TASK_LISTS_UPDATED',
+      helperText: 'Text color for completed tasks in this list.',
+      onColorChange: () => {},
+    });
+
+    textColorGroup.appendChild(textLabel);
+    textColorGroup.appendChild(textColorControl);
+
+    // Background Opacity Slider
+    const bgOpacityGroup = document.createElement('div');
+    bgOpacityGroup.className = 'completed-opacity-group';
+
+    const bgOpacityLabel = document.createElement('div');
+    bgOpacityLabel.className = 'completed-color-label';
+    bgOpacityLabel.textContent = 'Card Opacity';
+
+    const bgOpacityContainer = document.createElement('div');
+    bgOpacityContainer.className = 'opacity-slider-container';
+
+    const bgOpacitySlider = document.createElement('input');
+    bgOpacitySlider.type = 'range';
+    bgOpacitySlider.min = '0';
+    bgOpacitySlider.max = '100';
+    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity || 0.6) * 100));
+    bgOpacitySlider.className = 'opacity-slider';
+
+    const bgOpacityValue = document.createElement('span');
+    bgOpacityValue.className = 'opacity-value';
+    bgOpacityValue.textContent = bgOpacitySlider.value + '%';
+
+    bgOpacitySlider.oninput = async () => {
+      bgOpacityValue.textContent = bgOpacitySlider.value + '%';
+      const opacity = parseInt(bgOpacitySlider.value, 10) / 100;
+      await window.cc3Storage.setCompletedBgOpacity(list.id, opacity);
+
+      // Debounced repaint
+      clearTimeout(bgOpacitySlider._repaintTimer);
+      bgOpacitySlider._repaintTimer = setTimeout(() => {
+        chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+      }, 500);
+    };
+
+    bgOpacityContainer.appendChild(bgOpacitySlider);
+    bgOpacityContainer.appendChild(bgOpacityValue);
+    bgOpacityGroup.appendChild(bgOpacityLabel);
+    bgOpacityGroup.appendChild(bgOpacityContainer);
+
+    // Text Opacity Slider
+    const textOpacityGroup = document.createElement('div');
+    textOpacityGroup.className = 'completed-opacity-group';
+
+    const textOpacityLabel = document.createElement('div');
+    textOpacityLabel.className = 'completed-color-label';
+    textOpacityLabel.textContent = 'Text Opacity';
+
+    const textOpacityContainer = document.createElement('div');
+    textOpacityContainer.className = 'opacity-slider-container';
+
+    const textOpacitySlider = document.createElement('input');
+    textOpacitySlider.type = 'range';
+    textOpacitySlider.min = '0';
+    textOpacitySlider.max = '100';
+    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity || 1) * 100));
+    textOpacitySlider.className = 'opacity-slider';
+
+    const textOpacityValue = document.createElement('span');
+    textOpacityValue.className = 'opacity-value';
+    textOpacityValue.textContent = textOpacitySlider.value + '%';
+
+    textOpacitySlider.oninput = async () => {
+      textOpacityValue.textContent = textOpacitySlider.value + '%';
+      const opacity = parseInt(textOpacitySlider.value, 10) / 100;
+      await window.cc3Storage.setCompletedTextOpacity(list.id, opacity);
+
+      // Debounced repaint
+      clearTimeout(textOpacitySlider._repaintTimer);
+      textOpacitySlider._repaintTimer = setTimeout(() => {
+        chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+      }, 500);
+    };
+
+    textOpacityContainer.appendChild(textOpacitySlider);
+    textOpacityContainer.appendChild(textOpacityValue);
+    textOpacityGroup.appendChild(textOpacityLabel);
+    textOpacityGroup.appendChild(textOpacityContainer);
+
+    // Add all controls
+    controls.appendChild(bgColorGroup);
+    controls.appendChild(textColorGroup);
+    controls.appendChild(bgOpacityGroup);
+    controls.appendChild(textOpacityGroup);
+
+    // Assemble section
+    section.appendChild(header);
+    section.appendChild(controls);
+
+    return section;
+  }
+
   function createTaskListItem(list, colorConfig = {}) {
     const item = document.createElement('div');
     item.className = 'task-list-item';
@@ -1362,21 +1571,24 @@ checkAuthAndSubscription();
     settingsSection.className = 'task-list-card-section';
     settingsSection.appendChild(controlsWrapper);
 
-    const upcomingSection = document.createElement('div');
-    upcomingSection.className = 'task-list-card-section';
-    const placeholder = document.createElement('div');
-    placeholder.className = 'task-list-upcoming-placeholder';
-    placeholder.textContent = 'More list settings coming soon';
-    upcomingSection.appendChild(placeholder);
+    // Completed tasks section (will be added asynchronously)
+    const completedSection = document.createElement('div');
+    completedSection.className = 'task-list-card-section';
 
     card.appendChild(header);
     card.appendChild(settingsSection);
-    card.appendChild(upcomingSection);
+    card.appendChild(completedSection);
 
     item.appendChild(card);
 
     updateSwatchDisplay(backgroundSwatch, colorConfig.background, 'background');
     updateSwatchDisplay(textSwatch, colorConfig.text, 'text');
+
+    // Asynchronously load completed tasks section
+    createCompletedTasksSection(list, colorConfig).then((section) => {
+      completedSection.innerHTML = '';
+      completedSection.appendChild(section);
+    });
 
     return item;
   }
