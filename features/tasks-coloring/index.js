@@ -854,12 +854,13 @@ async function handleNewTaskCreated(taskId, element) {
           taskId: taskId,
         });
 
-        if (response?.success && response.backgroundColor) {
-          // Apply both background and text colors immediately
-          paintTaskImmediately(taskId, response.backgroundColor, response.textColor);
-
-          // Invalidate cache so next repaint picks up the new task
+        if (response?.success && response.listId) {
+          // Invalidate cache so the repaint picks up the new list mapping
           invalidateColorCache();
+
+          // Trigger immediate repaint to apply list default colors
+          // (don't use paintTaskImmediately with overrides - that's for manual colors!)
+          repaintSoon(true);
         }
       } catch (error) {
         console.error('[Task List Colors] Error applying instant color:', error);
