@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/hurle_1pxotab/Pictures/Screenshots/**)",
+      "Bash(node:*)",
+      "Read(//c/Users/hurle_1pxotab/Downloads/1.17.0_0/**)",
+      "Bash(find:*)",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

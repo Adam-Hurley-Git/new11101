@@ -1,0 +1,161 @@
+/* Bottom toolbar */
+.cc3-toolbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
+  z-index: 2147483000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: saturate(1.2) blur(6px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  color: #222;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
+}
+.cc3-toolbar.cc3-collapsed {
+  padding: 3px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+}
+.cc3-toolbar * {
+  box-sizing: border-box;
+}
+.cc3-toolbar .cc3-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cc3-toolbar label {
+  font-size: 12px;
+  color: #444;
+}
+.cc3-toolbar input[type='date'],
+.cc3-toolbar input[type='color'],
+.cc3-toolbar button {
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background: #fff;
+  padding: 0 8px;
+}
+.cc3-toolbar input[type='color'] {
+  padding: 0;
+  width: 40px;
+  border: 1px solid #d0d7de;
+}
+.cc3-toolbar button {
+  cursor: pointer;
+  background: #0b57d0;
+  color: #fff;
+  border: 0;
+  padding: 0 10px;
+}
+.cc3-toolbar button.cc3-secondary {
+  background: #f3f4f6;
+  color: #111;
+  border: 1px solid #d0d7de;
+}
+.cc3-collapse-btn {
+  background: transparent !important;
+  border: none !important;
+  color: #666 !important;
+  padding: 2px 4px !important;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.cc3-collapsed .cc3-collapse-btn {
+  padding: 0 !important;
+  font-size: 12px;
+  color: #444 !important;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cc3-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cc3-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+.cc3-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: left 0.2s ease;
+}
+.cc3-switch[data-on='true'] {
+  background: #34d399;
+  border-color: #10b981;
+}
+.cc3-switch[data-on='true']::after {
+  left: 22px;
+}
+
+/* Enhanced day coloring styles */
+#cc3-day-coloring-styles {
+  /* This will contain dynamically generated CSS from dayColoring.js */
+}
+
+/* Time blocking styles */
+.cc3-timeblock {
+  pointer-events: none !important;
+  z-index: 1 !important;
+  position: absolute !important;
+  box-sizing: border-box !important;
+  transition: none !important; /* Disable all transitions to prevent flickering */
+  animation: none !important; /* Disable all animations */
+  border-radius: 3px !important;
+  overflow: hidden !important;
+}
+
+/* Force background colors to show */
+.cc3-timeblock[data-cc3-timeblock='true'] {
+  display: block !important;
+  visibility: visible !important;
+  position: absolute !important;
+  background-color: var(--cc3-block-color, #ffeb3b) !important;
+  opacity: var(--cc3-block-opacity, 0.7) !important;
+}
+
+#cc3-timeblock-tooltip {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  color: #333;
+  line-height: 1.4;
+  z-index: 10000 !important;
+}

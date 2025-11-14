@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "ColorKit for Google Calendar",
+  "version": "0.0.3",
+  "description": "Transform Google Calendar with custom day colors, task colors, and time blocks.",
+  "icons": {
+    "16": "images/icon-16.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
+  },
+  "minimum_chrome_version": "121",
+  "permissions": ["identity", "storage", "tabs", "alarms"],
+  "host_permissions": [
+    "https://calendar.google.com/*",
+    "https://*.supabase.co/*",
+    "https://portal.calendarextension.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "ColorKit",
+    "default_popup": "popup/popup.html"
+  },
+  "options_page": "options/options.html",
+  "oauth2": {
+    "client_id": "373311643778-3m6quqgtu8jcsn1ncq6t2ubjeiit3f6n.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/tasks.readonly"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "css": ["content/content.css", "features/tasks-coloring/styles.css"],
+      "js": [
+        "lib/storage.js",
+        "content/featureRegistry.js",
+        "features/shared/utils.js",
+        "features/calendar-coloring/utils/dateUtils.js",
+        "features/calendar-coloring/core/monthColoring.js",
+        "features/calendar-coloring/core/dayColoring.js",
+        "features/calendar-coloring/index.js",
+        "features/tasks-coloring/index.js",
+        "features/time-blocking/core/timeBlocking.js",
+        "features/time-blocking/index.js",
+        "features/columnCss.js",
+        "content/toolbar.js",
+        "content/modalInjection.js",
+        "content/index.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/content.css", "features/tasks-coloring/index.js", "features/tasks-coloring/styles.css"],
+      "matches": ["https://calendar.google.com/*"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": ["https://portal.calendarextension.com/*"]
+  }
+}
