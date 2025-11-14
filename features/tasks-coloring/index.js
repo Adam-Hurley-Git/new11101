@@ -974,6 +974,8 @@ async function doRepaint(bypassThrottling = false) {
   let processedCount = 0;
   let noIdCount = 0;
   let noColorCount = 0;
+  let completedCount = 0;
+  let completedColoredCount = 0;
 
   for (const chip of calendarTasks) {
     // Skip if in modal
@@ -987,7 +989,22 @@ async function doRepaint(bypassThrottling = false) {
     if (id) {
       // Check for any color (manual or list default)
       const isCompleted = isTaskElementCompleted(chip);
+      if (isCompleted) {
+        completedCount++;
+      }
       const colors = await getColorForTask(id, manualColorMap, { isCompleted });
+
+      // DEBUG: Log completed tasks
+      if (isCompleted && colors && colors.backgroundColor) {
+        completedColoredCount++;
+        console.log('[Task Colors] Coloring completed task:', {
+          taskId: id,
+          bgColor: colors.backgroundColor,
+          textColor: colors.textColor,
+          bgOpacity: colors.bgOpacity,
+          textOpacity: colors.textOpacity,
+        });
+      }
 
       if (colors && colors.backgroundColor) {
         processedCount++;
@@ -1066,6 +1083,16 @@ async function doRepaint(bypassThrottling = false) {
       }
     }
   }
+
+  // DEBUG: Log repaint summary
+  console.log('[Task Colors] Repaint summary:', {
+    totalTasksFound: calendarTasks.length,
+    processedCount,
+    completedFound: completedCount,
+    completedColored: completedColoredCount,
+    noColorCount,
+    skippedModalCount,
+  });
 
   setTimeout(() => {
     repaintCount = 0;
@@ -1224,6 +1251,21 @@ function initTasksColoring() {
       console.log('[Task Colors] Task-to-list mapping changed');
       invalidateColorCache();
       repaintSoon(); // Repaint with new mappings
+    }
+  });
+
+  // Listen for runtime messages from background (e.g., after sync)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'TASK_LISTS_UPDATED') {
+      console.log('[Task Colors] Received TASK_LISTS_UPDATED - forcing full repaint');
+      // Clear all caches to force fresh data fetch
+      invalidateColorCache();
+      taskElementReferences.clear();
+      // Force multiple aggressive repaints to catch all tasks
+      repaintSoon(true); // Immediate
+      setTimeout(() => repaintSoon(true), 100);
+      setTimeout(() => repaintSoon(true), 500);
+      setTimeout(() => repaintSoon(true), 1000);
     }
   });
 
