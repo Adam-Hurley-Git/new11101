@@ -5088,14 +5088,24 @@ checkAuthAndSubscription();
 
           const response = await chrome.runtime.sendMessage({ type: 'SYNC_TASK_LISTS', fullSync: true });
 
+          console.log('[Popup] Sync response:', response);
+
           if (response?.success) {
-            showToast('Task lists synced successfully!');
+            showToast(`Synced ${response.taskCount} tasks successfully!`);
+
+            console.log('[Popup] Sync diagnostics:', {
+              syncType: response.syncType,
+              taskCount: response.taskCount,
+              duration: response.duration + 'ms',
+              sampleTaskIds: response.sampleTaskIds
+            });
 
             // Reload task lists
             settings = await window.cc3Storage.getSettings();
             updateSyncStatus();
             await loadTaskLists();
           } else {
+            console.error('[Popup] Sync failed:', response);
             showToast('Sync failed. Please try again.');
           }
         } catch (error) {

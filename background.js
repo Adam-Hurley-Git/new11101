@@ -707,11 +707,27 @@ async function syncTaskLists(fullSync = false) {
     // Notify content scripts
     await broadcastToCalendarTabs({ type: 'TASK_LISTS_UPDATED' });
 
-    // Get task count for response
+    // Get task count and diagnostics for response
     const { 'cf.taskToListMap': mapping } = await chrome.storage.local.get('cf.taskToListMap');
     const taskCount = Object.keys(mapping || {}).length;
 
-    return { success: true, taskCount, duration };
+    // Sample some task IDs for diagnostic purposes
+    const sampleTaskIds = Object.keys(mapping || {}).slice(0, 10);
+
+    debugLog('Sync diagnostics:', {
+      taskCount,
+      sampleIds: sampleTaskIds,
+      syncType: fullSync ? 'FULL' : 'INCREMENTAL',
+      duration
+    });
+
+    return {
+      success: true,
+      taskCount,
+      duration,
+      syncType: fullSync ? 'FULL' : 'INCREMENTAL',
+      sampleTaskIds: sampleTaskIds.slice(0, 5) // Return first 5 for debugging
+    };
   } catch (error) {
     console.error('Task list sync failed:', error);
     return { success: false, error: error.message };
