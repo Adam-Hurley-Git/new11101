@@ -769,6 +769,21 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
+  // DEBUG: Enhanced logging for completed tasks
+  if (isCompleted) {
+    console.log(`[Task Colors] DEBUG getColorForTask for completed task:`, {
+      taskId,
+      inCache: !!cache.taskToListMap[taskId],
+      listId,
+      hasCompletedStyling: !!completedStyling,
+      completedStylingEnabled: completedStyling?.enabled,
+      completedBgColor: completedStyling?.bgColor,
+      completedTextColor: completedStyling?.textColor,
+      listBgColor: listId ? cache.listColors[listId] : null,
+      cacheKeys: Object.keys(cache.taskToListMap).length,
+    });
+  }
+
   // DEBUG: Log color lookup
   if (listId && cache.listColors[listId]) {
     console.log(`[Task Colors] Getting color for task ${taskId}:`, {
@@ -807,6 +822,15 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     console.log(`[Task Colors] Built color info for task ${taskId}:`, colorInfo);
 
     return colorInfo;
+  }
+
+  // DEBUG: No color found
+  if (isCompleted) {
+    console.warn(`[Task Colors] No color found for completed task ${taskId}:`, {
+      taskInMapping: !!cache.taskToListMap[taskId],
+      listId,
+      listHasColor: listId ? !!cache.listColors[listId] : false,
+    });
   }
 
   return null;
@@ -976,6 +1000,7 @@ async function doRepaint(bypassThrottling = false) {
   let noColorCount = 0;
   let completedCount = 0;
   let completedColoredCount = 0;
+  const completedTaskIds = []; // DEBUG: Track completed task IDs
 
   for (const chip of calendarTasks) {
     // Skip if in modal
@@ -991,6 +1016,7 @@ async function doRepaint(bypassThrottling = false) {
       const isCompleted = isTaskElementCompleted(chip);
       if (isCompleted) {
         completedCount++;
+        completedTaskIds.push(id); // DEBUG: Track this completed task ID
       }
       const colors = await getColorForTask(id, manualColorMap, { isCompleted });
 
@@ -1090,9 +1116,18 @@ async function doRepaint(bypassThrottling = false) {
     processedCount,
     completedFound: completedCount,
     completedColored: completedColoredCount,
+    completedTaskIds, // DEBUG: Show actual task IDs
     noColorCount,
     skippedModalCount,
   });
+
+  // DEBUG: If we found completed tasks but didn't color them, log details
+  if (completedCount > 0 && completedColoredCount === 0) {
+    console.error('[Task Colors] ⚠️ FOUND COMPLETED TASKS BUT NONE WERE COLORED!', {
+      completedTaskIds,
+      mappingHasKeys: Object.keys(await refreshColorCache().then(c => c.taskToListMap)).length > 0,
+    });
+  }
 
   setTimeout(() => {
     repaintCount = 0;
@@ -1255,9 +1290,18 @@ function initTasksColoring() {
   });
 
   // Listen for runtime messages from background (e.g., after sync)
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.type === 'TASK_LISTS_UPDATED') {
       console.log('[Task Colors] Received TASK_LISTS_UPDATED - forcing full repaint');
+
+      // DEBUG: Log current cache state BEFORE clearing
+      const { 'cf.taskToListMap': mapping } = await chrome.storage.local.get('cf.taskToListMap');
+      console.log('[Task Colors] DEBUG Cache state before repaint:', {
+        mappingSize: Object.keys(mapping || {}).length,
+        firstFewKeys: Object.keys(mapping || {}).slice(0, 5),
+        sampleMapping: mapping,
+      });
+
       // Clear all caches to force fresh data fetch
       invalidateColorCache();
       taskElementReferences.clear();
