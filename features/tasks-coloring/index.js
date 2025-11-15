@@ -1123,10 +1123,34 @@ async function doRepaint(bypassThrottling = false) {
 
   // DEBUG: If we found completed tasks but didn't color them, log details
   if (completedCount > 0 && completedColoredCount === 0) {
+    const cache = await refreshColorCache();
+    const mappingKeys = Object.keys(cache.taskToListMap);
+    const sampleMappingKeys = mappingKeys.slice(0, 10);
+
     console.error('[Task Colors] ⚠️ FOUND COMPLETED TASKS BUT NONE WERE COLORED!', {
       completedTaskIds,
-      mappingHasKeys: Object.keys(await refreshColorCache().then(c => c.taskToListMap)).length > 0,
+      mappingTotalKeys: mappingKeys.length,
+      sampleMappingKeys,
+      completedTaskIdsNotInMapping: completedTaskIds.filter(id => !cache.taskToListMap[id])
     });
+
+    // Diagnostic: Try to find if any completed task IDs match with encoding/decoding
+    for (const taskId of completedTaskIds.slice(0, 3)) {
+      try {
+        const decoded = atob(taskId);
+        const encoded = btoa(taskId);
+        console.log(`[Task Colors] ID format check for ${taskId}:`, {
+          original: taskId,
+          inMapping: !!cache.taskToListMap[taskId],
+          decoded: decoded,
+          decodedInMapping: !!cache.taskToListMap[decoded],
+          encoded: encoded,
+          encodedInMapping: !!cache.taskToListMap[encoded]
+        });
+      } catch (e) {
+        // Ignore encoding errors
+      }
+    }
   }
 
   setTimeout(() => {
