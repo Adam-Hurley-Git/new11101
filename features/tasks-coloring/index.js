@@ -1153,6 +1153,48 @@ function repaintSoon(immediate = false) {
 }
 
 function initTasksColoring() {
+  // AUTO-SYNC ON PAGE LOAD
+  // Trigger incremental sync if last sync > 30 minutes ago
+  (async () => {
+    try {
+      const settings = await window.cc3Storage.getSettings();
+      const taskListColoring = settings?.taskListColoring;
+
+      // Only auto-sync if feature is enabled and OAuth granted
+      if (taskListColoring?.enabled && taskListColoring?.oauthGranted) {
+        const lastSync = taskListColoring.lastSync;
+        const now = Date.now();
+        const THIRTY_MINUTES = 30 * 60 * 1000;
+
+        // Check if we need to sync
+        const shouldSync = !lastSync || (now - lastSync) > THIRTY_MINUTES;
+
+        if (shouldSync) {
+          console.log('[Task Colors] Auto-sync triggered on page load (last sync > 30 min)');
+
+          // Trigger incremental sync in background
+          chrome.runtime.sendMessage({ type: 'SYNC_TASK_LISTS', fullSync: false }, (response) => {
+            if (response?.success) {
+              console.log('[Task Colors] Auto-sync complete:', response);
+              // Repaint tasks with fresh data
+              setTimeout(() => {
+                invalidateColorCache();
+                repaintSoon();
+              }, 500);
+            } else {
+              console.warn('[Task Colors] Auto-sync failed:', response?.error);
+            }
+          });
+        } else {
+          const minutesSinceSync = Math.floor((now - lastSync) / 60000);
+          console.log(`[Task Colors] No auto-sync needed (last sync ${minutesSinceSync} minutes ago)`);
+        }
+      }
+    } catch (error) {
+      console.error('[Task Colors] Auto-sync check failed:', error);
+    }
+  })();
+
   // Listen for storage changes to update modal colors in real-time
   if (window.cc3Storage?.onSettingsChanged) {
     window.cc3Storage.onSettingsChanged((newSettings) => {

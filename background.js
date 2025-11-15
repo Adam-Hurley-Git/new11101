@@ -185,7 +185,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
 
     case 'SYNC_TASK_LISTS':
-      syncTaskLists().then(sendResponse);
+      // Support fullSync parameter from popup (default: incremental)
+      syncTaskLists(message.fullSync || false).then(sendResponse);
       return true;
 
     case 'CHECK_OAUTH_STATUS':
