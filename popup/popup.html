@@ -243,13 +243,7 @@
           0 1px 0 rgba(255, 255, 255, 0.8) inset;
         overflow: visible;
         border: 1px solid rgba(148, 163, 184, 0.15);
-        transition: all 0.2s ease;
-      }
-      .section:hover {
-        box-shadow:
-          0 6px 20px rgba(0, 0, 0, 0.12),
-          0 1px 0 rgba(255, 255, 255, 0.9) inset;
-        border-color: rgba(148, 163, 184, 0.2);
+        /* Removed transition and hover effect to prevent slider flickering */
       }
 
       .section-header {
@@ -1873,14 +1867,10 @@
         filter: grayscale(50%);
       }
 
-      /* Completed Tasks Hover Effects */
+      /* Completed Tasks Slider Styles */
       .opacity-slider {
         cursor: pointer;
-        transition: background 0.2s ease;
-      }
-
-      .opacity-slider:hover {
-        background: linear-gradient(90deg, rgba(245, 158, 11, 0.3) 0%, rgba(245, 158, 11, 1) 100%);
+        /* Removed transition and hover effect to prevent flickering while dragging */
       }
 
       .opacity-slider:active::-webkit-slider-thumb {
@@ -1904,16 +1894,10 @@
 
       .completed-color-group,
       .completed-opacity-group {
-        transition: all 0.2s ease;
         padding: 4px;
         margin: -4px;
         border-radius: 8px;
-      }
-
-      .completed-color-group:hover:not(.completed-tasks-disabled *),
-      .completed-opacity-group:hover:not(.completed-tasks-disabled *) {
-        background: rgba(254, 252, 232, 0.6);
-        box-shadow: 0 1px 4px rgba(245, 158, 11, 0.1);
+        /* Removed transition and hover effect to prevent slider flickering */
       }
 
       /* Time Block Global Color Picker */
