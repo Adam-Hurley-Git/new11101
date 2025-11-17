@@ -1,11 +1,41 @@
 # ColorKit Chrome Extension – Deep Technical Reference
 
-**Last Updated:** November 2025  
-**Extension Version:** 0.0.3 (`manifest.json`)  
-**Manifest Version:** 3  
+**Last Updated:** November 17, 2025
+**Extension Version:** 0.0.3 (`manifest.json`)
+**Manifest Version:** 3
 **Scope:** All runtime contexts (service worker, content scripts, popup/options UI) plus supporting libraries and business logic
 
 This document mirrors the current codebase in `customise calendar 3/` and is intended to be the authoritative description of how the Chrome extension works today. File references below are relative to the project root.
+
+---
+
+## Recent Fixes (v0.0.3 - November 17, 2025)
+
+### Critical Bug Fixes
+1. **Completed Task Coloring** - Fixed Google Tasks API parameter `showHidden: true` (was `false`)
+   - Tasks completed in first-party clients (Google Calendar, mobile apps) now properly fetched
+   - Completed task styling now works for all users
+   - Files: `lib/google-tasks-api.js` lines 145, 222
+
+2. **Slider Scroll Conflict** - Smart storage listener prevents DOM destruction during interaction
+   - Opacity sliders no longer cause popup scroll/reset when dragging
+   - Only reloads task lists when necessary (not on every completedStyling change)
+   - Files: `popup/popup.js` lines 5907-5944
+
+3. **Setting Independence** - Removed artificial dependencies between settings
+   - Text colors work without background colors (transparent background used)
+   - Completed styling works without pending styling
+   - Task list coloring works without inline colors toggle
+   - Files: `features/tasks-coloring/index.js` lines 839-889, 969-975
+
+4. **Slider Flickering** - Removed interfering hover effects from parent containers
+   - Files: `popup/popup.html` line 236, sections 1682-1714, 1820-1909
+
+5. **Clear Button UX** - Added visual feedback and proper Google default reset
+   - `:active` state with scale transform for tactile feedback
+   - Resets to `#ffffff` (Google's white default)
+   - Closes modal after clearing
+   - Files: `popup/popup.html` lines 1682-1714, `popup/popup.js` lines 1762-1788
 
 ---
 
@@ -98,7 +128,16 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
 
 ### 4.2 API Calls & Background Handlers
 - `fetchTaskLists()`: `GET https://tasks.googleapis.com/tasks/v1/users/@me/lists`.
-- `fetchTasksInList(listId, pageToken?)`: paginated read of tasks for each list.
+- `fetchTasksInList(listId, pageToken?)`: paginated read of tasks for each list with parameters:
+  - `showCompleted: 'true'` - Include completed tasks for styling
+  - **`showHidden: 'true'`** - **CRITICAL**: Include tasks completed in first-party clients (Google Calendar, mobile apps)
+  - `maxResults: '100'` - Pagination limit
+  - `pageToken` - For pagination
+  - `updatedMin` - RFC3339 timestamp for incremental sync
+
+  **Important**: According to Google Tasks API documentation, `showHidden: true` is required to fetch tasks completed in Google Calendar and mobile apps. Previously set to `'false'`, which excluded most completed tasks from being fetched, breaking completed task coloring for typical users. Fixed in v0.0.3 (lines 145, 222).
+
+- `fetchTasksWithCompletedLimit(listId, daysLimit)`: Fetches tasks updated in the last N days (default 90) with same parameters as `fetchTasksInList`. Used to prevent fetching years of completed tasks.
 - `buildTaskToListMapping()`: full rescan; stores task lists metadata (`cf.taskListsMeta`) and `cf.taskToListMap` (task ID → list ID) in local storage, respecting a safety cap (`MAX_TASKS_PER_LIST` = 1000).
 - `incrementalSync(updatedMin)`: fetches lists updated since `lastSyncTime` to avoid full scans.
 - `getListIdForTask()` and `findTaskInAllLists()` support quick lookups for new tasks detected by the content script. Both fast path (recent 30 seconds) and full search automatically update the `cf.taskToListMap` cache.
@@ -133,6 +172,21 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
   1. **Manual task colors**: Use auto-contrast text (white/black based on luminance)
   2. **List default colors**: Use list text color if set, otherwise auto-contrast
   3. **No color**: No painting applied
+
+- **Setting Independence (v0.0.3 Fix)**:
+  Previously, task color settings had artificial dependencies that prevented independent operation:
+  - Text colors required background colors to be set
+  - Completed styling required pending styling to be configured
+  - Task list coloring required inline colors toggle to be enabled
+
+  **After Fix** (`features/tasks-coloring/index.js`):
+  1. **Removed restrictive early return** (lines 969-975): No longer exits early if both `quickPickColoringEnabled` and `taskListColoringEnabled` are disabled. Now checks for ANY active setting (text colors, completed styling, etc.).
+
+  2. **Transparent backgrounds** (`buildColorInfo()` lines 839-889): When no base color is set, uses `rgba(255, 255, 255, 0)` as default background with 0 opacity, allowing text-only or completed-only styling to work independently.
+
+  3. **Comprehensive setting checks** (`getColorForTask()` lines 811-850): Checks for background color, text color, OR completed styling. Applies colors if ANY setting is present, not just background.
+
+  **Result**: Users can now set only text opacity, style only completed tasks, or use task list coloring without any other settings enabled.
 - **In-Memory Cache System** (`refreshColorCache()` at line 672):
   - Caches task→list mappings, manual colors, list colors, **list text colors**, and completion styling
   - Cache lifetime: 30 seconds
@@ -178,7 +232,59 @@ All feature settings are mediated by `window.cc3Storage` (`lib/storage.js`). Key
 - Single-page app rendered via plain DOM manipulation.
 - Sections include subscription status/overlays, Color Lab (shared custom colors with stats), day coloring cards, task coloring presets/inline palettes, task list colors, time blocking editors, and diagnostics links.
 - Each control writes to `cc3Storage` helpers and immediately calls `window.cc3Features.updateFeature` (either with entire settings or the specific feature payload) so active Calendar tabs update without reloads.
-- Implements toasts, validation warnings, and “learn more” info cards. Buttons like “Manage account” open the hosted portal via `OPEN_WEB_APP` message.
+- Implements toasts, validation warnings, and "learn more" info cards. Buttons like "Manage account" open the hosted portal via `OPEN_WEB_APP` message.
+
+- **Smart Storage Listener (v0.0.3 Fix)** (lines 5907-5944):
+  **Problem**: Dragging completed task opacity sliders caused popup to scroll up instantly, making sliders unusable.
+
+  **Root Cause**:
+  1. User drags opacity slider → `oninput` handler saves to storage via `setCompletedBgOpacity()`
+  2. `storage.onChanged` listener fires → calls `updateTaskListColoringToggle()`
+  3. Which calls `loadTaskLists()` → executes `taskListItems.innerHTML = ''`
+  4. Slider element destroyed while user is dragging it
+  5. Popup scroll position resets when DOM is recreated
+
+  **Solution**: Modified `storage.onChanged` listener to detect if ONLY `completedStyling` values changed (colors/opacities):
+  ```javascript
+  // Compare oldSettings vs newSettings with completedStyling removed
+  const onlyCompletedStylingChanged = (() => {
+    const oldCopy = JSON.parse(JSON.stringify(oldSettings));
+    const newCopy = JSON.parse(JSON.stringify(newSettings));
+
+    if (oldCopy.taskListColoring) delete oldCopy.taskListColoring.completedStyling;
+    if (newCopy.taskListColoring) delete newCopy.taskListColoring.completedStyling;
+
+    return JSON.stringify(oldCopy) === JSON.stringify(newCopy);
+  })();
+
+  // Skip reload if only completedStyling changed
+  if (!onlyCompletedStylingChanged) {
+    updateTaskListColoringToggle();
+  }
+  ```
+
+  **Result**: Opacity sliders now drag smoothly without DOM destruction or scroll interruption.
+
+- **Clear Button UX Enhancement (v0.0.3)** (lines 1762-1788):
+  - Added `:active` CSS state with `transform: scale(0.97)` for tactile click feedback
+  - Enhanced `:hover` states for better visibility
+  - Proper `:disabled` states prevent effects when no color is set
+  - Clear functionality now:
+    - Resets to `#ffffff` (Google Calendar's white default)
+    - Closes color modal after clearing for better UX flow
+    - Toast message confirms "reset to Google default"
+    - Broadcasts `null` to remove custom coloring from active calendar tabs
+
+- **Slider Flickering Fix (v0.0.3)** (`popup/popup.html` line 236, 1820-1909):
+  - Removed CSS transitions and hover transforms from `.section` elements
+  - Removed hover effects from `.opacity-slider`, `.completed-color-group`, `.completed-opacity-group`
+  - Previous hover effects triggered during slider drag, causing visual jitter
+  - Sliders now operate smoothly without competing animations
+
+- **Scroll Conflict Fix (v0.0.3)** (`popup/popup.html` lines 4033-4045):
+  - Removed `max-height: 420px` and `overflow-y: auto` from `#taskListItems`
+  - Nested scroll container interfered with slider dragging
+  - Task list section now expands to full height without internal scrolling
 
 ### 6.2 Color Lab (`popup/popup.js`, sections ~497-940)
 - Stores user-defined custom colors in sync storage. Provides collection stats, edit/delete actions, and quick-apply buttons feeding other pickers.
@@ -320,10 +426,11 @@ options/
 ---
 
 ## 13. Accuracy Commitments
-- Version numbers, shading options, data schemas, and behavior described above match the current source files (checked November 2025).
+- Version numbers, shading options, data schemas, and behavior described above match the current source files (checked November 17, 2025).
+- Recent v0.0.3 fixes have been documented with exact file paths and line numbers for verification.
 - Any future code changes must be reflected here immediately; sections referencing non-existent helpers or outdated flows should be updated or removed alongside the code change.
 
-This document now serves as the source of truth for the ColorKit extension’s architecture and business logic.
+This document now serves as the source of truth for the ColorKit extension's architecture and business logic.
 
 ---
 
