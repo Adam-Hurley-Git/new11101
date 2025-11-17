@@ -1319,9 +1319,19 @@ checkAuthAndSubscription();
       },
       clearColor: async (listId) => {
         const current = await window.cc3Storage.getSettings();
-        const styling = current.taskListColoring?.completedStyling?.[listId] || {};
+        const completedStyling = current.taskListColoring?.completedStyling || {};
+        const styling = completedStyling[listId] || {};
         delete styling.bgColor;
-        await window.cc3Storage.setCompletedStylingEnabled(listId, styling.enabled || false);
+
+        // Update the full styling object in storage
+        await window.cc3Storage.setSettings({
+          taskListColoring: {
+            completedStyling: {
+              ...completedStyling,
+              [listId]: styling
+            }
+          }
+        });
       },
       toastLabel: 'Completed card color',
       messageType: 'TASK_LISTS_UPDATED',
@@ -1350,9 +1360,19 @@ checkAuthAndSubscription();
       },
       clearColor: async (listId) => {
         const current = await window.cc3Storage.getSettings();
-        const styling = current.taskListColoring?.completedStyling?.[listId] || {};
+        const completedStyling = current.taskListColoring?.completedStyling || {};
+        const styling = completedStyling[listId] || {};
         delete styling.textColor;
-        await window.cc3Storage.setCompletedStylingEnabled(listId, styling.enabled || false);
+
+        // Update the full styling object in storage
+        await window.cc3Storage.setSettings({
+          taskListColoring: {
+            completedStyling: {
+              ...completedStyling,
+              [listId]: styling
+            }
+          }
+        });
       },
       toastLabel: 'Completed text color',
       messageType: 'TASK_LISTS_UPDATED',
@@ -1756,19 +1776,18 @@ checkAuthAndSubscription();
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Reset to Google's default (no color = white/transparent)
-      const googleDefault = '#ffffff'; // Google Calendar default task color
-      preview.style.backgroundColor = googleDefault;
+      // Reset preview to transparent (no color)
+      preview.style.backgroundColor = 'transparent';
       preview.classList.remove('has-color');
-      colorInput.value = googleDefault;
+      colorInput.value = '#4285f4'; // Default for color picker
 
       const directColorInput = qs(`${prefix}ColorDirect-${list.id}`);
       const hexInput = qs(`${prefix}Hex-${list.id}`);
-      if (directColorInput) directColorInput.value = googleDefault;
-      if (hexInput) hexInput.value = googleDefault.toUpperCase();
+      if (directColorInput) directColorInput.value = '#4285f4';
+      if (hexInput) hexInput.value = '#4285F4';
 
       clearBtn.disabled = true;
-      showToast(`${toastLabel} cleared for "${list.title}" - reset to Google default`);
+      showToast(`${toastLabel} cleared for "${list.title}"`);
 
       // Broadcast null to remove any custom coloring
       broadcastUpdate(null);
