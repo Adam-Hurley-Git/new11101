@@ -1687,17 +1687,30 @@
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
-        transition: all 0.2s;
+        transition: all 0.15s ease;
+        font-weight: 500;
       }
 
       .task-list-clear-button:hover {
         background: #e8eaed;
         border-color: #c1c3c5;
+        color: #202124;
+      }
+
+      .task-list-clear-button:active {
+        background: #dadce0;
+        border-color: #5f6368;
+        transform: scale(0.97);
       }
 
       .task-list-clear-button:disabled {
         opacity: 0.5;
         cursor: not-allowed;
+        transform: none;
+      }
+
+      .task-list-clear-button:disabled:active {
+        transform: none;
       }
 
       /* Task List Color Details Panel */
@@ -4040,8 +4053,6 @@
                           display: flex;
                           flex-direction: column;
                           gap: 12px;
-                          max-height: 420px;
-                          overflow-y: auto;
                         "
                       >
                         <!-- Items added dynamically -->

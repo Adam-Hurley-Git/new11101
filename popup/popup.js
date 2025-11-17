@@ -1760,23 +1760,31 @@ checkAuthAndSubscription();
     }, 50);
 
     clearBtn.onclick = async () => {
+      // Clear the color from storage
       await clearColor(list.id);
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      preview.style.backgroundColor = '#ffffff';
+      // Reset to Google's default (no color = white/transparent)
+      const googleDefault = '#ffffff'; // Google Calendar default task color
+      preview.style.backgroundColor = googleDefault;
       preview.classList.remove('has-color');
-      colorInput.value = '#4285f4';
+      colorInput.value = googleDefault;
 
       const directColorInput = qs(`${prefix}ColorDirect-${list.id}`);
       const hexInput = qs(`${prefix}Hex-${list.id}`);
-      if (directColorInput) directColorInput.value = '#4285f4';
-      if (hexInput) hexInput.value = '#4285F4';
+      if (directColorInput) directColorInput.value = googleDefault;
+      if (hexInput) hexInput.value = googleDefault.toUpperCase();
 
       clearBtn.disabled = true;
-      showToast(`${toastLabel} cleared for "${list.title}"`);
+      showToast(`${toastLabel} cleared for "${list.title}" - reset to Google default`);
+
+      // Broadcast null to remove any custom coloring
       broadcastUpdate(null);
       onColorChange(null);
+
+      // Close the modal after clearing
+      closeColorModal();
     };
 
     colorInput.onchange = () => {
