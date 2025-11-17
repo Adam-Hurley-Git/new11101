@@ -1,7 +1,7 @@
 # ColorKit Chrome Extension - Full Codebase Reference
 
-**Last Updated**: January 2025
-**Extension Version**: 0.0.2 (Chrome Web Store Ready)
+**Last Updated**: November 17, 2025
+**Extension Version**: 0.0.3 (Chrome Web Store Ready)
 **Manifest Version**: 3
 **Minimum Chrome Version**: 121
 
@@ -9,9 +9,47 @@ This document provides comprehensive context about the ColorKit Chrome extension
 
 ---
 
-## Recent Changes (v0.0.2 - January 2025)
+## Recent Changes (v0.0.3 - November 2025)
 
-### Chrome Web Store Compliance
+### UX/Performance Fixes
+
+1. **✅ Fixed Completed Task Coloring** - Tasks completed in Google Calendar now properly colored
+   - Fixed Google Tasks API parameter: `showHidden: true` (was `false`)
+   - Completed tasks in first-party clients (Calendar, mobile) now fetchable
+   - Files: `lib/google-tasks-api.js`
+
+2. **✅ Fixed Slider Flickering** - Removed interfering hover effects
+   - Removed transitions/transforms from `.section` elements
+   - Removed hover effects from opacity slider containers
+   - Files: `popup/popup.html`
+
+3. **✅ Fixed Scroll Conflicts** - Sliders now draggable without interruption
+   - Removed nested scroll from `#taskListItems` (first fix)
+   - Prevented DOM destruction during slider interaction (second fix)
+   - Smart storage change detection prevents unnecessary reloads
+   - Files: `popup/popup.html`, `popup/popup.js`
+
+4. **✅ Fixed Setting Dependencies** - All settings now work independently
+   - Text colors work without background colors
+   - Completed styling works without pending styling
+   - Task list coloring works without inline colors toggle
+   - Files: `features/tasks-coloring/index.js`
+
+5. **✅ Enhanced Clear Button UX** - Visual feedback and proper reset
+   - Added `:active` state with scale transform
+   - Proper reset to Google's default (`#ffffff`)
+   - Closes modal after clearing
+   - Files: `popup/popup.html`, `popup/popup.js`
+
+### Technical Improvements
+
+- **Smart Storage Listener**: Detects if only `completedStyling` changed to avoid DOM rebuilds
+- **Transparent Backgrounds**: Settings can apply text-only or completed-only styling
+- **Better Error Handling**: Clear buttons properly disable/enable based on state
+
+### Previous Version (v0.0.2 - January 2025)
+
+#### Chrome Web Store Compliance
 
 - ❌ Removed `cookies` permission (unused, causing Chrome Web Store rejection)
 - ❌ Removed `notifications` permission (using Web Push API instead)
@@ -19,14 +57,14 @@ This document provides comprehensive context about the ColorKit Chrome extension
 - ✅ Added `identity` permission for Google OAuth (Tasks API)
 - ✅ Added `minimum_chrome_version: "121"` for silent push support
 
-### New Features
+#### New Features
 
 1. **Improved OAuth State Management** - Storage flag as source of truth
 2. **Custom Inline Colors** - User-customizable quick-access colors in task modal
 3. **Enhanced OAuth Button UX** - Loading states & specific error messages
 4. **Subscription Broadcasting** - Real-time updates to calendar tabs
 
-### Code Cleanup
+#### Code Cleanup
 
 - Removed Chrome < 121 fallback code
 - Removed unused `isAuthenticated()` function
@@ -641,6 +679,64 @@ async function getColorForTask(taskId, manualColorsMap) {
 }
 ```
 
+**Setting Independence** (v0.0.3 Fix):
+
+Previously, task color settings had artificial dependencies:
+- Text colors required background colors to work
+- Completed styling required pending styling to be set
+- Task list coloring required inline colors toggle
+
+**After Fix** (`features/tasks-coloring/index.js`):
+
+1. **Removed restrictive early return**:
+```javascript
+// OLD - would skip rendering if both settings disabled:
+if (!quickPickColoringEnabled && !taskListColoringEnabled) {
+  return; // Exit early - nothing to paint
+}
+
+// NEW - check for ANY active setting:
+// Text colors, completed styling, etc. all work independently
+```
+
+2. **buildColorInfo() uses transparent backgrounds**:
+```javascript
+function buildColorInfo({ baseColor, pendingTextColor, isCompleted, completedStyling }) {
+  // Allow styling even without base color - use transparent background
+  const defaultBgColor = 'rgba(255, 255, 255, 0)';
+
+  const bgColor = baseColor || defaultBgColor;
+  const textColor = pendingTextColor || pickContrastingText(bgColor);
+
+  return {
+    backgroundColor: bgColor,
+    textColor,
+    bgOpacity: baseColor ? 1 : 0, // 0 opacity if using transparent
+    textOpacity: 1,
+  };
+}
+```
+
+3. **getColorForTask() checks ALL settings**:
+```javascript
+// Check for any list-based settings (background, text, OR completed styling)
+if (listId) {
+  const listBgColor = cache.listColors[listId];
+  const hasTextColor = !!pendingTextColor;
+  const hasCompletedStyling = isCompleted && completedStyling?.enabled;
+
+  // Apply colors if we have ANY setting (not just background)
+  if (listBgColor || hasTextColor || hasCompletedStyling) {
+    return buildColorInfo({ baseColor: listBgColor, ... });
+  }
+}
+```
+
+**Result**: Users can now:
+- Set only text opacity without background color
+- Style completed tasks without styling pending tasks
+- Use task list coloring independently of inline colors
+
 **Performance Metrics**:
 
 - Storage reads: 33/sec → 0.03/sec (99.9% reduction)
@@ -1013,9 +1109,10 @@ GET /users/@me/lists
 Response: { items: [ { id, title, updated, selfLink } ] }
 
 // Get tasks in a list
-GET /lists/{listId}/tasks?showCompleted=false&maxResults=100&pageToken={token}
+GET /lists/{listId}/tasks?showCompleted=true&showHidden=true&maxResults=100&pageToken={token}
 Query params:
-  - showCompleted: false (only incomplete tasks)
+  - showCompleted: true (include completed tasks for styling)
+  - showHidden: true (CRITICAL: include tasks completed in first-party clients)
   - maxResults: 100 (pagination)
   - pageToken: for pagination
   - updatedMin: RFC3339 timestamp (incremental sync)
@@ -1025,6 +1122,24 @@ Response: { items: [ { id, title, updated, status, ... } ], nextPageToken }
 GET /lists/{listId}/tasks/{taskId}
 Response: { id, title, updated, status, ... }
 ```
+
+**CRITICAL Parameter - showHidden**:
+
+According to Google Tasks API documentation:
+- `showHidden: false` → Only returns tasks completed via the API
+- `showHidden: true` → Returns tasks completed in **first-party clients** (Google Calendar, mobile apps, etc.)
+
+**Before Fix**:
+- Extension used `showHidden: 'false'`
+- Tasks completed in Google Calendar were NOT fetched
+- Completed task coloring didn't work for most users
+
+**After Fix** (v0.0.3):
+- Changed to `showHidden: 'true'` in `fetchTasksInList()` and `fetchTasksWithCompletedLimit()`
+- All completed tasks now fetched correctly
+- Completed task styling works as expected
+
+Files affected: `lib/google-tasks-api.js` (lines 145, 222)
 
 **Authentication**:
 
@@ -1264,6 +1379,73 @@ async function transitionPollingState(from, to) {
 ```
 
 **Why**: Optimizes API calls based on user activity
+
+---
+
+### 7. Smart Storage Listener to Prevent DOM Destruction
+
+**Problem**: Dragging opacity sliders causes popup to scroll/reset because storage changes trigger full DOM rebuild
+
+**Root Cause**:
+1. User drags opacity slider
+2. `oninput` handler saves to storage: `setCompletedBgOpacity(listId, opacity)`
+3. `storage.onChanged` listener fires
+4. Listener calls `updateTaskListColoringToggle()`
+5. Which calls `loadTaskLists()` → `taskListItems.innerHTML = ''`
+6. Slider element destroyed while user is dragging it
+7. Popup scroll resets when DOM is recreated
+
+**Solution** (`popup/popup.js`):
+
+```javascript
+// OLD (destructive):
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.settings) {
+    settings = changes.settings.newValue;
+    updateTaskListColoringToggle(); // ALWAYS reloads task lists
+  }
+});
+
+// NEW (selective):
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.settings) {
+    const oldSettings = changes.settings.oldValue || {};
+    const newSettings = changes.settings.newValue || {};
+    settings = newSettings;
+
+    // Check if ONLY completedStyling values changed (colors/opacities)
+    const onlyCompletedStylingChanged = (() => {
+      if (!oldSettings.taskListColoring || !newSettings.taskListColoring) return false;
+
+      // Create copies and remove completedStyling from both
+      const oldCopy = JSON.parse(JSON.stringify(oldSettings));
+      const newCopy = JSON.parse(JSON.stringify(newSettings));
+
+      if (oldCopy.taskListColoring) delete oldCopy.taskListColoring.completedStyling;
+      if (newCopy.taskListColoring) delete newCopy.taskListColoring.completedStyling;
+
+      // If everything else is identical, only completedStyling changed
+      return JSON.stringify(oldCopy) === JSON.stringify(newCopy);
+    })();
+
+    // Only reload task lists if something other than completedStyling changed
+    if (!onlyCompletedStylingChanged) {
+      updateTaskListColoringToggle();
+    }
+
+    // Other updates continue normally
+    updateToggle();
+    updateTaskColoringToggle();
+    // ...
+  }
+});
+```
+
+**Why**:
+- Preserves DOM elements during slider interaction
+- Prevents scroll reset when only colors/opacities change
+- Still reloads when necessary (list changes, enable/disable, etc.)
+- Makes sliders smooth and usable
 
 ---
 
@@ -1587,6 +1769,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ## Version History
 
+### v0.0.3 (November 17, 2025) - UX Fixes & Polish
+
+- 🐛 **Fixed: Completed task coloring** - `showHidden: true` parameter fix
+- 🐛 **Fixed: Slider flickering** - Removed interfering hover effects
+- 🐛 **Fixed: Slider scroll conflict** - Smart storage listener prevents DOM destruction
+- 🐛 **Fixed: Setting dependencies** - All settings work independently now
+- 🐛 **Fixed: Clear button UX** - Visual feedback and proper Google default reset
+- ⚡ **Performance: Smart storage listener** - Only reloads when necessary
+- 🎨 **UX: Transparent backgrounds** - Text-only and completed-only styling supported
+- 📝 **Code locations**: `lib/google-tasks-api.js`, `popup/popup.js`, `popup/popup.html`, `features/tasks-coloring/index.js`
+
 ### v2.0 (January 2025) - Fail-Open Architecture
 
 - 🔒 **CRITICAL**: Refactored to fail-open architecture
@@ -1630,4 +1823,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ---
 
-**End of CLAUDE.md** - Last updated November 3, 2025
+**End of CLAUDE.md** - Last updated November 17, 2025
