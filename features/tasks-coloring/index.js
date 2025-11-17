@@ -585,8 +585,19 @@ function isTaskElementCompleted(taskElement) {
 function clearPaint(node) {
   if (!node) return;
 
-  node.style.removeProperty('background-color');
-  node.style.removeProperty('border-color');
+  // Restore Google's original background if we have it stored
+  if (node.dataset.cfGoogleBg) {
+    node.style.setProperty('background-color', node.dataset.cfGoogleBg, 'important');
+  } else {
+    node.style.removeProperty('background-color');
+  }
+
+  if (node.dataset.cfGoogleBorder) {
+    node.style.setProperty('border-color', node.dataset.cfGoogleBorder, 'important');
+  } else {
+    node.style.removeProperty('border-color');
+  }
+
   node.style.removeProperty('color');
   node.style.removeProperty('-webkit-text-fill-color');
   node.style.removeProperty('--cf-task-text-color');
@@ -596,6 +607,7 @@ function clearPaint(node) {
   delete node.dataset.cfTaskTextColor;
   delete node.dataset.cfTaskBgColor;
   delete node.dataset.cfTaskTextActual;
+  // Keep cfGoogleBg and cfGoogleBorder for future use
 
   node.querySelectorAll?.('span, div, p, h1, h2, h3, h4, h5, h6').forEach((textEl) => {
     textEl.style.removeProperty('color');
@@ -624,8 +636,25 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
 
   const textColorValue = colorToRgba(text, textOpacity);
 
+  // CRITICAL FIX: Store Google's original background color before any paint
+  // This allows us to restore it when user clears the background
+  // Capture even if we're just applying text color (bgOpacity = 0)
+  if (!node.dataset.cfGoogleBg) {
+    // First time seeing this task - capture Google's original colors
+    const computedStyle = window.getComputedStyle(node);
+    const googleBg = node.style.backgroundColor || computedStyle.backgroundColor;
+    const googleBorder = node.style.borderColor || computedStyle.borderColor;
+
+    if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
+      node.dataset.cfGoogleBg = googleBg;
+    }
+    if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
+      node.dataset.cfGoogleBorder = googleBorder;
+    }
+  }
+
   // CRITICAL FIX: Only apply background if bgOpacity > 0
-  // When bgOpacity is 0, remove background styles to let Google's default CSS show
+  // When bgOpacity is 0, restore Google's default background
   if (bgOpacity > 0) {
     const bgColorValue = colorToRgba(color, bgOpacity);
     node.dataset.cfTaskBgColor = bgColorValue;
@@ -635,9 +664,21 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     node.style.setProperty('filter', 'none', 'important');
     node.style.setProperty('opacity', '1', 'important');
   } else {
-    // Remove ALL background-related styling - let Google's default show through
-    node.style.removeProperty('background-color');
-    node.style.removeProperty('border-color');
+    // Background cleared - restore Google's default background
+    // This allows text-only coloring while showing Google's original task color
+    if (node.dataset.cfGoogleBg) {
+      node.style.setProperty('background-color', node.dataset.cfGoogleBg, 'important');
+    } else {
+      node.style.removeProperty('background-color');
+    }
+
+    if (node.dataset.cfGoogleBorder) {
+      node.style.setProperty('border-color', node.dataset.cfGoogleBorder, 'important');
+    } else {
+      node.style.removeProperty('border-color');
+    }
+
+    // Don't set these properties - let Google's defaults work
     node.style.removeProperty('mix-blend-mode');
     node.style.removeProperty('filter');
     node.style.removeProperty('opacity');
