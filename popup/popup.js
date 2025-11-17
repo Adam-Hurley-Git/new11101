@@ -1638,6 +1638,10 @@ checkAuthAndSubscription();
     if (currentColor) {
       preview.style.backgroundColor = currentColor;
       preview.classList.add('has-color');
+    } else {
+      // Show "no color" state with pattern
+      preview.style.backgroundColor = '#f3f4f6';
+      preview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
     }
     actions.appendChild(preview);
 
@@ -1700,11 +1704,18 @@ checkAuthAndSubscription();
     const broadcastUpdate = (color) => {
       chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
         tabs.forEach((tab) => {
-          chrome.tabs.sendMessage(tab.id, {
-            type: messageType,
-            listId: list.id,
-            color,
-          });
+          // If color is null, just trigger full repaint without color data
+          if (color === null) {
+            chrome.tabs.sendMessage(tab.id, {
+              type: messageType,
+            });
+          } else {
+            chrome.tabs.sendMessage(tab.id, {
+              type: messageType,
+              listId: list.id,
+              color,
+            });
+          }
         });
       });
     };
@@ -1717,6 +1728,7 @@ checkAuthAndSubscription();
       await saveSettings();
 
       preview.style.backgroundColor = newColor;
+      preview.style.backgroundImage = 'none'; // Remove pattern if it was there
       preview.classList.add('has-color');
       colorInput.value = newColor;
 
@@ -1776,8 +1788,9 @@ checkAuthAndSubscription();
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Reset preview to transparent (no color)
-      preview.style.backgroundColor = 'transparent';
+      // Reset preview to show "no color" state
+      preview.style.backgroundColor = '#f3f4f6';
+      preview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
       preview.classList.remove('has-color');
       colorInput.value = '#4285f4'; // Default for color picker
 
@@ -1787,11 +1800,14 @@ checkAuthAndSubscription();
       if (hexInput) hexInput.value = '#4285F4';
 
       clearBtn.disabled = true;
-      showToast(`${toastLabel} cleared for "${list.title}"`);
+      showToast(`${toastLabel} cleared for "${list.title}" - using Google default`);
 
-      // Broadcast null to remove any custom coloring
+      // Broadcast null to trigger full repaint (will re-read from storage)
       broadcastUpdate(null);
       onColorChange(null);
+
+      // Reload task lists to update the swatch display
+      await loadTaskLists();
 
       // Close the modal after clearing
       closeColorModal();
