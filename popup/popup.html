@@ -3370,8 +3370,265 @@
           <div class="section task-coloring">
             <div class="section-header">
               <h3><span class="section-icon">🏷️</span>Task Management</h3>
+              <div class="toggle">
+                <div class="switch" id="enableTaskFeatures"></div>
+              </div>
             </div>
-            <div class="section-content">
+            <div class="section-content" id="taskFeaturesContent" style="display: none">
+              <!-- Info box -->
+              <div
+                id="taskListInfoCard"
+                style="
+                  margin-bottom: 12px;
+                  padding: 8px 12px;
+                  background: #fff;
+                  border-radius: 8px;
+                  border: 1px solid #dadce0;
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+                "
+              >
+                <!-- Collapsed view -->
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+                  <div
+                    style="
+                      font-weight: 500;
+                      color: #202124;
+                      font-size: 13px;
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                    "
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
+                      <circle cx="12" cy="12" r="10" stroke="#1a73e8" stroke-width="2" fill="none" />
+                      <path d="M12 16v-4M12 8h.01" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <span>Auto-Color Tasks by List</span>
+                  </div>
+                  <button
+                    id="taskListInfoToggle"
+                    style="
+                      padding: 6px 12px;
+                      background: #f8f9fa;
+                      border: 1px solid #dadce0;
+                      border-radius: 4px;
+                      font-size: 12px;
+                      color: #5f6368;
+                      cursor: pointer;
+                      white-space: nowrap;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                      transition: all 0.2s ease;
+                      flex-shrink: 0;
+                    "
+                    onmouseover="this.style.background='#e8eaed';"
+                    onmouseout="this.style.background='#f8f9fa';"
+                  >
+                    See how to use
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
+                      <path
+                        d="M7 10l5 5 5-5"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                <!-- Expanded view (hidden by default) -->
+                <div
+                  id="taskListInfoExpanded"
+                  style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
+                >
+                  <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
+                    <div style="margin-bottom: 12px">
+                      Automatically color Google Tasks based on their list (e.g., Personal, Work). Runs locally.
+                    </div>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Privacy note</div>
+                    <div
+                      style="
+                        margin-bottom: 12px;
+                        padding: 8px;
+                        background: #fef3c7;
+                        border-radius: 4px;
+                        font-size: 12px;
+                      "
+                    >
+                      Connecting to your Google task lists is required for accurate coloring. All data stays on your
+                      device; nothing is sent to us. Other ColorKit features work without this connection.
+                    </div>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
+                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Dashboard → Tasks → connect Google Calendar (local-only).</li>
+                      <li style="margin-bottom: 4px">Assign a default color to each task list.</li>
+                      <li style="margin-bottom: 4px">All existing and new tasks in that list adopt the color.</li>
+                      <li style="margin-bottom: 4px">
+                        To override a single task: click the task in Google Calendar → select a color → Apply.
+                      </li>
+                    </ol>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">List defaults are easy to override per task.</li>
+                      <li style="margin-bottom: 4px">
+                        No cross-device sync unless the other device also runs ColorKit.
+                      </li>
+                    </ul>
+                  </div>
+                  <button
+                    id="taskListVideoTutorialBtn"
+                    style="
+                      padding: 8px 14px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      font-size: 13px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      transition: all 0.2s ease;
+                      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+                    "
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    Watch Tutorial
+                  </button>
+                </div>
+              </div>
+
+              <!-- Task List Colors Subsection -->
+              <div style="margin-bottom: 24px; padding: 16px; background: #fafafa; border-radius: 8px">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
+                  <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #333">
+                    <span style="margin-right: 6px">📋</span>Task List Colors
+                  </h4>
+                </div>
+                <div id="taskListColorSettings">
+                  <!-- OAuth Status -->
+                  <div id="taskListOAuthStatus" style="margin-bottom: 16px; padding: 12px; border-radius: 6px">
+                    <!-- Not granted state -->
+                    <div id="oauthNotGranted" style="display: none">
+                      <div style="margin-bottom: 8px; font-weight: 600; color: #ea4335">
+                        ⚠️ Google Tasks Access Required
+                      </div>
+                      <div style="margin-bottom: 12px; font-size: 13px; color: #666">
+                        Grant access to read your Google Tasks lists (read-only). This is required to map tasks to their
+                        lists.
+                      </div>
+                      <button
+                        id="grantOAuthButton"
+                        style="
+                          padding: 8px 16px;
+                          background: #1a73e8;
+                          color: white;
+                          border: none;
+                          border-radius: 4px;
+                          cursor: pointer;
+                          font-size: 14px;
+                          font-weight: 500;
+                        "
+                      >
+                        Grant Access
+                      </button>
+                    </div>
+
+                    <!-- Granted state -->
+                    <div id="oauthGranted" style="display: none">
+                      <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px"
+                      >
+                        <div style="font-weight: 600; color: #34a853">✓ Google Tasks Access Granted</div>
+                        <button
+                          id="manualSyncButton"
+                          style="
+                            padding: 6px 12px;
+                            background: #f1f3f4;
+                            color: #5f6368;
+                            border: 1px solid #dadce0;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 13px;
+                          "
+                        >
+                          🔄 Sync Now
+                        </button>
+                      </div>
+                      <div id="syncStatus" style="font-size: 12px; color: #5f6368">Last sync: Never</div>
+                    </div>
+                  </div>
+
+                  <!-- Task Lists Container -->
+                  <div id="taskListsContainer">
+                    <!-- Loading state -->
+                    <div id="taskListsLoading" style="padding: 24px; text-align: center; color: #5f6368; display: none">
+                      <div style="margin-bottom: 8px">⏳</div>
+                      <div>Loading task lists...</div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div id="taskListsEmpty" style="padding: 24px; text-align: center; color: #5f6368; display: none">
+                      <div style="margin-bottom: 8px">📝</div>
+                      <div>No task lists found.</div>
+                      <div style="font-size: 12px; margin-top: 8px">
+                        Create task lists in Google Calendar to get started.
+                      </div>
+                    </div>
+
+                    <!-- Task lists grid (populated dynamically) -->
+                    <div id="taskListsGrid" style="display: none">
+                      <!-- Grid header -->
+                      <div
+                        style="
+                          display: flex;
+                          justify-content: space-between;
+                          align-items: center;
+                          padding: 10px 14px;
+                          background: #f8f9fa;
+                          border-radius: 6px 6px 0 0;
+                          border: 1px solid #e8eaed;
+                          border-bottom: none;
+                          font-size: 12px;
+                          font-weight: 600;
+                          color: #5f6368;
+                        "
+                      >
+                        <div>Task Lists</div>
+                      </div>
+
+                      <!-- Task lists items (populated by JS) -->
+                      <div
+                        id="taskListItems"
+                        style="
+                          border: 1px solid #e8eaed;
+                          border-radius: 0 0 6px 6px;
+                          padding: 12px;
+                          background: #f9fafb;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 12px;
+                        "
+                      >
+                        <!-- Items added dynamically -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Info box for Quick Access Colors -->
               <div
                 id="quickAccessColorsInfoCard"
@@ -3492,17 +3749,13 @@
               </div>
 
               <!-- Task Colors Subsection -->
-              <div style="margin-bottom: 24px; padding: 16px; background: #fafafa; border-radius: 8px">
+              <div style="padding: 16px; background: #fafafa; border-radius: 8px">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
                   <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #333">
                     <span style="margin-right: 6px">🎨</span>Quick Access Colors
                   </h4>
-                  <div class="toggle" style="margin: 0">
-                    <label style="font-size: 12px">Enable custom task colors</label>
-                    <div class="switch" id="enableTaskColoring"></div>
-                  </div>
                 </div>
-                <div id="taskColorSettings" style="display: none">
+                <div id="taskColorSettings">
                   <div
                     style="
                       margin-bottom: 16px;
@@ -3799,264 +4052,6 @@
                     </div>
                     <div style="font-size: 10px; color: #666; margin-top: 4px; text-align: center">
                       Click any color above to change it with the advanced color picker
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Info box -->
-              <div
-                id="taskListInfoCard"
-                style="
-                  margin-bottom: 12px;
-                  padding: 8px 12px;
-                  background: #fff;
-                  border-radius: 8px;
-                  border: 1px solid #dadce0;
-                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-                "
-              >
-                <!-- Collapsed view -->
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
-                  <div
-                    style="
-                      font-weight: 500;
-                      color: #202124;
-                      font-size: 13px;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                    "
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
-                      <circle cx="12" cy="12" r="10" stroke="#1a73e8" stroke-width="2" fill="none" />
-                      <path d="M12 16v-4M12 8h.01" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" />
-                    </svg>
-                    <span>Auto-Color Tasks by List</span>
-                  </div>
-                  <button
-                    id="taskListInfoToggle"
-                    style="
-                      padding: 6px 12px;
-                      background: #f8f9fa;
-                      border: 1px solid #dadce0;
-                      border-radius: 4px;
-                      font-size: 12px;
-                      color: #5f6368;
-                      cursor: pointer;
-                      white-space: nowrap;
-                      font-weight: 500;
-                      display: flex;
-                      align-items: center;
-                      gap: 4px;
-                      transition: all 0.2s ease;
-                      flex-shrink: 0;
-                    "
-                    onmouseover="this.style.background='#e8eaed';"
-                    onmouseout="this.style.background='#f8f9fa';"
-                  >
-                    See how to use
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
-                      <path
-                        d="M7 10l5 5 5-5"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <!-- Expanded view (hidden by default) -->
-                <div
-                  id="taskListInfoExpanded"
-                  style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
-                >
-                  <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
-                    <div style="margin-bottom: 12px">
-                      Automatically color Google Tasks based on their list (e.g., Personal, Work). Runs locally.
-                    </div>
-
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Privacy note</div>
-                    <div
-                      style="
-                        margin-bottom: 12px;
-                        padding: 8px;
-                        background: #fef3c7;
-                        border-radius: 4px;
-                        font-size: 12px;
-                      "
-                    >
-                      Connecting to your Google task lists is required for accurate coloring. All data stays on your
-                      device; nothing is sent to us. Other ColorKit features work without this connection.
-                    </div>
-
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
-                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
-                      <li style="margin-bottom: 4px">Dashboard → Tasks → connect Google Calendar (local-only).</li>
-                      <li style="margin-bottom: 4px">Assign a default color to each task list.</li>
-                      <li style="margin-bottom: 4px">All existing and new tasks in that list adopt the color.</li>
-                      <li style="margin-bottom: 4px">
-                        To override a single task: click the task in Google Calendar → select a color → Apply.
-                      </li>
-                    </ol>
-
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
-                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
-                      <li style="margin-bottom: 4px">List defaults are easy to override per task.</li>
-                      <li style="margin-bottom: 4px">
-                        No cross-device sync unless the other device also runs ColorKit.
-                      </li>
-                    </ul>
-                  </div>
-                  <button
-                    id="taskListVideoTutorialBtn"
-                    style="
-                      padding: 8px 14px;
-                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                      color: white;
-                      border: none;
-                      border-radius: 6px;
-                      font-size: 13px;
-                      cursor: pointer;
-                      font-weight: 500;
-                      display: flex;
-                      align-items: center;
-                      gap: 6px;
-                      transition: all 0.2s ease;
-                      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-                    "
-                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
-                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Watch Tutorial
-                  </button>
-                </div>
-              </div>
-
-              <!-- Task List Colors Subsection -->
-              <div style="padding: 16px; background: #fafafa; border-radius: 8px">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
-                  <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #333">
-                    <span style="margin-right: 6px">📋</span>Task List Colors
-                  </h4>
-                  <div class="toggle" style="margin: 0">
-                    <label style="font-size: 12px">Enable list default colors</label>
-                    <div class="switch" id="enableTaskListColoring"></div>
-                  </div>
-                </div>
-                <div id="taskListColorSettings" style="display: none">
-                  <!-- OAuth Status -->
-                  <div id="taskListOAuthStatus" style="margin-bottom: 16px; padding: 12px; border-radius: 6px">
-                    <!-- Not granted state -->
-                    <div id="oauthNotGranted" style="display: none">
-                      <div style="margin-bottom: 8px; font-weight: 600; color: #ea4335">
-                        ⚠️ Google Tasks Access Required
-                      </div>
-                      <div style="margin-bottom: 12px; font-size: 13px; color: #666">
-                        Grant access to read your Google Tasks lists (read-only). This is required to map tasks to their
-                        lists.
-                      </div>
-                      <button
-                        id="grantOAuthButton"
-                        style="
-                          padding: 8px 16px;
-                          background: #1a73e8;
-                          color: white;
-                          border: none;
-                          border-radius: 4px;
-                          cursor: pointer;
-                          font-size: 14px;
-                          font-weight: 500;
-                        "
-                      >
-                        Grant Access
-                      </button>
-                    </div>
-
-                    <!-- Granted state -->
-                    <div id="oauthGranted" style="display: none">
-                      <div
-                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px"
-                      >
-                        <div style="font-weight: 600; color: #34a853">✓ Google Tasks Access Granted</div>
-                        <button
-                          id="manualSyncButton"
-                          style="
-                            padding: 6px 12px;
-                            background: #f1f3f4;
-                            color: #5f6368;
-                            border: 1px solid #dadce0;
-                            border-radius: 4px;
-                            cursor: pointer;
-                            font-size: 13px;
-                          "
-                        >
-                          🔄 Sync Now
-                        </button>
-                      </div>
-                      <div id="syncStatus" style="font-size: 12px; color: #5f6368">Last sync: Never</div>
-                    </div>
-                  </div>
-
-                  <!-- Task Lists Container -->
-                  <div id="taskListsContainer">
-                    <!-- Loading state -->
-                    <div id="taskListsLoading" style="padding: 24px; text-align: center; color: #5f6368; display: none">
-                      <div style="margin-bottom: 8px">⏳</div>
-                      <div>Loading task lists...</div>
-                    </div>
-
-                    <!-- Empty state -->
-                    <div id="taskListsEmpty" style="padding: 24px; text-align: center; color: #5f6368; display: none">
-                      <div style="margin-bottom: 8px">📝</div>
-                      <div>No task lists found.</div>
-                      <div style="font-size: 12px; margin-top: 8px">
-                        Create task lists in Google Calendar to get started.
-                      </div>
-                    </div>
-
-                    <!-- Task lists grid (populated dynamically) -->
-                    <div id="taskListsGrid" style="display: none">
-                      <!-- Grid header -->
-                      <div
-                        style="
-                          display: flex;
-                          justify-content: space-between;
-                          align-items: center;
-                          padding: 10px 14px;
-                          background: #f8f9fa;
-                          border-radius: 6px 6px 0 0;
-                          border: 1px solid #e8eaed;
-                          border-bottom: none;
-                          font-size: 12px;
-                          font-weight: 600;
-                          color: #5f6368;
-                        "
-                      >
-                        <div>Task Lists</div>
-                      </div>
-
-                      <!-- Task lists items (populated by JS) -->
-                      <div
-                        id="taskListItems"
-                        style="
-                          border: 1px solid #e8eaed;
-                          border-radius: 0 0 6px 6px;
-                          padding: 12px;
-                          background: #f9fafb;
-                          display: flex;
-                          flex-direction: column;
-                          gap: 12px;
-                        "
-                      >
-                        <!-- Items added dynamically -->
-                      </div>
                     </div>
                   </div>
                 </div>

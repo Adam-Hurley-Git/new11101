@@ -1083,17 +1083,24 @@ checkAuthAndSubscription();
     }
   }
 
-  function updateTaskColoringToggle() {
-    const toggle = qs('enableTaskColoring');
-    const taskColorSettings = qs('taskColorSettings');
+  function updateTaskFeaturesToggle() {
+    const toggle = qs('enableTaskFeatures');
+    const taskFeaturesContent = qs('taskFeaturesContent');
 
-    if (settings.taskColoring?.enabled) {
+    // Check if either task coloring or task list coloring is enabled
+    const isEnabled = settings.taskColoring?.enabled || settings.taskListColoring?.enabled;
+
+    if (isEnabled) {
       toggle.classList.add('active');
-      taskColorSettings.style.display = 'block';
+      taskFeaturesContent.style.display = 'block';
     } else {
       toggle.classList.remove('active');
-      taskColorSettings.style.display = 'none';
+      taskFeaturesContent.style.display = 'none';
     }
+  }
+
+  function updateTaskColoringToggle() {
+    // No longer needed - kept for compatibility
   }
 
   function updateTimeBlockingToggle() {
@@ -1139,16 +1146,9 @@ checkAuthAndSubscription();
   // ========================================
 
   function updateTaskListColoringToggle() {
-    const toggle = qs('enableTaskListColoring');
-    const taskListColorSettings = qs('taskListColorSettings');
-
+    // Initialize task list coloring if enabled
     if (settings.taskListColoring?.enabled) {
-      toggle.classList.add('active');
-      taskListColorSettings.style.display = 'block';
       initTaskListColoring();
-    } else {
-      toggle.classList.remove('active');
-      taskListColorSettings.style.display = 'none';
     }
   }
 
@@ -4787,15 +4787,20 @@ checkAuthAndSubscription();
       }
     };
 
-    // Task coloring toggle switch
-    qs('enableTaskColoring').onclick = async () => {
-      const currentEnabled = settings.taskColoring?.enabled || false;
-      await window.cc3Storage.setTaskColoringEnabled(!currentEnabled);
+    // Master task features toggle switch
+    qs('enableTaskFeatures').onclick = async () => {
+      const currentEnabled = settings.taskColoring?.enabled || settings.taskListColoring?.enabled;
+      const newEnabled = !currentEnabled;
+
+      // Enable/disable both task coloring and task list coloring together
+      await window.cc3Storage.setTaskColoringEnabled(newEnabled);
+      await window.cc3Storage.setTaskListColoringEnabled(newEnabled);
       settings = await window.cc3Storage.getSettings();
-      updateTaskColoringToggle();
+      updateTaskFeaturesToggle();
+      updateTaskListColoringToggle();
       await saveSettings();
 
-      // Trigger immediate update for task coloring feature (same as toolbar)
+      // Trigger immediate update for task coloring feature
       const newSettings = await window.cc3Storage.getSettings();
       if (window.cc3Features && window.cc3Features.updateFeature) {
         window.cc3Features.updateFeature('taskColoring', newSettings.taskColoring || {});
@@ -4813,15 +4818,6 @@ checkAuthAndSubscription();
 
       // Immediately notify content script
       notifyTimeBlockingChange();
-    };
-
-    // Task list coloring toggle switch
-    qs('enableTaskListColoring').onclick = async () => {
-      const currentEnabled = settings.taskListColoring?.enabled || false;
-      await window.cc3Storage.setTaskListColoringEnabled(!currentEnabled);
-      settings = await window.cc3Storage.getSettings();
-      updateTaskListColoringToggle();
-      await saveSettings();
     };
 
     // OAuth grant button
@@ -5320,6 +5316,7 @@ checkAuthAndSubscription();
 
         // Update all UI components
         updateToggle();
+        updateTaskFeaturesToggle();
         updateTaskColoringToggle();
         updateTimeBlockingToggle();
         updateColors();
@@ -5885,6 +5882,7 @@ checkAuthAndSubscription();
     await loadSettings();
     await loadCustomColors();
     updateToggle();
+    updateTaskFeaturesToggle();
     updateTaskColoringToggle();
     updateTimeBlockingToggle();
     updateTaskListColoringToggle();
@@ -5928,6 +5926,7 @@ checkAuthAndSubscription();
         })();
 
         updateToggle();
+        updateTaskFeaturesToggle();
         updateTaskColoringToggle();
         updateTimeBlockingToggle();
 
