@@ -636,20 +636,26 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
 
   const textColorValue = colorToRgba(text, textOpacity);
 
-  // CRITICAL FIX: Store Google's original background color before any paint
-  // This allows us to restore it when user clears the background
-  // Capture even if we're just applying text color (bgOpacity = 0)
+  // CRITICAL: Store Google's original colors before any paint
+  // This allows us to use them when user sets text-only (need Google bg + custom text)
   if (!node.dataset.cfGoogleBg) {
     // First time seeing this task - capture Google's original colors
     const computedStyle = window.getComputedStyle(node);
     const googleBg = node.style.backgroundColor || computedStyle.backgroundColor;
     const googleBorder = node.style.borderColor || computedStyle.borderColor;
+    const googleText = node.style.color || computedStyle.color;
 
+    // Save background color
     if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
       node.dataset.cfGoogleBg = googleBg;
     }
+    // Save border color
     if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
       node.dataset.cfGoogleBorder = googleBorder;
+    }
+    // Save text color
+    if (googleText && googleText !== 'rgba(0, 0, 0, 0)' && googleText !== 'transparent') {
+      node.dataset.cfGoogleText = googleText;
     }
   }
 
@@ -782,14 +788,6 @@ async function refreshColorCache() {
   completedStylingCache = syncData.settings?.taskListColoring?.completedStyling || {};
   cacheLastUpdated = now;
 
-  // DEBUG: Log text colors loaded
-  console.log('[Task Colors] Cache refreshed:', {
-    textColorsFromStorage: syncData['cf.taskListTextColors'],
-    textColorsFromSettings: settingsPending,
-    finalTextColorsCache: listTextColorsCache,
-    listColors: listColorsCache,
-  });
-
   return {
     taskToListMap: taskToListMapCache,
     listColors: listColorsCache,
@@ -839,32 +837,6 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
-  // DEBUG: Enhanced logging for completed tasks
-  if (isCompleted) {
-    console.log(`[Task Colors] DEBUG getColorForTask for completed task:`, {
-      taskId,
-      inCache: !!cache.taskToListMap[taskId],
-      listId,
-      hasCompletedStyling: !!completedStyling,
-      completedStylingEnabled: completedStyling?.enabled,
-      completedBgColor: completedStyling?.bgColor,
-      completedTextColor: completedStyling?.textColor,
-      listBgColor: listId ? cache.listColors[listId] : null,
-      cacheKeys: Object.keys(cache.taskToListMap).length,
-    });
-  }
-
-  // DEBUG: Log color lookup
-  if (listId && cache.listColors[listId]) {
-    console.log(`[Task Colors] Getting color for task ${taskId}:`, {
-      listId,
-      listBgColor: cache.listColors[listId],
-      listTextColor: pendingTextColor,
-      hasManualColor: !!manualColors?.[taskId],
-      textColorsInCache: cache.listTextColors,
-    });
-  }
-
   const manualColor = manualColors?.[taskId];
   if (manualColor) {
     // Manual background color: use auto-contrast text (not list text color)
@@ -894,27 +866,8 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
         completedStyling,
       });
 
-      // DEBUG: Log final color info
-      if (colorInfo) {
-        console.log(`[Task Colors] Built color info for task ${taskId}:`, {
-          ...colorInfo,
-          hadBgColor: !!listBgColor,
-          hadTextColor: hasTextColor,
-          hadCompletedStyling: hasCompletedStyling,
-        });
-      }
-
       return colorInfo;
     }
-  }
-
-  // DEBUG: No color found
-  if (isCompleted) {
-    console.warn(`[Task Colors] No color found for completed task ${taskId}:`, {
-      taskInMapping: !!cache.taskToListMap[taskId],
-      listId,
-      listHasColor: listId ? !!cache.listColors[listId] : false,
-    });
   }
 
   return null;
@@ -954,15 +907,6 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
   const bgColor = baseColor || defaultBgColor;
   const textColor = overrideTextColor || pendingTextColor ||
                    (bgColor === defaultBgColor ? '#202124' : pickContrastingText(bgColor));
-
-  // DEBUG: Log text color selection
-  console.log('[Task Colors] buildColorInfo text color selection:', {
-    overrideTextColor,
-    pendingTextColor,
-    autoContrast: bgColor !== defaultBgColor ? pickContrastingText(bgColor) : 'default',
-    selected: textColor,
-    hasBgColor: !!baseColor,
-  });
 
   return {
     backgroundColor: bgColor,
@@ -1115,20 +1059,12 @@ async function doRepaint(bypassThrottling = false) {
       const isCompleted = isTaskElementCompleted(chip);
       if (isCompleted) {
         completedCount++;
-        completedTaskIds.push(id); // DEBUG: Track this completed task ID
+        completedTaskIds.push(id);
       }
       const colors = await getColorForTask(id, manualColorMap, { isCompleted });
 
-      // DEBUG: Log completed tasks
       if (isCompleted && colors && colors.backgroundColor) {
         completedColoredCount++;
-        console.log('[Task Colors] Coloring completed task:', {
-          taskId: id,
-          bgColor: colors.backgroundColor,
-          textColor: colors.textColor,
-          bgOpacity: colors.bgOpacity,
-          textOpacity: colors.textOpacity,
-        });
       }
 
       if (colors && colors.backgroundColor) {
@@ -1209,49 +1145,6 @@ async function doRepaint(bypassThrottling = false) {
     }
   }
 
-  // DEBUG: Log repaint summary
-  console.log('[Task Colors] Repaint summary:', {
-    totalTasksFound: calendarTasks.length,
-    processedCount,
-    completedFound: completedCount,
-    completedColored: completedColoredCount,
-    completedTaskIds, // DEBUG: Show actual task IDs
-    noColorCount,
-    skippedModalCount,
-  });
-
-  // DEBUG: If we found completed tasks but didn't color them, log details
-  if (completedCount > 0 && completedColoredCount === 0) {
-    const cache = await refreshColorCache();
-    const mappingKeys = Object.keys(cache.taskToListMap);
-    const sampleMappingKeys = mappingKeys.slice(0, 10);
-
-    console.error('[Task Colors] ⚠️ FOUND COMPLETED TASKS BUT NONE WERE COLORED!', {
-      completedTaskIds,
-      mappingTotalKeys: mappingKeys.length,
-      sampleMappingKeys,
-      completedTaskIdsNotInMapping: completedTaskIds.filter(id => !cache.taskToListMap[id])
-    });
-
-    // Diagnostic: Try to find if any completed task IDs match with encoding/decoding
-    for (const taskId of completedTaskIds.slice(0, 3)) {
-      try {
-        const decoded = atob(taskId);
-        const encoded = btoa(taskId);
-        console.log(`[Task Colors] ID format check for ${taskId}:`, {
-          original: taskId,
-          inMapping: !!cache.taskToListMap[taskId],
-          decoded: decoded,
-          decodedInMapping: !!cache.taskToListMap[decoded],
-          encoded: encoded,
-          encodedInMapping: !!cache.taskToListMap[encoded]
-        });
-      } catch (e) {
-        // Ignore encoding errors
-      }
-    }
-  }
-
   setTimeout(() => {
     repaintCount = 0;
   }, 1000);
@@ -1293,24 +1186,16 @@ function initTasksColoring() {
         const shouldSync = !lastSync || (now - lastSync) > THIRTY_MINUTES;
 
         if (shouldSync) {
-          console.log('[Task Colors] Auto-sync triggered on page load (last sync > 30 min)');
-
           // Trigger incremental sync in background
           chrome.runtime.sendMessage({ type: 'SYNC_TASK_LISTS', fullSync: false }, (response) => {
             if (response?.success) {
-              console.log('[Task Colors] Auto-sync complete:', response);
               // Repaint tasks with fresh data
               setTimeout(() => {
                 invalidateColorCache();
                 repaintSoon();
               }, 500);
-            } else {
-              console.warn('[Task Colors] Auto-sync failed:', response?.error);
             }
           });
-        } else {
-          const minutesSinceSync = Math.floor((now - lastSync) / 60000);
-          console.log(`[Task Colors] No auto-sync needed (last sync ${minutesSinceSync} minutes ago)`);
         }
       }
     } catch (error) {
@@ -1433,22 +1318,14 @@ function initTasksColoring() {
       area === 'sync' &&
       (changes['cf.taskColors'] || changes['cf.taskListColors'] || changes['cf.taskListTextColors'])
     ) {
-      console.log('[Task Colors] Storage changed - sync colors:', {
-        taskColors: !!changes['cf.taskColors'],
-        taskListColors: !!changes['cf.taskListColors'],
-        taskListTextColors: !!changes['cf.taskListTextColors'],
-        newTextColors: changes['cf.taskListTextColors']?.newValue,
-      });
       invalidateColorCache();
       repaintSoon(); // Repaint with new colors
     }
     if (area === 'sync' && changes.settings) {
-      console.log('[Task Colors] Settings changed:', changes.settings?.newValue?.taskListColoring);
       invalidateColorCache();
       repaintSoon();
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
-      console.log('[Task Colors] Task-to-list mapping changed');
       invalidateColorCache();
       repaintSoon(); // Repaint with new mappings
     }
@@ -1457,16 +1334,6 @@ function initTasksColoring() {
   // Listen for runtime messages from background (e.g., after sync)
   chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     if (message.type === 'TASK_LISTS_UPDATED') {
-      console.log('[Task Colors] Received TASK_LISTS_UPDATED - forcing full repaint');
-
-      // DEBUG: Log current cache state BEFORE clearing
-      const { 'cf.taskToListMap': mapping } = await chrome.storage.local.get('cf.taskToListMap');
-      console.log('[Task Colors] DEBUG Cache state before repaint:', {
-        mappingSize: Object.keys(mapping || {}).length,
-        firstFewKeys: Object.keys(mapping || {}).slice(0, 5),
-        sampleMapping: mapping,
-      });
-
       // Clear all caches to force fresh data fetch
       invalidateColorCache();
       taskElementReferences.clear();
