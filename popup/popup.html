@@ -2822,118 +2822,6 @@
       <!-- Dashboard Tab Content -->
       <div class="tab-content active" id="dashboardContent">
         <div class="content-wrapper">
-          <!-- Info box for Day Coloring -->
-          <div
-            id="dayColoringInfoCard"
-            style="
-              margin-bottom: 12px;
-              padding: 8px 12px;
-              background: #fff;
-              border-radius: 8px;
-              border: 1px solid #dadce0;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            "
-          >
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
-              <div
-                style="font-weight: 500; color: #202124; font-size: 13px; display: flex; align-items: center; gap: 6px"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
-                  <circle cx="12" cy="12" r="10" stroke="#8b5cf6" stroke-width="2" fill="none" />
-                  <path d="M12 16v-4M12 8h.01" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" />
-                </svg>
-                <span>Color-Code Days of the Week</span>
-              </div>
-              <button
-                id="dayColoringInfoToggle"
-                style="
-                  padding: 6px 12px;
-                  background: #f8f9fa;
-                  border: 1px solid #dadce0;
-                  border-radius: 4px;
-                  font-size: 12px;
-                  color: #5f6368;
-                  cursor: pointer;
-                  white-space: nowrap;
-                  font-weight: 500;
-                  display: flex;
-                  align-items: center;
-                  gap: 4px;
-                  transition: all 0.2s ease;
-                  flex-shrink: 0;
-                "
-                onmouseover="this.style.background='#e8eaed';"
-                onmouseout="this.style.background='#f8f9fa';"
-              >
-                See how to use
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
-                  <path
-                    d="M7 10l5 5 5-5"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div
-              id="dayColoringInfoExpanded"
-              style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
-            >
-              <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
-                <div style="margin-bottom: 12px">
-                  Tint the background of each weekday so every view is quicker to scan.
-                </div>
-
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
-                <ol style="margin: 0 0 12px 0; padding-left: 20px">
-                  <li style="margin-bottom: 4px">Dashboard → Day Coloring.</li>
-                  <li style="margin-bottom: 4px">Ensure Week starts on matches your Calendar's first day.</li>
-                  <li style="margin-bottom: 4px">
-                    Click a day's color box → choose a color → click the box again to close.
-                  </li>
-                  <li style="margin-bottom: 4px">Set colors for Mon–Sun.</li>
-                  <li style="margin-bottom: 4px">Open Day/Week/Month views — each day now carries its tint.</li>
-                </ol>
-
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
-                <ul style="margin: 0 0 12px 0; padding-left: 20px">
-                  <li style="margin-bottom: 4px">Visual only; event colors don't change.</li>
-                  <li style="margin-bottom: 4px">
-                    Pairs well with task colors and time-block overlays for clear hierarchy.
-                  </li>
-                </ul>
-              </div>
-              <button
-                id="dayColoringVideoTutorialBtn"
-                style="
-                  padding: 8px 14px;
-                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                  color: white;
-                  border: none;
-                  border-radius: 6px;
-                  font-size: 13px;
-                  cursor: pointer;
-                  font-weight: 500;
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-                  transition: all 0.2s ease;
-                  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-                "
-                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                Watch Tutorial
-              </button>
-            </div>
-          </div>
-
           <div class="section day-coloring">
             <div class="section-header">
               <h3><span class="section-icon">🎨</span>Day Coloring</h3>
@@ -2943,6 +2831,118 @@
               </div>
             </div>
             <div class="section-content">
+              <!-- Info box for Day Coloring -->
+              <div
+                id="dayColoringInfoCard"
+                style="
+                  margin-bottom: 12px;
+                  padding: 8px 12px;
+                  background: #fff;
+                  border-radius: 8px;
+                  border: 1px solid #dadce0;
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+                "
+              >
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+                  <div
+                    style="font-weight: 500; color: #202124; font-size: 13px; display: flex; align-items: center; gap: 6px"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
+                      <circle cx="12" cy="12" r="10" stroke="#8b5cf6" stroke-width="2" fill="none" />
+                      <path d="M12 16v-4M12 8h.01" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <span>Color-Code Days of the Week</span>
+                  </div>
+                  <button
+                    id="dayColoringInfoToggle"
+                    style="
+                      padding: 6px 12px;
+                      background: #f8f9fa;
+                      border: 1px solid #dadce0;
+                      border-radius: 4px;
+                      font-size: 12px;
+                      color: #5f6368;
+                      cursor: pointer;
+                      white-space: nowrap;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                      transition: all 0.2s ease;
+                      flex-shrink: 0;
+                    "
+                    onmouseover="this.style.background='#e8eaed';"
+                    onmouseout="this.style.background='#f8f9fa';"
+                  >
+                    See how to use
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
+                      <path
+                        d="M7 10l5 5 5-5"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div
+                  id="dayColoringInfoExpanded"
+                  style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
+                >
+                  <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
+                    <div style="margin-bottom: 12px">
+                      Tint the background of each weekday so every view is quicker to scan.
+                    </div>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
+                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Dashboard → Day Coloring.</li>
+                      <li style="margin-bottom: 4px">Ensure Week starts on matches your Calendar's first day.</li>
+                      <li style="margin-bottom: 4px">
+                        Click a day's color box → choose a color → click the box again to close.
+                      </li>
+                      <li style="margin-bottom: 4px">Set colors for Mon–Sun.</li>
+                      <li style="margin-bottom: 4px">Open Day/Week/Month views — each day now carries its tint.</li>
+                    </ol>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Visual only; event colors don't change.</li>
+                      <li style="margin-bottom: 4px">
+                        Pairs well with task colors and time-block overlays for clear hierarchy.
+                      </li>
+                    </ul>
+                  </div>
+                  <button
+                    id="dayColoringVideoTutorialBtn"
+                    style="
+                      padding: 8px 14px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      font-size: 13px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      transition: all 0.2s ease;
+                      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+                    "
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    Watch Tutorial
+                  </button>
+                </div>
+              </div>
+
               <div id="colorSettings" style="display: none; overflow: visible">
                 <div class="weekdays">
                   <div class="day-color-item" data-day="0">
@@ -4062,116 +4062,6 @@
             </div>
           </div>
 
-          <!-- Info box for Time Blocking -->
-          <div
-            id="timeBlockingInfoCard"
-            style="
-              margin-bottom: 12px;
-              padding: 8px 12px;
-              background: #fff;
-              border-radius: 8px;
-              border: 1px solid #dadce0;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-            "
-          >
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
-              <div
-                style="font-weight: 500; color: #202124; font-size: 13px; display: flex; align-items: center; gap: 6px"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
-                  <circle cx="12" cy="12" r="10" stroke="#10b981" stroke-width="2" fill="none" />
-                  <path d="M12 16v-4M12 8h.01" stroke="#10b981" stroke-width="2" stroke-linecap="round" />
-                </svg>
-                <span>Schedule Focused Work Blocks (Recurring)</span>
-              </div>
-              <button
-                id="timeBlockingInfoToggle"
-                style="
-                  padding: 6px 12px;
-                  background: #f8f9fa;
-                  border: 1px solid #dadce0;
-                  border-radius: 4px;
-                  font-size: 12px;
-                  color: #5f6368;
-                  cursor: pointer;
-                  white-space: nowrap;
-                  font-weight: 500;
-                  display: flex;
-                  align-items: center;
-                  gap: 4px;
-                  transition: all 0.2s ease;
-                  flex-shrink: 0;
-                "
-                onmouseover="this.style.background='#e8eaed';"
-                onmouseout="this.style.background='#f8f9fa';"
-              >
-                See how to use
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
-                  <path
-                    d="M7 10l5 5 5-5"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div
-              id="timeBlockingInfoExpanded"
-              style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
-            >
-              <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
-                <div style="margin-bottom: 12px">
-                  Create recurring visual blocks (daily/weekly patterns) to protect focus time, breaks, or routines.
-                </div>
-
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
-                <ol style="margin: 0 0 12px 0; padding-left: 20px">
-                  <li style="margin-bottom: 4px">Dashboard → Time Blocking.</li>
-                  <li style="margin-bottom: 4px">Choose days of week, start–end time, and color.</li>
-                  <li style="margin-bottom: 4px">(Optional) Add a Label (e.g., "Deep Work AM").</li>
-                  <li style="margin-bottom: 4px">Click Save — blocks repeat on the selected days.</li>
-                </ol>
-
-                <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
-                <ul style="margin: 0 0 12px 0; padding-left: 20px">
-                  <li style="margin-bottom: 4px">
-                    Multiple series can coexist on the same day (e.g., Focus AM + Meetings PM).
-                  </li>
-                  <li style="margin-bottom: 4px">Edit any series from the Time Blocks list.</li>
-                  <li style="margin-bottom: 4px">Overlays are visual only; they don't create Calendar events.</li>
-                </ul>
-              </div>
-              <button
-                id="timeBlockingVideoTutorialBtn"
-                style="
-                  padding: 8px 14px;
-                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                  color: white;
-                  border: none;
-                  border-radius: 6px;
-                  font-size: 13px;
-                  cursor: pointer;
-                  font-weight: 500;
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-                  transition: all 0.2s ease;
-                  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
-                "
-                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
-                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                Watch Tutorial
-              </button>
-            </div>
-          </div>
-
           <div class="section time-blocking">
             <div class="section-header">
               <h3><span class="section-icon">⏰</span>Time Blocking</h3>
@@ -4181,6 +4071,116 @@
               </div>
             </div>
             <div class="section-content">
+              <!-- Info box for Time Blocking -->
+              <div
+                id="timeBlockingInfoCard"
+                style="
+                  margin-bottom: 12px;
+                  padding: 8px 12px;
+                  background: #fff;
+                  border-radius: 8px;
+                  border: 1px solid #dadce0;
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+                "
+              >
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+                  <div
+                    style="font-weight: 500; color: #202124; font-size: 13px; display: flex; align-items: center; gap: 6px"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0">
+                      <circle cx="12" cy="12" r="10" stroke="#10b981" stroke-width="2" fill="none" />
+                      <path d="M12 16v-4M12 8h.01" stroke="#10b981" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <span>Schedule Focused Work Blocks (Recurring)</span>
+                  </div>
+                  <button
+                    id="timeBlockingInfoToggle"
+                    style="
+                      padding: 6px 12px;
+                      background: #f8f9fa;
+                      border: 1px solid #dadce0;
+                      border-radius: 4px;
+                      font-size: 12px;
+                      color: #5f6368;
+                      cursor: pointer;
+                      white-space: nowrap;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+                      transition: all 0.2s ease;
+                      flex-shrink: 0;
+                    "
+                    onmouseover="this.style.background='#e8eaed';"
+                    onmouseout="this.style.background='#f8f9fa';"
+                  >
+                    See how to use
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="transition: transform 0.2s ease">
+                      <path
+                        d="M7 10l5 5 5-5"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div
+                  id="timeBlockingInfoExpanded"
+                  style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e8eaed"
+                >
+                  <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
+                    <div style="margin-bottom: 12px">
+                      Create recurring visual blocks (daily/weekly patterns) to protect focus time, breaks, or routines.
+                    </div>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
+                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Dashboard → Time Blocking.</li>
+                      <li style="margin-bottom: 4px">Choose days of week, start–end time, and color.</li>
+                      <li style="margin-bottom: 4px">(Optional) Add a Label (e.g., "Deep Work AM").</li>
+                      <li style="margin-bottom: 4px">Click Save — blocks repeat on the selected days.</li>
+                    </ol>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">
+                        Multiple series can coexist on the same day (e.g., Focus AM + Meetings PM).
+                      </li>
+                      <li style="margin-bottom: 4px">Edit any series from the Time Blocks list.</li>
+                      <li style="margin-bottom: 4px">Overlays are visual only; they don't create Calendar events.</li>
+                    </ul>
+                  </div>
+                  <button
+                    id="timeBlockingVideoTutorialBtn"
+                    style="
+                      padding: 8px 14px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      font-size: 13px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      display: flex;
+                      align-items: center;
+                      gap: 6px;
+                      transition: all 0.2s ease;
+                      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+                    "
+                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(102, 126, 234, 0.4)';"
+                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(102, 126, 234, 0.3)';"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    Watch Tutorial
+                  </button>
+                </div>
+              </div>
+
               <div id="timeBlockSettings" style="display: none">
                 <div class="time-block-global-settings">
                   <label style="font-size: 14px; color: #065f46; display: block; margin-bottom: 12px; font-weight: 600"
