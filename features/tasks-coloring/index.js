@@ -808,20 +808,34 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     });
   }
 
-  if (listId && cache.listColors[listId]) {
-    // List default background color: use list text color if available
-    const colorInfo = buildColorInfo({
-      baseColor: cache.listColors[listId],
-      pendingTextColor,
-      overrideTextColor,
-      isCompleted,
-      completedStyling,
-    });
+  // Check for any list-based settings (background, text, or completed styling)
+  if (listId) {
+    const listBgColor = cache.listColors[listId];
+    const hasTextColor = !!pendingTextColor;
+    const hasCompletedStyling = isCompleted && completedStyling?.enabled;
 
-    // DEBUG: Log final color info
-    console.log(`[Task Colors] Built color info for task ${taskId}:`, colorInfo);
+    // Apply colors if we have ANY setting (not just background)
+    if (listBgColor || hasTextColor || hasCompletedStyling) {
+      const colorInfo = buildColorInfo({
+        baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
+        pendingTextColor,
+        overrideTextColor,
+        isCompleted,
+        completedStyling,
+      });
 
-    return colorInfo;
+      // DEBUG: Log final color info
+      if (colorInfo) {
+        console.log(`[Task Colors] Built color info for task ${taskId}:`, {
+          ...colorInfo,
+          hadBgColor: !!listBgColor,
+          hadTextColor: hasTextColor,
+          hadCompletedStyling: hasCompletedStyling,
+        });
+      }
+
+      return colorInfo;
+    }
   }
 
   // DEBUG: No color found
@@ -837,38 +851,53 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 }
 
 function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isCompleted, completedStyling }) {
-  if (!baseColor) return null;
+  // CRITICAL FIX: Allow styling even without base color
+  // If we have text colors or completed styling set, we should apply them
+  // Use transparent background if no base color is provided
+
+  const hasAnyColorSetting = baseColor || pendingTextColor || overrideTextColor ||
+                            (isCompleted && completedStyling?.enabled);
+
+  if (!hasAnyColorSetting) return null;
+
+  // Default to transparent if no background color
+  const defaultBgColor = 'rgba(255, 255, 255, 0)';
 
   if (isCompleted && completedStyling?.enabled) {
-    const bgColor = completedStyling.bgColor || baseColor;
+    // Completed task styling
+    const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
     const textColor =
       overrideTextColor ||
       completedStyling.textColor ||
       pendingTextColor ||
-      pickContrastingText(bgColor);
+      (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
 
     return {
       backgroundColor: bgColor,
       textColor,
-      bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0.5),
+      bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0),
       textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
     };
   }
 
-  const textColor = overrideTextColor || pendingTextColor || pickContrastingText(baseColor);
+  // Pending task styling
+  const bgColor = baseColor || defaultBgColor;
+  const textColor = overrideTextColor || pendingTextColor ||
+                   (bgColor === defaultBgColor ? '#202124' : pickContrastingText(bgColor));
 
   // DEBUG: Log text color selection
   console.log('[Task Colors] buildColorInfo text color selection:', {
     overrideTextColor,
     pendingTextColor,
-    autoContrast: pickContrastingText(baseColor),
+    autoContrast: bgColor !== defaultBgColor ? pickContrastingText(bgColor) : 'default',
     selected: textColor,
+    hasBgColor: !!baseColor,
   });
 
   return {
-    backgroundColor: baseColor,
+    backgroundColor: bgColor,
     textColor,
-    bgOpacity: 1,
+    bgOpacity: baseColor ? 1 : 0, // 0 opacity if using default transparent background
     textOpacity: 1,
   };
 }
@@ -969,10 +998,10 @@ async function doRepaint(bypassThrottling = false) {
   cleanupStaleReferences();
   const manualColorMap = await loadMap();
 
-  // Early exit if no colors to apply (neither manual nor list defaults)
-  if (Object.keys(manualColorMap).length === 0 && !taskListColoringEnabled) {
-    return;
-  }
+  // Note: We don't early exit here anymore because we might have:
+  // - Text colors set (even without background colors)
+  // - Completed styling set (even without pending colors)
+  // These should work independently
 
   const processedTaskIds = new Set();
 
