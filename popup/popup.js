@@ -1072,30 +1072,24 @@ checkAuthAndSubscription();
 
   function updateToggle() {
     const toggle = qs('enableDayColoring');
-    const colorSettings = qs('colorSettings');
 
     if (settings.enabled) {
       toggle.classList.add('active');
-      colorSettings.style.display = 'block';
     } else {
       toggle.classList.remove('active');
-      colorSettings.style.display = 'none';
     }
   }
 
   function updateTaskFeaturesToggle() {
     const toggle = qs('enableTaskFeatures');
-    const taskFeaturesContent = qs('taskFeaturesContent');
 
     // Check if either task coloring or task list coloring is enabled
     const isEnabled = settings.taskColoring?.enabled || settings.taskListColoring?.enabled;
 
     if (isEnabled) {
       toggle.classList.add('active');
-      taskFeaturesContent.style.display = 'block';
     } else {
       toggle.classList.remove('active');
-      taskFeaturesContent.style.display = 'none';
     }
   }
 
@@ -1105,14 +1099,11 @@ checkAuthAndSubscription();
 
   function updateTimeBlockingToggle() {
     const toggle = qs('enableTimeBlocking');
-    const timeBlockSettings = qs('timeBlockSettings');
 
     if (settings.timeBlocking?.enabled) {
       toggle.classList.add('active');
-      timeBlockSettings.style.display = 'block';
     } else {
       toggle.classList.remove('active');
-      timeBlockSettings.style.display = 'none';
     }
   }
 
@@ -4770,8 +4761,37 @@ checkAuthAndSubscription();
   }
 
   function setupEventListeners() {
+    // Accordion behavior for section headers
+    const sectionHeaders = document.querySelectorAll('.section-header[data-section]');
+
+    sectionHeaders.forEach(header => {
+      header.addEventListener('click', (e) => {
+        // Don't trigger accordion if clicking on toggle switch or its label
+        if (e.target.closest('.toggle')) {
+          return;
+        }
+
+        const isExpanded = header.classList.contains('expanded');
+
+        // Close all sections
+        sectionHeaders.forEach(h => h.classList.remove('expanded'));
+
+        // If this section was not expanded, expand it
+        if (!isExpanded) {
+          header.classList.add('expanded');
+        }
+      });
+    });
+
+    // Set Day Coloring as expanded by default
+    const dayColoringHeader = document.querySelector('.section-header[data-section="day-coloring"]');
+    if (dayColoringHeader) {
+      dayColoringHeader.classList.add('expanded');
+    }
+
     // Toggle switch
-    qs('enableDayColoring').onclick = async () => {
+    qs('enableDayColoring').onclick = async (e) => {
+      e.stopPropagation(); // Prevent accordion trigger
       const previousState = settings.enabled;
 
       // Use storage system's setEnabled method for bulletproof toggling
@@ -4788,7 +4808,8 @@ checkAuthAndSubscription();
     };
 
     // Master task features toggle switch
-    qs('enableTaskFeatures').onclick = async () => {
+    qs('enableTaskFeatures').onclick = async (e) => {
+      e.stopPropagation(); // Prevent accordion trigger
       const currentEnabled = settings.taskColoring?.enabled || settings.taskListColoring?.enabled;
       const newEnabled = !currentEnabled;
 
@@ -4808,7 +4829,8 @@ checkAuthAndSubscription();
     };
 
     // Time blocking toggle switch
-    qs('enableTimeBlocking').onclick = async () => {
+    qs('enableTimeBlocking').onclick = async (e) => {
+      e.stopPropagation(); // Prevent accordion trigger
       const currentEnabled = settings.timeBlocking?.enabled || false;
       await window.cc3Storage.setTimeBlockingEnabled(!currentEnabled);
       settings = await window.cc3Storage.getSettings();

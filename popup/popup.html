@@ -256,6 +256,34 @@
         justify-content: space-between;
         border-top-left-radius: 12px;
         border-top-right-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .section-header:hover {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      }
+
+      .section-header.expanded {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-image: linear-gradient(90deg, rgba(59, 130, 246, 0.5) 0%, rgba(139, 92, 246, 0.5) 100%) 1;
+      }
+
+      .section-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .section-chevron {
+        color: #64748b;
+        transition: transform 0.3s ease, color 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .section-header.expanded .section-chevron {
+        transform: rotate(90deg);
+        color: #3b82f6;
       }
 
       .section h3 {
@@ -281,8 +309,17 @@
       }
 
       .section-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, padding 0.3s ease;
+        padding: 0 20px;
+      }
+
+      .section-header.expanded + .section-content {
+        max-height: 5000px;
         padding: 20px;
         overflow: visible;
+        transition: max-height 0.5s ease-in, padding 0.3s ease;
       }
 
       /* Feature-specific section styling */
@@ -2823,8 +2860,13 @@
       <div class="tab-content active" id="dashboardContent">
         <div class="content-wrapper">
           <div class="section day-coloring">
-            <div class="section-header">
-              <h3><span class="section-icon">🎨</span>Day Coloring</h3>
+            <div class="section-header" data-section="day-coloring">
+              <div class="section-header-left">
+                <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3><span class="section-icon">🎨</span>Day Coloring</h3>
+              </div>
               <div class="toggle">
                 <label>Enable day coloring</label>
                 <div class="switch" id="enableDayColoring"></div>
@@ -2943,7 +2985,7 @@
                 </div>
               </div>
 
-              <div id="colorSettings" style="display: none; overflow: visible">
+              <div id="colorSettings" style="overflow: visible">
                 <div class="weekdays">
                   <div class="day-color-item" data-day="0">
                     <div class="day-label">Sun</div>
@@ -3368,15 +3410,20 @@
           </div>
 
           <div class="section task-coloring">
-            <div class="section-header">
-              <h3><span class="section-icon">🏷️</span>Task Management</h3>
+            <div class="section-header" data-section="task-coloring">
+              <div class="section-header-left">
+                <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3><span class="section-icon">🏷️</span>Task Management</h3>
+              </div>
               <div class="toggle">
                 <label>Enable task features</label>
                 <div class="switch" id="enableTaskFeatures"></div>
               </div>
             </div>
             <div class="section-content">
-              <div id="taskFeaturesContent" style="display: none">
+              <div id="taskFeaturesContent">
               <!-- Info box -->
               <div
                 id="taskListInfoCard"
@@ -4063,8 +4110,13 @@
           </div>
 
           <div class="section time-blocking">
-            <div class="section-header">
-              <h3><span class="section-icon">⏰</span>Time Blocking</h3>
+            <div class="section-header" data-section="time-blocking">
+              <div class="section-header-left">
+                <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+                <h3><span class="section-icon">⏰</span>Time Blocking</h3>
+              </div>
               <div class="toggle">
                 <label>Enable time blocks</label>
                 <div class="switch" id="enableTimeBlocking"></div>
@@ -4181,7 +4233,7 @@
                 </div>
               </div>
 
-              <div id="timeBlockSettings" style="display: none">
+              <div id="timeBlockSettings">
                 <div class="time-block-global-settings">
                   <label style="font-size: 14px; color: #065f46; display: block; margin-bottom: 12px; font-weight: 600"
                     >Global Settings</label
