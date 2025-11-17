@@ -5906,11 +5906,36 @@ checkAuthAndSubscription();
     // Listen for storage changes
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'sync' && changes.settings) {
-        settings = changes.settings.newValue || settings;
+        const oldSettings = changes.settings.oldValue || {};
+        const newSettings = changes.settings.newValue || {};
+        settings = newSettings;
+
+        // Check if ONLY completedStyling values changed (colors/opacities)
+        // If so, we should NOT reload the entire task list (it destroys sliders while dragging)
+        const onlyCompletedStylingChanged = (() => {
+          if (!oldSettings.taskListColoring || !newSettings.taskListColoring) return false;
+
+          // Check if completedStyling is the only thing that changed
+          const oldCopy = JSON.parse(JSON.stringify(oldSettings));
+          const newCopy = JSON.parse(JSON.stringify(newSettings));
+
+          // Remove completedStyling from both
+          if (oldCopy.taskListColoring) delete oldCopy.taskListColoring.completedStyling;
+          if (newCopy.taskListColoring) delete newCopy.taskListColoring.completedStyling;
+
+          // If everything else is the same, only completedStyling changed
+          return JSON.stringify(oldCopy) === JSON.stringify(newCopy);
+        })();
+
         updateToggle();
         updateTaskColoringToggle();
         updateTimeBlockingToggle();
-        updateTaskListColoringToggle();
+
+        // Only reload task lists if something other than completedStyling changed
+        if (!onlyCompletedStylingChanged) {
+          updateTaskListColoringToggle();
+        }
+
         updateColors();
         initializeEnhancedOpacityControls();
         updateInlineColorsGrid();
