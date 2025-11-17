@@ -1578,6 +1578,51 @@ checkAuthAndSubscription();
     controlsWrapper.appendChild(backgroundControl);
     controlsWrapper.appendChild(textControl);
 
+    // Add "Reset to Google Default" button
+    const resetButton = document.createElement('button');
+    resetButton.className = 'task-list-reset-button';
+    resetButton.textContent = '🔄 Reset to Google Default';
+    resetButton.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      margin-top: 12px;
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      color: #5f6368;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    `;
+    resetButton.onmouseover = () => {
+      resetButton.style.background = '#e8eaed';
+      resetButton.style.borderColor = '#bdc1c6';
+    };
+    resetButton.onmouseout = () => {
+      resetButton.style.background = '#f8f9fa';
+      resetButton.style.borderColor = '#dadce0';
+    };
+    resetButton.onclick = async () => {
+      // Clear all colors for this list
+      await Promise.all([
+        window.cc3Storage.clearTaskListDefaultColor(list.id),
+        window.cc3Storage.clearTaskListTextColor(list.id),
+        window.cc3Storage.clearCompletedStyling(list.id),
+      ]);
+
+      settings = await window.cc3Storage.getSettings();
+      await saveSettings();
+
+      // Update both swatches to show cleared state
+      updateSwatchDisplay(backgroundSwatch, null, 'background');
+      updateSwatchDisplay(textSwatch, null, 'text');
+
+      // Show message that refresh is needed
+      showToast(`✓ "${list.title}" reset to Google default. Refresh Google Calendar to see changes.`);
+    };
+
+    controlsWrapper.appendChild(resetButton);
+
     const settingsSection = document.createElement('div');
     settingsSection.className = 'task-list-card-section';
     settingsSection.appendChild(controlsWrapper);
@@ -1665,12 +1710,6 @@ checkAuthAndSubscription();
     colorInput.style.display = 'none';
     actions.appendChild(colorInput);
 
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'task-list-clear-button';
-    clearBtn.textContent = 'Clear';
-    clearBtn.disabled = !currentColor;
-    actions.appendChild(clearBtn);
-
     const closeColorModal = () => {
       colorDetails.classList.remove('expanded');
       const backdrop = document.getElementById('task-list-color-backdrop');
@@ -1715,10 +1754,7 @@ checkAuthAndSubscription();
     const updateColor = async (newColor, { closeModal = true } = {}) => {
       if (!newColor) return;
 
-      await setColor(list.id, newColor);
-      settings = await window.cc3Storage.getSettings();
-      await saveSettings();
-
+      // PERFORMANCE FIX: Update UI IMMEDIATELY, then do storage in background
       preview.style.backgroundColor = newColor;
       preview.style.backgroundImage = 'none'; // Remove pattern if it was there
       preview.classList.add('has-color');
@@ -1729,18 +1765,23 @@ checkAuthAndSubscription();
       if (directColorInput) directColorInput.value = newColor;
       if (hexInput) hexInput.value = newColor.toUpperCase();
 
-      clearBtn.disabled = false;
-      showToast(`${toastLabel} set for "${list.title}"`);
-
-      // Update swatch immediately
+      // Update swatch immediately (before storage)
       onColorChange(newColor);
 
-      // Trigger repaint in calendar
-      broadcastUpdate();
+      // Show toast immediately
+      showToast(`${toastLabel} set for "${list.title}"`);
 
       if (closeModal) {
         closeColorModal();
       }
+
+      // Now do storage operations in background (non-blocking)
+      setColor(list.id, newColor).then(async () => {
+        settings = await window.cc3Storage.getSettings();
+        await saveSettings();
+        // Trigger repaint in calendar after storage is done
+        broadcastUpdate();
+      });
     };
 
     setTimeout(() => {
@@ -1777,37 +1818,6 @@ checkAuthAndSubscription();
         };
       }
     }, 50);
-
-    clearBtn.onclick = async () => {
-      // 1. Delete color from storage
-      await clearColor(list.id);
-      settings = await window.cc3Storage.getSettings();
-      await saveSettings();
-
-      // 2. Update preview to show "no color" state
-      preview.style.backgroundColor = '#f3f4f6';
-      preview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
-      preview.classList.remove('has-color');
-
-      // 3. Reset color picker inputs
-      colorInput.value = '#4285f4';
-      const directColorInput = qs(`${prefix}ColorDirect-${list.id}`);
-      const hexInput = qs(`${prefix}Hex-${list.id}`);
-      if (directColorInput) directColorInput.value = '#4285f4';
-      if (hexInput) hexInput.value = '#4285F4';
-
-      clearBtn.disabled = true;
-      showToast(`${toastLabel} cleared - using Google default`);
-
-      // 4. Update swatch immediately
-      onColorChange(null);
-
-      // 5. Trigger repaint in calendar (will show Google default)
-      broadcastUpdate();
-
-      // 6. Close modal
-      closeColorModal();
-    };
 
     colorInput.onchange = () => {
       updateColor(colorInput.value, { closeModal: false });
