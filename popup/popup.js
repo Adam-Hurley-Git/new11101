@@ -1557,7 +1557,7 @@ checkAuthAndSubscription();
       setColor: (listId, color) => window.cc3Storage.setTaskListDefaultColor(listId, color),
       clearColor: (listId) => window.cc3Storage.clearTaskListDefaultColor(listId),
       toastLabel: 'Color',
-      messageType: 'TASK_LIST_COLOR_UPDATED',
+      messageType: 'TASK_LISTS_UPDATED',
       helperText: 'Applies to every task chip from this Google Tasks list.',
       onColorChange: (value) => updateSwatchDisplay(backgroundSwatch, value, 'background'),
     });
@@ -1570,7 +1570,7 @@ checkAuthAndSubscription();
       setColor: (listId, color) => window.cc3Storage.setTaskListTextColor(listId, color),
       clearColor: (listId) => window.cc3Storage.clearTaskListTextColor(listId),
       toastLabel: 'Text color',
-      messageType: 'TASK_LIST_TEXT_COLOR_UPDATED',
+      messageType: 'TASK_LISTS_UPDATED',
       helperText: 'Overrides the auto-contrast text color for this list.',
       onColorChange: (value) => updateSwatchDisplay(textSwatch, value, 'text'),
     });
