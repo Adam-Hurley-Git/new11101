@@ -622,15 +622,25 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   const text = textColorOverride || pickContrastingText(color);
   node.dataset.cfTaskTextColor = textColorOverride ? text.toLowerCase() : '';
 
-  const bgColorValue = colorToRgba(color, bgOpacity);
   const textColorValue = colorToRgba(text, textOpacity);
 
-  node.dataset.cfTaskBgColor = bgColorValue;
-  node.dataset.cfTaskTextActual = textColorValue;
+  // CRITICAL FIX: Only apply background if bgOpacity > 0
+  // When bgOpacity is 0, remove background styles to let Google's default CSS show
+  if (bgOpacity > 0) {
+    const bgColorValue = colorToRgba(color, bgOpacity);
+    node.dataset.cfTaskBgColor = bgColorValue;
+    node.style.setProperty('background-color', bgColorValue, 'important');
+    node.style.setProperty('border-color', bgColorValue, 'important');
+  } else {
+    // Remove background styling - let Google's default show through
+    node.style.removeProperty('background-color');
+    node.style.removeProperty('border-color');
+    delete node.dataset.cfTaskBgColor;
+  }
 
+  // Always apply text color and text styling
+  node.dataset.cfTaskTextActual = textColorValue;
   node.style.setProperty('--cf-task-text-color', textColorValue, 'important');
-  node.style.setProperty('background-color', bgColorValue, 'important');
-  node.style.setProperty('border-color', bgColorValue, 'important');
   node.style.setProperty('color', textColorValue, 'important');
   node.style.setProperty('-webkit-text-fill-color', textColorValue, 'important');
   node.style.setProperty('mix-blend-mode', 'normal', 'important');
