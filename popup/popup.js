@@ -1701,21 +1701,13 @@ checkAuthAndSubscription();
     preview.onclick = openColorModal;
     colorDetails.onclick = (e) => e.stopPropagation();
 
-    const broadcastUpdate = (color) => {
+    const broadcastUpdate = () => {
+      // Trigger repaint - content script will re-read from storage
       chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
         tabs.forEach((tab) => {
-          // If color is null, just trigger full repaint without color data
-          if (color === null) {
-            chrome.tabs.sendMessage(tab.id, {
-              type: messageType,
-            });
-          } else {
-            chrome.tabs.sendMessage(tab.id, {
-              type: messageType,
-              listId: list.id,
-              color,
-            });
-          }
+          chrome.tabs.sendMessage(tab.id, {
+            type: messageType,
+          });
         });
       });
     };
@@ -1739,8 +1731,12 @@ checkAuthAndSubscription();
 
       clearBtn.disabled = false;
       showToast(`${toastLabel} set for "${list.title}"`);
-      broadcastUpdate(newColor);
+
+      // Update swatch immediately
       onColorChange(newColor);
+
+      // Trigger repaint in calendar
+      broadcastUpdate();
 
       if (closeModal) {
         closeColorModal();
@@ -1783,33 +1779,33 @@ checkAuthAndSubscription();
     }, 50);
 
     clearBtn.onclick = async () => {
-      // Clear the color from storage
+      // 1. Delete color from storage
       await clearColor(list.id);
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Reset preview to show "no color" state
+      // 2. Update preview to show "no color" state
       preview.style.backgroundColor = '#f3f4f6';
       preview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
       preview.classList.remove('has-color');
-      colorInput.value = '#4285f4'; // Default for color picker
 
+      // 3. Reset color picker inputs
+      colorInput.value = '#4285f4';
       const directColorInput = qs(`${prefix}ColorDirect-${list.id}`);
       const hexInput = qs(`${prefix}Hex-${list.id}`);
       if (directColorInput) directColorInput.value = '#4285f4';
       if (hexInput) hexInput.value = '#4285F4';
 
       clearBtn.disabled = true;
-      showToast(`${toastLabel} cleared for "${list.title}" - using Google default`);
+      showToast(`${toastLabel} cleared - using Google default`);
 
-      // Broadcast null to trigger full repaint (will re-read from storage)
-      broadcastUpdate(null);
+      // 4. Update swatch immediately
       onColorChange(null);
 
-      // Reload task lists to update the swatch display
-      await loadTaskLists();
+      // 5. Trigger repaint in calendar (will show Google default)
+      broadcastUpdate();
 
-      // Close the modal after clearing
+      // 6. Close modal
       closeColorModal();
     };
 
