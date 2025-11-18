@@ -537,10 +537,12 @@ function captureGoogleTaskColors() {
   let capturedCount = 0;
 
   for (const taskEl of unpaintedTasks) {
-    // PERFORMANCE: Early exit if already captured or painted
+    // PERFORMANCE: Early exit if already captured
+    // CRITICAL FIX: Only check cfGoogleBg, not MARK class
+    // This allows recapturing when completion state changes (we delete cfGoogleBg in MutationObserver)
     // Check on taskEl first (cheaper than getPaintTarget)
-    if (taskEl.classList.contains(MARK) || taskEl.dataset.cfGoogleBg) {
-      continue; // Already handled - skip expensive operations
+    if (taskEl.dataset.cfGoogleBg) {
+      continue; // Already captured - skip expensive operations
     }
 
     // Skip if in modal (still check this before getPaintTarget)
@@ -550,8 +552,8 @@ function captureGoogleTaskColors() {
     if (!target) continue;
 
     // Double-check on target (in case taskEl !== target)
-    if (target.classList.contains(MARK) || target.dataset.cfGoogleBg) {
-      continue; // Already handled
+    if (target.dataset.cfGoogleBg) {
+      continue; // Already captured
     }
 
     // Now do the expensive work: getComputedStyle
@@ -614,6 +616,17 @@ function colorToRgba(color, opacity = 1) {
   const { r, g, b } = parseCssColorToRGB(color);
   const safeOpacity = normalizeOpacityValue(opacity, 1);
   return `rgba(${r}, ${g}, ${b}, ${safeOpacity})`;
+}
+
+/**
+ * Check if a color is transparent (used to signal "use Google's background")
+ */
+function isTransparentColor(color) {
+  if (!color) return true;
+  const normalized = color.toLowerCase().replace(/\s/g, '');
+  return normalized === 'rgba(255,255,255,0)' ||
+         normalized === 'transparent' ||
+         normalized === 'rgba(0,0,0,0)';
 }
 
 function isTaskElementCompleted(taskElement) {
@@ -696,10 +709,17 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     }
   }
 
-  // CRITICAL FIX: Only apply background if bgOpacity > 0
-  // When bgOpacity is 0, restore Google's default background
+  // CRITICAL FIX: Handle background color with opacity
   if (bgOpacity > 0) {
-    const bgColorValue = colorToRgba(color, bgOpacity);
+    let bgColorToApply = color;
+
+    // CRITICAL FIX: If color is transparent (signals "use Google's background")
+    // AND we have a saved Google background, use that with custom opacity
+    if (isTransparentColor(color) && node.dataset.cfGoogleBg) {
+      bgColorToApply = node.dataset.cfGoogleBg;
+    }
+
+    const bgColorValue = colorToRgba(bgColorToApply, bgOpacity);
     node.dataset.cfTaskBgColor = bgColorValue;
     node.style.setProperty('background-color', bgColorValue, 'important');
     node.style.setProperty('border-color', bgColorValue, 'important');
@@ -707,7 +727,7 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     node.style.setProperty('filter', 'none', 'important');
     node.style.setProperty('opacity', '1', 'important');
   } else {
-    // Background cleared - restore Google's default background
+    // Background cleared (opacity = 0) - restore Google's default background
     // This allows text-only coloring while showing Google's original task color
     if (node.dataset.cfGoogleBg) {
       node.style.setProperty('background-color', node.dataset.cfGoogleBg, 'important');
@@ -1313,8 +1333,20 @@ function initTasksColoring() {
       if (m.type === 'attributes' && m.attributeName === 'style') {
         const target = m.target;
         // Check if this is a task element or contains task elements
-        if (target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ||
-            target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]')) {
+        const taskElement = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ?
+                            target :
+                            target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
+
+        if (taskElement) {
+          // CRITICAL FIX: When a task's style changes (e.g., marked complete),
+          // clear its saved Google background so it gets recaptured with the new state
+          // Google uses different backgrounds for pending vs completed tasks
+          const paintTarget = getPaintTarget(taskElement);
+          if (paintTarget && paintTarget.dataset.cfGoogleBg) {
+            delete paintTarget.dataset.cfGoogleBg;
+            delete paintTarget.dataset.cfGoogleBorder;
+            delete paintTarget.dataset.cfGoogleText;
+          }
           return true;
         }
       }
