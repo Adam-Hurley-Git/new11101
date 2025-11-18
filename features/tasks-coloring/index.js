@@ -1317,6 +1317,20 @@ function initTasksColoring() {
   );
 
   const grid = getGridRoot();
+
+  // CRITICAL DEBUG: Verify grid element is found
+  console.log('[ColorKit] Grid element for observer:', {
+    found: !!grid,
+    nodeName: grid?.nodeName,
+    className: grid?.className,
+    id: grid?.id,
+    hasTaskElements: grid?.querySelectorAll('[data-eventid^="tasks"]')?.length || 0
+  });
+
+  if (!grid) {
+    console.error('[ColorKit] CRITICAL: Grid element not found! MutationObserver will not work!');
+  }
+
   let mutationTimeout;
   let isNavigating = false;
   let mutationCount = 0;
@@ -1324,20 +1338,69 @@ function initTasksColoring() {
   const mo = new MutationObserver((mutations) => {
     mutationCount++;
 
+    // COMPREHENSIVE DEBUG: Log ALL mutations to see what's happening
+    console.log('[ColorKit] ========== MutationObserver fired ==========');
+    console.log('[ColorKit] Total mutations:', mutations.length);
+    console.log('[ColorKit] Mutation count:', mutationCount);
+
+    // Log each mutation in detail
+    mutations.forEach((m, index) => {
+      const targetInfo = {
+        nodeName: m.target.nodeName,
+        className: m.target.className,
+        id: m.target.id,
+        dataEventid: m.target.dataset?.eventid,
+        dataTaskid: m.target.dataset?.taskid,
+      };
+
+      console.log(`[ColorKit] Mutation ${index}:`, {
+        type: m.type,
+        attributeName: m.attributeName,
+        oldValue: m.oldValue,
+        addedNodes: m.addedNodes.length,
+        removedNodes: m.removedNodes.length,
+        target: targetInfo
+      });
+    });
+
     // CRITICAL FIX: Check for ANY changes to task elements that indicate completion
     // Google might update completion through classes, data attributes, childList, OR style
     // Don't filter by mutation type - check ALL mutations on task elements
     const hasTaskChange = mutations.some((m) => {
       const target = m.target;
 
+      console.log('[ColorKit] Checking mutation target:', {
+        nodeName: target.nodeName,
+        className: target.className,
+        hasMatches: typeof target.matches,
+        hasClosest: typeof target.closest
+      });
+
       // Check if this is a task element
-      const taskElement = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ?
+      const isTaskElementDirect = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
+      const taskElement = isTaskElementDirect ?
                           target :
                           target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
 
+      console.log('[ColorKit] Task element check:', {
+        isTaskElementDirect,
+        foundTaskElement: !!taskElement,
+        taskElementEventId: taskElement?.dataset?.eventid,
+        taskElementTaskId: taskElement?.dataset?.taskid
+      });
+
       if (taskElement) {
+        console.log('[ColorKit] *** TASK ELEMENT FOUND IN MUTATION ***');
+
         const paintTarget = getPaintTarget(taskElement);
         const taskId = getTaskIdFromChip(taskElement);
+
+        console.log('[ColorKit] Task element details:', {
+          taskId,
+          hasPaintTarget: !!paintTarget,
+          hasSavedBg: !!paintTarget?.dataset?.cfGoogleBg,
+          savedBg: paintTarget?.dataset?.cfGoogleBg
+        });
 
         // Check if this element has our painted background
         if (paintTarget && paintTarget.dataset.cfGoogleBg) {
@@ -1347,7 +1410,10 @@ function initTasksColoring() {
           delete paintTarget.dataset.cfGoogleText;
 
           // DEBUG: Log when we delete saved background
+          console.log('[ColorKit] *** DELETED SAVED BACKGROUND ***');
           console.log('[ColorKit] Task changed (type:', m.type, ', attr:', m.attributeName, '), deleted saved bg:', taskId, oldBg);
+        } else {
+          console.log('[ColorKit] No saved background to delete (might be first paint or already deleted)');
         }
 
         // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
@@ -1372,9 +1438,18 @@ function initTasksColoring() {
       return false;
     });
 
+    console.log('[ColorKit] hasTaskChange result:', hasTaskChange);
+
     // Detect navigation vs small updates by mutation count and types
     const hasLargeMutation = mutations.some((m) => m.addedNodes.length > 5);
     const isLikelyNavigation = mutationCount > 3 || hasLargeMutation;
+
+    console.log('[ColorKit] Navigation detection:', {
+      hasLargeMutation,
+      isLikelyNavigation,
+      isNavigating,
+      mutationCount
+    });
 
     if (isLikelyNavigation && !isNavigating) {
       // Fast response for navigation - immediate repaint
@@ -1407,13 +1482,18 @@ function initTasksColoring() {
   });
   // Watch for ALL changes to tasks: childList, attributes, and characterData
   // This catches completion through class changes, data attributes, style changes, etc.
-  mo.observe(grid, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    // NO attributeFilter - we need to catch ALL attribute changes
-    // Google might update completion through class, style, data-*, or other attributes
-  });
+  if (grid) {
+    mo.observe(grid, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      // NO attributeFilter - we need to catch ALL attribute changes
+      // Google might update completion through class, style, data-*, or other attributes
+    });
+    console.log('[ColorKit] MutationObserver successfully attached to grid element');
+  } else {
+    console.error('[ColorKit] CRITICAL: Cannot attach observer - grid element is null!');
+  }
 
   // Listen for URL changes (navigation events)
   let lastUrl = location.href;
