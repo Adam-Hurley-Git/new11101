@@ -715,10 +715,13 @@ function clearPaint(node) {
  * ONLY unpaint tasks that use list default colors - preserve manually colored tasks
  */
 async function unpaintTasksFromList(listId) {
+  // CRITICAL: Invalidate cache FIRST to ensure fresh data after storage clear
+  invalidateColorCache();
+
   // Find all task elements on the page
   const allTaskElements = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"]');
 
-  // Get the task-to-list mapping and manual colors
+  // Get the task-to-list mapping and manual colors (will read fresh from storage)
   const cache = await refreshColorCache();
   const taskToListMap = cache.taskToListMap || {};
   const manualColors = cache.manualColors || {};
@@ -754,6 +757,14 @@ async function unpaintTasksFromList(listId) {
   }
 
   console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}, preserved ${skippedManualCount} manually colored tasks`);
+
+  // Trigger repaint after a short delay to ensure correct state based on cleared storage
+  // This prevents stale colors from being reapplied
+  setTimeout(() => {
+    invalidateColorCache();
+    repaintSoon(true); // Immediate repaint with bypassed throttling
+  }, 100);
+
   return unpaintedCount;
 }
 
