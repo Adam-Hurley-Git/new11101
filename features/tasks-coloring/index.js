@@ -699,15 +699,9 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
 
   const textColorValue = colorToRgba(text, textOpacity);
 
-  // Note: Google colors should already be captured by captureGoogleTaskColors()
-  // This is just a fallback in case we missed this task
-  if (!node.dataset.cfGoogleBg) {
-    const computedStyle = window.getComputedStyle(node);
-    const googleBg = node.style.backgroundColor || computedStyle.backgroundColor;
-    if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
-      node.dataset.cfGoogleBg = googleBg;
-    }
-  }
+  // CRITICAL FIX: Don't capture here - rely ONLY on captureGoogleTaskColors()
+  // which runs at the right time (after Google finishes updating task state)
+  // Capturing here might capture in-between states during task completion
 
   // CRITICAL FIX: Handle background color with opacity
   if (bgOpacity > 0) {
@@ -1339,14 +1333,21 @@ function initTasksColoring() {
 
         if (taskElement) {
           // CRITICAL FIX: When a task's style changes (e.g., marked complete),
-          // clear its saved Google background so it gets recaptured with the new state
-          // Google uses different backgrounds for pending vs completed tasks
+          // we need to recapture Google's background AFTER Google finishes updating
+          // Google updates tasks in multiple steps, so we delay before recapturing
           const paintTarget = getPaintTarget(taskElement);
           if (paintTarget && paintTarget.dataset.cfGoogleBg) {
             delete paintTarget.dataset.cfGoogleBg;
             delete paintTarget.dataset.cfGoogleBorder;
             delete paintTarget.dataset.cfGoogleText;
           }
+
+          // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
+          // Google might update in stages (text-decoration, then background, etc.)
+          setTimeout(() => repaintSoon(), 50);   // After first update
+          setTimeout(() => repaintSoon(), 150);  // After subsequent updates
+          setTimeout(() => repaintSoon(), 300);  // Final catch-all
+
           return true;
         }
       }
@@ -1377,10 +1378,9 @@ function initTasksColoring() {
         mutationCount = 0;
       }, 500);
     } else if (!isNavigating) {
-      // If task style changed (e.g., marked complete), repaint immediately
-      if (hasTaskStyleChange) {
-        repaintSoon();
-      } else {
+      // If task style changed (e.g., marked complete), delayed repaints are already scheduled
+      // Don't call repaintSoon() here to avoid premature capture
+      if (!hasTaskStyleChange) {
         // Normal debouncing for minor updates
         clearTimeout(mutationTimeout);
         mutationTimeout = setTimeout(repaintSoon, 50);

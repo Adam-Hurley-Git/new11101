@@ -1448,16 +1448,23 @@ checkAuthAndSubscription();
     bgOpacityValue.id = `completedBgOpacityValue-${list.id}`;
     bgOpacityValue.textContent = bgOpacitySlider.value + '%';
 
-    bgOpacitySlider.oninput = async () => {
+    // CRITICAL FIX: Use oninput for visual feedback (update display only)
+    // and onchange for actual save (when user releases slider)
+    // This prevents constant storage writes and repaints during dragging
+    bgOpacitySlider.oninput = () => {
+      // Update display immediately for smooth visual feedback
       bgOpacityValue.textContent = bgOpacitySlider.value + '%';
+    };
+
+    bgOpacitySlider.onchange = async () => {
+      // Save to storage only when user releases slider
       const opacity = parseInt(bgOpacitySlider.value, 10) / 100;
       await window.cc3Storage.setCompletedBgOpacity(list.id, opacity);
 
-      // Debounced repaint
-      clearTimeout(bgOpacitySlider._repaintTimer);
-      bgOpacitySlider._repaintTimer = setTimeout(() => {
-        chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
-      }, 500);
+      // Trigger repaint in calendar tabs
+      chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+
+      showToast(`Card opacity set to ${bgOpacitySlider.value}% for "${list.title}"`);
     };
 
     bgOpacityContainer.appendChild(bgOpacitySlider);
@@ -1489,16 +1496,23 @@ checkAuthAndSubscription();
     textOpacityValue.id = `completedTextOpacityValue-${list.id}`;
     textOpacityValue.textContent = textOpacitySlider.value + '%';
 
-    textOpacitySlider.oninput = async () => {
+    // CRITICAL FIX: Use oninput for visual feedback (update display only)
+    // and onchange for actual save (when user releases slider)
+    // This prevents constant storage writes and repaints during dragging
+    textOpacitySlider.oninput = () => {
+      // Update display immediately for smooth visual feedback
       textOpacityValue.textContent = textOpacitySlider.value + '%';
+    };
+
+    textOpacitySlider.onchange = async () => {
+      // Save to storage only when user releases slider
       const opacity = parseInt(textOpacitySlider.value, 10) / 100;
       await window.cc3Storage.setCompletedTextOpacity(list.id, opacity);
 
-      // Debounced repaint
-      clearTimeout(textOpacitySlider._repaintTimer);
-      textOpacitySlider._repaintTimer = setTimeout(() => {
-        chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
-      }, 500);
+      // Trigger repaint in calendar tabs
+      chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+
+      showToast(`Text opacity set to ${textOpacitySlider.value}% for "${list.title}"`);
     };
 
     textOpacityContainer.appendChild(textOpacitySlider);
