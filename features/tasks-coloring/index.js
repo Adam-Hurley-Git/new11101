@@ -127,6 +127,7 @@ let taskElementReferences = new Map();
 let taskToListMapCache = null;
 let listColorsCache = null;
 let listTextColorsCache = null;
+let completedStylingCache = null;
 let manualColorsCache = null;
 let cacheLastUpdated = 0;
 const CACHE_LIFETIME = 30000; // 30 seconds
@@ -803,6 +804,7 @@ async function refreshColorCache() {
       listColors: listColorsCache,
       manualColors: manualColorsCache,
       listTextColors: listTextColorsCache,
+      completedStyling: completedStylingCache,
     };
   }
 
@@ -824,6 +826,7 @@ async function refreshColorCache() {
     ...settingsPending,
     ...(syncData['cf.taskListTextColors'] || {}),
   };
+  completedStylingCache = syncData.settings?.taskListColoring?.completedStyling || {};
   cacheLastUpdated = now;
 
   return {
@@ -831,6 +834,7 @@ async function refreshColorCache() {
     listColors: listColorsCache,
     manualColors: manualColorsCache,
     listTextColors: listTextColorsCache,
+    completedStyling: completedStylingCache,
   };
 }
 
@@ -842,6 +846,7 @@ function invalidateColorCache() {
   taskToListMapCache = null;
   listColorsCache = null;
   listTextColorsCache = null;
+  completedStylingCache = null;
   manualColorsCache = null;
 }
 
@@ -870,6 +875,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const listId = cache.taskToListMap[taskId];
   const isCompleted = options.isCompleted === true;
   const overrideTextColor = options.overrideTextColor;
+  const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
   const manualColor = manualColors?.[taskId];
@@ -881,21 +887,26 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       pendingTextColor: null, // Don't use list text color for manual backgrounds
       overrideTextColor,
       isCompleted,
+      completedStyling,
     });
   }
 
-  // Check for any list-based settings (background or text)
+  // Check for any list-based settings (background, text, or completed styling)
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
+    const hasCompletedStyling = isCompleted && completedStyling &&
+      (completedStyling.bgColor || completedStyling.textColor ||
+       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
-    // Apply colors if we have ANY setting (background or text)
-    if (listBgColor || hasTextColor) {
+    // Apply colors if we have ANY setting (background, text, or completed styling)
+    if (listBgColor || hasTextColor || hasCompletedStyling) {
       const colorInfo = buildColorInfo({
         baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
         pendingTextColor,
         overrideTextColor,
         isCompleted,
+        completedStyling,
       });
 
       return colorInfo;
@@ -905,13 +916,31 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   return null;
 }
 
-function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isCompleted }) {
-  // COMPLETED TASKS: Use Google's original background + inherit pending text color
+function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isCompleted, completedStyling }) {
+  // COMPLETED TASKS
   if (isCompleted) {
-    // Only paint completed tasks if we have a custom pending text color
+    // Check if ANY custom completed styling is set
+    const hasCustomCompletedStyling = completedStyling &&
+      (completedStyling.bgColor || completedStyling.textColor ||
+       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
+
+    if (hasCustomCompletedStyling) {
+      // Use custom completed styling (fill in missing values with defaults)
+      const defaultBgColor = 'rgba(255, 255, 255, 0)'; // Transparent = use Google's bg
+      const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
+      const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
+                       (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
+
+      return {
+        backgroundColor: bgColor,
+        textColor,
+        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0),
+        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
+      };
+    }
+
+    // No custom completed styling - fallback to Google bg + pending text color
     if (pendingTextColor || overrideTextColor) {
-      // Use Google's background (bgOpacity=0 signals this in applyPaint)
-      // Apply pending text color with reduced opacity (matching Google's completed style)
       const textColor = overrideTextColor || pendingTextColor;
 
       return {
@@ -922,7 +951,7 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       };
     }
 
-    // No custom text color - don't paint completed tasks at all (pure Google)
+    // No styling at all - don't paint (pure Google)
     return null;
   }
 
