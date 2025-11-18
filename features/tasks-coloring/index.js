@@ -1324,54 +1324,51 @@ function initTasksColoring() {
   const mo = new MutationObserver((mutations) => {
     mutationCount++;
 
-    // CRITICAL FIX: Check if any mutations are attribute changes on task elements
-    // This catches when tasks are marked complete (text-decoration changes)
-    const hasTaskStyleChange = mutations.some((m) => {
-      if (m.type === 'attributes' && m.attributeName === 'style') {
-        const target = m.target;
-        // Check if this is a task element or contains task elements
-        const taskElement = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ?
-                            target :
-                            target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
+    // CRITICAL FIX: Check for ANY changes to task elements that indicate completion
+    // Google might update completion through classes, data attributes, childList, OR style
+    // Don't filter by mutation type - check ALL mutations on task elements
+    const hasTaskChange = mutations.some((m) => {
+      const target = m.target;
 
-        if (taskElement) {
-          // CRITICAL FIX: When a task's style changes (e.g., marked complete),
-          // we need to recapture Google's background AFTER Google finishes updating
-          // Google updates tasks in multiple steps, so we delay before recapturing
-          const paintTarget = getPaintTarget(taskElement);
-          const taskId = getTaskIdFromChip(taskElement);
+      // Check if this is a task element
+      const taskElement = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ?
+                          target :
+                          target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
 
-          if (paintTarget && paintTarget.dataset.cfGoogleBg) {
-            const oldBg = paintTarget.dataset.cfGoogleBg;
-            delete paintTarget.dataset.cfGoogleBg;
-            delete paintTarget.dataset.cfGoogleBorder;
-            delete paintTarget.dataset.cfGoogleText;
+      if (taskElement) {
+        const paintTarget = getPaintTarget(taskElement);
+        const taskId = getTaskIdFromChip(taskElement);
 
-            // DEBUG: Log when we delete saved background
-            if (typeof console !== 'undefined') {
-              console.log('[ColorKit] Task style changed, deleted saved bg:', taskId, oldBg);
-            }
-          }
+        // Check if this element has our painted background
+        if (paintTarget && paintTarget.dataset.cfGoogleBg) {
+          const oldBg = paintTarget.dataset.cfGoogleBg;
+          delete paintTarget.dataset.cfGoogleBg;
+          delete paintTarget.dataset.cfGoogleBorder;
+          delete paintTarget.dataset.cfGoogleText;
 
-          // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
-          // Google might update in stages (text-decoration, then background, etc.)
-          // Use longer delays to ensure Google finishes ALL updates
-          setTimeout(() => {
-            console.log('[ColorKit] Repaint after 100ms for:', taskId);
-            repaintSoon();
-          }, 100);   // After first update
-          setTimeout(() => {
-            console.log('[ColorKit] Repaint after 250ms for:', taskId);
-            repaintSoon();
-          }, 250);  // After subsequent updates
-          setTimeout(() => {
-            console.log('[ColorKit] Repaint after 500ms for:', taskId);
-            repaintSoon();
-          }, 500);  // Final catch-all (longer delay)
-
-          return true;
+          // DEBUG: Log when we delete saved background
+          console.log('[ColorKit] Task changed (type:', m.type, ', attr:', m.attributeName, '), deleted saved bg:', taskId, oldBg);
         }
+
+        // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
+        // Google might update in stages (class change, then style, then content, etc.)
+        // Use longer delays to ensure Google finishes ALL updates
+        setTimeout(() => {
+          console.log('[ColorKit] Repaint after 100ms for:', taskId);
+          repaintSoon();
+        }, 100);   // After first update
+        setTimeout(() => {
+          console.log('[ColorKit] Repaint after 250ms for:', taskId);
+          repaintSoon();
+        }, 250);  // After subsequent updates
+        setTimeout(() => {
+          console.log('[ColorKit] Repaint after 500ms for:', taskId);
+          repaintSoon();
+        }, 500);  // Final catch-all (longer delay)
+
+        return true;
       }
+
       return false;
     });
 
@@ -1399,21 +1396,23 @@ function initTasksColoring() {
         mutationCount = 0;
       }, 500);
     } else if (!isNavigating) {
-      // If task style changed (e.g., marked complete), delayed repaints are already scheduled
+      // If task changed (e.g., marked complete), delayed repaints are already scheduled
       // Don't call repaintSoon() here to avoid premature capture
-      if (!hasTaskStyleChange) {
+      if (!hasTaskChange) {
         // Normal debouncing for minor updates
         clearTimeout(mutationTimeout);
         mutationTimeout = setTimeout(repaintSoon, 50);
       }
     }
   });
-  // Watch for both childList changes (new tasks) and attribute changes (task completion)
+  // Watch for ALL changes to tasks: childList, attributes, and characterData
+  // This catches completion through class changes, data attributes, style changes, etc.
   mo.observe(grid, {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['style'], // Only watch style attribute changes
+    // NO attributeFilter - we need to catch ALL attribute changes
+    // Google might update completion through class, style, data-*, or other attributes
   });
 
   // Listen for URL changes (navigation events)
