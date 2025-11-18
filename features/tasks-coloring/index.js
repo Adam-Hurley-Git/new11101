@@ -734,13 +734,12 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   node.style.setProperty('color', textColorValue, 'important');
   node.style.setProperty('-webkit-text-fill-color', textColorValue, 'important');
 
-  // Only override these properties if we're applying a background color
-  // Otherwise they interfere with Google's default background
-  if (bgOpacity > 0) {
-    node.style.setProperty('mix-blend-mode', 'normal', 'important');
-    node.style.setProperty('filter', 'none', 'important');
-    node.style.setProperty('opacity', '1', 'important');
-  }
+  // CRITICAL FIX: Always set opacity to 1 to override Google's default opacity
+  // Google applies opacity: 0.6 to completed tasks, which affects text rendering
+  // We need to override this even when bgOpacity = 0 (text-only coloring)
+  node.style.setProperty('mix-blend-mode', 'normal', 'important');
+  node.style.setProperty('filter', 'none', 'important');
+  node.style.setProperty('opacity', '1', 'important');
 
   const textElements = node.querySelectorAll('span, div, p, h1, h2, h3, h4, h5, h6');
   for (const textEl of textElements) {
@@ -748,23 +747,20 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     textEl.style.setProperty('-webkit-text-fill-color', textColorValue, 'important');
     textEl.style.setProperty('text-decoration-color', textColorValue, 'important');
 
-    // Only override these if applying background color
-    if (bgOpacity > 0) {
-      textEl.style.setProperty('mix-blend-mode', 'normal', 'important');
-      textEl.style.setProperty('filter', 'none', 'important');
-      textEl.style.setProperty('opacity', '1', 'important');
-    }
+    // CRITICAL FIX: Always set opacity to 1 to override Google's default opacity
+    // Google applies opacity: 0.6 to completed tasks, which would multiply with our text alpha
+    // Even without background color, we need to set opacity: 1 for correct text opacity
+    textEl.style.setProperty('mix-blend-mode', 'normal', 'important');
+    textEl.style.setProperty('filter', 'none', 'important');
+    textEl.style.setProperty('opacity', '1', 'important');
   }
 
   const svgElements = node.querySelectorAll('svg');
   for (const svg of svgElements) {
     svg.style.setProperty('color', textColorValue, 'important');
     svg.style.setProperty('fill', textColorValue, 'important');
-
-    // Only override opacity if applying background color
-    if (bgOpacity > 0) {
-      svg.style.setProperty('opacity', '1', 'important');
-    }
+    // CRITICAL FIX: Always set opacity to override Google's completed task styling
+    svg.style.setProperty('opacity', '1', 'important');
   }
 }
 function applyPaintIfNeeded(node, colors) {
@@ -1311,6 +1307,20 @@ function initTasksColoring() {
   const mo = new MutationObserver((mutations) => {
     mutationCount++;
 
+    // CRITICAL FIX: Check if any mutations are attribute changes on task elements
+    // This catches when tasks are marked complete (text-decoration changes)
+    const hasTaskStyleChange = mutations.some((m) => {
+      if (m.type === 'attributes' && m.attributeName === 'style') {
+        const target = m.target;
+        // Check if this is a task element or contains task elements
+        if (target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]') ||
+            target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]')) {
+          return true;
+        }
+      }
+      return false;
+    });
+
     // Detect navigation vs small updates by mutation count and types
     const hasLargeMutation = mutations.some((m) => m.addedNodes.length > 5);
     const isLikelyNavigation = mutationCount > 3 || hasLargeMutation;
@@ -1335,12 +1345,23 @@ function initTasksColoring() {
         mutationCount = 0;
       }, 500);
     } else if (!isNavigating) {
-      // Normal debouncing for minor updates
-      clearTimeout(mutationTimeout);
-      mutationTimeout = setTimeout(repaintSoon, 50);
+      // If task style changed (e.g., marked complete), repaint immediately
+      if (hasTaskStyleChange) {
+        repaintSoon();
+      } else {
+        // Normal debouncing for minor updates
+        clearTimeout(mutationTimeout);
+        mutationTimeout = setTimeout(repaintSoon, 50);
+      }
     }
   });
-  mo.observe(grid, { childList: true, subtree: true });
+  // Watch for both childList changes (new tasks) and attribute changes (task completion)
+  mo.observe(grid, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style'], // Only watch style attribute changes
+  });
 
   // Listen for URL changes (navigation events)
   let lastUrl = location.href;
