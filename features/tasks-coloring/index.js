@@ -709,6 +709,43 @@ function clearPaint(node) {
   node.classList.remove(MARK);
 }
 
+/**
+ * Unpaint all tasks from a specific list - returns them to Google's default styling
+ * Works instantly without page refresh
+ */
+async function unpaintTasksFromList(listId) {
+  // Find all task elements on the page
+  const allTaskElements = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"]');
+
+  // Get the task-to-list mapping
+  const cache = await refreshColorCache();
+  const taskToListMap = cache.taskToListMap || {};
+
+  let unpaintedCount = 0;
+
+  for (const taskEl of allTaskElements) {
+    const taskId = getTaskIdFromChip(taskEl);
+    if (!taskId) continue;
+
+    // Check if this task belongs to the specified list
+    const taskListId = taskToListMap[taskId];
+    if (taskListId === listId) {
+      const paintTarget = getPaintTarget(taskEl);
+      if (paintTarget) {
+        unpaintElement(paintTarget);
+        // Delete saved Google backgrounds to force recapture on next paint
+        delete paintTarget.dataset.cfGoogleBg;
+        delete paintTarget.dataset.cfGoogleBorder;
+        delete paintTarget.dataset.cfGoogleText;
+        unpaintedCount++;
+      }
+    }
+  }
+
+  console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}`);
+  return unpaintedCount;
+}
+
 function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOpacity = 1) {
   if (!node || !color) return;
 
@@ -1435,6 +1472,15 @@ function initTasksColoring() {
       setTimeout(() => repaintSoon(true), 100);
       setTimeout(() => repaintSoon(true), 500);
       setTimeout(() => repaintSoon(true), 1000);
+    }
+
+    if (message.type === 'RESET_LIST_COLORS') {
+      // Unpaint all tasks from the specified list
+      const { listId } = message;
+      if (listId) {
+        await unpaintTasksFromList(listId);
+        console.log(`[ColorKit] Reset colors for list: ${listId}`);
+      }
     }
   });
 
