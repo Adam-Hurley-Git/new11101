@@ -537,23 +537,17 @@ function captureGoogleTaskColors() {
   let capturedCount = 0;
 
   for (const taskEl of unpaintedTasks) {
-    // PERFORMANCE: Early exit if already captured
-    // CRITICAL FIX: Only check cfGoogleBg, not MARK class
-    // This allows recapturing when completion state changes (we delete cfGoogleBg in MutationObserver)
-    // Check on taskEl first (cheaper than getPaintTarget)
-    if (taskEl.dataset.cfGoogleBg) {
-      continue; // Already captured - skip expensive operations
-    }
-
-    // Skip if in modal (still check this before getPaintTarget)
+    // Skip if in modal (check this early before getPaintTarget)
     if (taskEl.closest('[role="dialog"]')) continue;
 
     const target = getPaintTarget(taskEl);
     if (!target) continue;
 
-    // Double-check on target (in case taskEl !== target)
+    // CRITICAL FIX: Check cfGoogleBg on the PAINT TARGET, not the task element
+    // taskEl might be different from target (e.g., taskEl is wrapper, target is inner div)
+    // We need to check if the ACTUAL element we paint has already been captured
     if (target.dataset.cfGoogleBg) {
-      continue; // Already captured
+      continue; // Already captured - skip expensive operations
     }
 
     // Now do the expensive work: getComputedStyle
@@ -562,10 +556,19 @@ function captureGoogleTaskColors() {
     const googleBorder = target.style.borderColor || computedStyle.borderColor;
     const googleText = target.style.color || computedStyle.color;
 
+    // DEBUG: Check if this is a completed task
+    const isCompleted = isTaskElementCompleted(taskEl);
+    const taskId = getTaskIdFromChip(taskEl);
+
     // Save background color
     if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
       target.dataset.cfGoogleBg = googleBg;
       capturedCount++;
+
+      // DEBUG: Log what we captured
+      if (isCompleted && typeof console !== 'undefined') {
+        console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskId, googleBg);
+      }
     }
     // Save border color
     if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
@@ -1336,17 +1339,35 @@ function initTasksColoring() {
           // we need to recapture Google's background AFTER Google finishes updating
           // Google updates tasks in multiple steps, so we delay before recapturing
           const paintTarget = getPaintTarget(taskElement);
+          const taskId = getTaskIdFromChip(taskElement);
+
           if (paintTarget && paintTarget.dataset.cfGoogleBg) {
+            const oldBg = paintTarget.dataset.cfGoogleBg;
             delete paintTarget.dataset.cfGoogleBg;
             delete paintTarget.dataset.cfGoogleBorder;
             delete paintTarget.dataset.cfGoogleText;
+
+            // DEBUG: Log when we delete saved background
+            if (typeof console !== 'undefined') {
+              console.log('[ColorKit] Task style changed, deleted saved bg:', taskId, oldBg);
+            }
           }
 
           // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
           // Google might update in stages (text-decoration, then background, etc.)
-          setTimeout(() => repaintSoon(), 50);   // After first update
-          setTimeout(() => repaintSoon(), 150);  // After subsequent updates
-          setTimeout(() => repaintSoon(), 300);  // Final catch-all
+          // Use longer delays to ensure Google finishes ALL updates
+          setTimeout(() => {
+            console.log('[ColorKit] Repaint after 100ms for:', taskId);
+            repaintSoon();
+          }, 100);   // After first update
+          setTimeout(() => {
+            console.log('[ColorKit] Repaint after 250ms for:', taskId);
+            repaintSoon();
+          }, 250);  // After subsequent updates
+          setTimeout(() => {
+            console.log('[ColorKit] Repaint after 500ms for:', taskId);
+            repaintSoon();
+          }, 500);  // Final catch-all (longer delay)
 
           return true;
         }
