@@ -537,32 +537,41 @@ function captureGoogleTaskColors() {
   let capturedCount = 0;
 
   for (const taskEl of unpaintedTasks) {
-    // Skip if in modal
+    // PERFORMANCE: Early exit if already captured or painted
+    // Check on taskEl first (cheaper than getPaintTarget)
+    if (taskEl.classList.contains(MARK) || taskEl.dataset.cfGoogleBg) {
+      continue; // Already handled - skip expensive operations
+    }
+
+    // Skip if in modal (still check this before getPaintTarget)
     if (taskEl.closest('[role="dialog"]')) continue;
 
     const target = getPaintTarget(taskEl);
     if (!target) continue;
 
-    // Only capture if we haven't captured yet AND we haven't painted yet
-    if (!target.dataset.cfGoogleBg && !target.classList.contains(MARK)) {
-      const computedStyle = window.getComputedStyle(target);
-      const googleBg = target.style.backgroundColor || computedStyle.backgroundColor;
-      const googleBorder = target.style.borderColor || computedStyle.borderColor;
-      const googleText = target.style.color || computedStyle.color;
+    // Double-check on target (in case taskEl !== target)
+    if (target.classList.contains(MARK) || target.dataset.cfGoogleBg) {
+      continue; // Already handled
+    }
 
-      // Save background color
-      if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
-        target.dataset.cfGoogleBg = googleBg;
-        capturedCount++;
-      }
-      // Save border color
-      if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
-        target.dataset.cfGoogleBorder = googleBorder;
-      }
-      // Save text color
-      if (googleText && googleText !== 'rgba(0, 0, 0, 0)' && googleText !== 'transparent') {
-        target.dataset.cfGoogleText = googleText;
-      }
+    // Now do the expensive work: getComputedStyle
+    const computedStyle = window.getComputedStyle(target);
+    const googleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+    const googleBorder = target.style.borderColor || computedStyle.borderColor;
+    const googleText = target.style.color || computedStyle.color;
+
+    // Save background color
+    if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
+      target.dataset.cfGoogleBg = googleBg;
+      capturedCount++;
+    }
+    // Save border color
+    if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
+      target.dataset.cfGoogleBorder = googleBorder;
+    }
+    // Save text color
+    if (googleText && googleText !== 'rgba(0, 0, 0, 0)' && googleText !== 'transparent') {
+      target.dataset.cfGoogleText = googleText;
     }
   }
 
