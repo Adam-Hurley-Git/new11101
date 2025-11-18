@@ -1441,9 +1441,11 @@ checkAuthAndSubscription();
     bgOpacitySlider.max = '100';
     bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity || 0.6) * 100));
     bgOpacitySlider.className = 'opacity-slider';
+    bgOpacitySlider.id = `completedBgOpacity-${list.id}`;
 
     const bgOpacityValue = document.createElement('span');
     bgOpacityValue.className = 'opacity-value';
+    bgOpacityValue.id = `completedBgOpacityValue-${list.id}`;
     bgOpacityValue.textContent = bgOpacitySlider.value + '%';
 
     bgOpacitySlider.oninput = async () => {
@@ -1480,9 +1482,11 @@ checkAuthAndSubscription();
     textOpacitySlider.max = '100';
     textOpacitySlider.value = String(Math.round((completedStyling.textOpacity || 1) * 100));
     textOpacitySlider.className = 'opacity-slider';
+    textOpacitySlider.id = `completedTextOpacity-${list.id}`;
 
     const textOpacityValue = document.createElement('span');
     textOpacityValue.className = 'opacity-value';
+    textOpacityValue.id = `completedTextOpacityValue-${list.id}`;
     textOpacityValue.textContent = textOpacitySlider.value + '%';
 
     textOpacitySlider.oninput = async () => {
@@ -1689,19 +1693,19 @@ checkAuthAndSubscription();
       }
 
       // Reset opacity sliders to default
-      const bgOpacitySlider = document.querySelector(`input[type="range"].opacity-slider`);
-      const textOpacitySlider = document.querySelectorAll(`input[type="range"].opacity-slider`)[1];
+      const bgOpacitySlider = document.getElementById(`completedBgOpacity-${list.id}`);
+      const bgOpacityValue = document.getElementById(`completedBgOpacityValue-${list.id}`);
+      const textOpacitySlider = document.getElementById(`completedTextOpacity-${list.id}`);
+      const textOpacityValue = document.getElementById(`completedTextOpacityValue-${list.id}`);
 
-      if (bgOpacitySlider) {
+      if (bgOpacitySlider && bgOpacityValue) {
         bgOpacitySlider.value = '60';
-        const bgOpacityValue = bgOpacitySlider.nextElementSibling;
-        if (bgOpacityValue) bgOpacityValue.textContent = '60%';
+        bgOpacityValue.textContent = '60%';
       }
 
-      if (textOpacitySlider) {
+      if (textOpacitySlider && textOpacityValue) {
         textOpacitySlider.value = '100';
-        const textOpacityValue = textOpacitySlider.nextElementSibling;
-        if (textOpacityValue) textOpacityValue.textContent = '100%';
+        textOpacityValue.textContent = '100%';
       }
 
       // Show message that refresh is needed
@@ -5242,17 +5246,8 @@ checkAuthAndSubscription();
 
           const response = await chrome.runtime.sendMessage({ type: 'SYNC_TASK_LISTS', fullSync: true });
 
-          console.log('[Popup] Sync response:', response);
-
           if (response?.success) {
             showToast(`Synced ${response.taskCount} tasks successfully!`);
-
-            console.log('[Popup] Sync diagnostics:', {
-              syncType: response.syncType,
-              taskCount: response.taskCount,
-              duration: response.duration + 'ms',
-              sampleTaskIds: response.sampleTaskIds
-            });
 
             // Reload task lists
             settings = await window.cc3Storage.getSettings();
