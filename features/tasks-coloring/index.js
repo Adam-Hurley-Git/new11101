@@ -543,16 +543,32 @@ function captureGoogleTaskColors() {
     const target = getPaintTarget(taskEl);
     if (!target) continue;
 
-    // CRITICAL FIX: Check cfGoogleBg on the PAINT TARGET, not the task element
-    // taskEl might be different from target (e.g., taskEl is wrapper, target is inner div)
-    // We need to check if the ACTUAL element we paint has already been captured
-    if (target.dataset.cfGoogleBg) {
-      continue; // Already captured - skip expensive operations
+    // CRITICAL FIX: Always check if saved background matches current background
+    // Google changes background when task is completed/uncompleted
+    // If saved background doesn't match current, we need to recapture
+    const computedStyle = window.getComputedStyle(target);
+    const currentGoogleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+    const savedGoogleBg = target.dataset.cfGoogleBg;
+
+    // If we have a saved background, check if it still matches current
+    if (savedGoogleBg) {
+      // Normalize colors for comparison (remove spaces)
+      const normalizedCurrent = currentGoogleBg?.replace(/\s/g, '');
+      const normalizedSaved = savedGoogleBg?.replace(/\s/g, '');
+
+      if (normalizedCurrent === normalizedSaved) {
+        continue; // Still matches - skip expensive operations
+      } else {
+        // Background changed! Delete old saved values to force recapture
+        delete target.dataset.cfGoogleBg;
+        delete target.dataset.cfGoogleBorder;
+        delete target.dataset.cfGoogleText;
+        console.log(`[ColorKit] Background changed for task, will recapture: ${savedGoogleBg} → ${currentGoogleBg}`);
+      }
     }
 
-    // Now do the expensive work: getComputedStyle
-    const computedStyle = window.getComputedStyle(target);
-    const googleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+    // Now do the expensive work for new or changed tasks
+    const googleBg = currentGoogleBg;
     const googleBorder = target.style.borderColor || computedStyle.borderColor;
     const googleText = target.style.color || computedStyle.color;
 
