@@ -1649,13 +1649,13 @@ checkAuthAndSubscription();
       margin-top: 12px;
     `;
 
-    // Add "Reset Pending Tasks" button
-    const resetPendingButton = document.createElement('button');
-    resetPendingButton.className = 'task-list-reset-button';
-    resetPendingButton.textContent = '🔄 Reset Pending';
-    resetPendingButton.title = 'Reset background and text color for pending tasks to Google\'s default';
-    resetPendingButton.style.cssText = `
-      flex: 1;
+    // Add single "Reset to Google Default" button that clears EVERYTHING for this list
+    const resetButton = document.createElement('button');
+    resetButton.className = 'task-list-reset-button';
+    resetButton.textContent = '🔄 Reset to Google Default';
+    resetButton.title = 'Reset ALL colors and styling for this list to Google\'s default (preserves manually colored tasks)';
+    resetButton.style.cssText = `
+      width: 100%;
       padding: 8px 12px;
       background: #f8f9fa;
       border: 1px solid #dadce0;
@@ -1664,74 +1664,32 @@ checkAuthAndSubscription();
       font-size: 11px;
       cursor: pointer;
       transition: all 0.2s;
+      font-weight: 500;
     `;
-    resetPendingButton.onmouseover = () => {
-      resetPendingButton.style.background = '#e8eaed';
-      resetPendingButton.style.borderColor = '#bdc1c6';
+    resetButton.onmouseover = () => {
+      resetButton.style.background = '#e8eaed';
+      resetButton.style.borderColor = '#bdc1c6';
     };
-    resetPendingButton.onmouseout = () => {
-      resetPendingButton.style.background = '#f8f9fa';
-      resetPendingButton.style.borderColor = '#dadce0';
+    resetButton.onmouseout = () => {
+      resetButton.style.background = '#f8f9fa';
+      resetButton.style.borderColor = '#dadce0';
     };
-    resetPendingButton.onclick = async () => {
-      // Clear pending task colors (background and text)
+    resetButton.onclick = async () => {
+      // Clear ALL list-level settings (pending + completed)
       await Promise.all([
         window.cc3Storage.clearTaskListDefaultColor(list.id),
         window.cc3Storage.clearTaskListTextColor(list.id),
+        window.cc3Storage.clearCompletedStyling(list.id),
       ]);
 
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Update swatches to show cleared state
+      // Update pending swatches to show cleared state
       updateSwatchDisplay(backgroundSwatch, null, 'background');
       updateSwatchDisplay(textSwatch, null, 'text');
 
-      // Send message to content script to unpaint tasks instantly
-      chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
-        tabs.forEach((tab) => {
-          chrome.tabs.sendMessage(tab.id, {
-            type: 'RESET_LIST_COLORS',
-            listId: list.id,
-          });
-        });
-      });
-
-      showToast(`✓ "${list.title}" pending tasks reset to Google default`);
-    };
-
-    // Add "Reset Completed Tasks" button
-    const resetCompletedButton = document.createElement('button');
-    resetCompletedButton.className = 'task-list-reset-button';
-    resetCompletedButton.textContent = '🔄 Reset Completed';
-    resetCompletedButton.title = 'Reset background and text color for completed tasks to Google\'s default';
-    resetCompletedButton.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      background: #f8f9fa;
-      border: 1px solid #dadce0;
-      border-radius: 6px;
-      color: #5f6368;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s;
-    `;
-    resetCompletedButton.onmouseover = () => {
-      resetCompletedButton.style.background = '#e8eaed';
-      resetCompletedButton.style.borderColor = '#bdc1c6';
-    };
-    resetCompletedButton.onmouseout = () => {
-      resetCompletedButton.style.background = '#f8f9fa';
-      resetCompletedButton.style.borderColor = '#dadce0';
-    };
-    resetCompletedButton.onclick = async () => {
-      // Clear completed task styling
-      await window.cc3Storage.clearCompletedStyling(list.id);
-
-      settings = await window.cc3Storage.getSettings();
-      await saveSettings();
-
-      // INSTANT UPDATE: Reset completed section preview to show default state
+      // Update completed section preview to show default state
       const completedTextPreview = document.getElementById(`completedTextPreview-${list.id}`);
       const completedBgPreview = document.getElementById(`completedBgPreview-${list.id}`);
 
@@ -1742,7 +1700,6 @@ checkAuthAndSubscription();
         const completedTextInput = document.getElementById(`completedTextColor-${list.id}`);
         if (completedTextInput) completedTextInput.value = '#666666';
 
-        // Update helper text
         const textHelper = completedTextPreview.closest('.task-list-color-control')?.querySelector('.task-list-color-helper');
         if (textHelper) {
           textHelper.textContent = 'Inheriting from pending text color (click to customize).';
@@ -1783,11 +1740,10 @@ checkAuthAndSubscription();
         });
       });
 
-      showToast(`✓ "${list.title}" completed tasks reset to Google default`);
+      showToast(`✓ "${list.title}" reset to Google default (manually colored tasks preserved)`);
     };
 
-    resetButtonsContainer.appendChild(resetPendingButton);
-    resetButtonsContainer.appendChild(resetCompletedButton);
+    resetButtonsContainer.appendChild(resetButton);
     controlsWrapper.appendChild(resetButtonsContainer);
 
     const settingsSection = document.createElement('div');
