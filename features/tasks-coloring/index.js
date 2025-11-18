@@ -574,10 +574,6 @@ function captureGoogleTaskColors() {
       target.dataset.cfGoogleText = googleText;
     }
   }
-
-  if (capturedCount > 0) {
-    console.log(`[Task Colors] Captured Google colors from ${capturedCount} tasks`);
-  }
 }
 
 function parseCssColorToRGB(hex) {
@@ -1106,7 +1102,6 @@ async function doRepaint(bypassThrottling = false) {
   let noColorCount = 0;
   let completedCount = 0;
   let completedColoredCount = 0;
-  const completedTaskIds = []; // DEBUG: Track completed task IDs
 
   for (const chip of calendarTasks) {
     // Skip if in modal
@@ -1122,7 +1117,6 @@ async function doRepaint(bypassThrottling = false) {
       const isCompleted = isTaskElementCompleted(chip);
       if (isCompleted) {
         completedCount++;
-        completedTaskIds.push(id);
       }
       const colors = await getColorForTask(id, manualColorMap, { isCompleted });
 
