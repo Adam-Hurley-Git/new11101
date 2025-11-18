@@ -934,7 +934,9 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: bgColor,
         textColor,
-        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0),
+        // FIX: Fallback should check if we have ANY bg color (custom OR inherited from list)
+        // Not just if completedStyling.bgColor is set
+        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, (completedStyling.bgColor || baseColor) ? 1 : 0),
         textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
       };
     }
