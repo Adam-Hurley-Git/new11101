@@ -895,9 +895,11 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
-    const hasCompletedStyling = isCompleted && completedStyling?.enabled;
+    const hasCompletedStyling = isCompleted && completedStyling &&
+      (completedStyling.bgColor || completedStyling.textColor ||
+       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
-    // Apply colors if we have ANY setting (not just background)
+    // Apply colors if we have ANY setting (background, text, or completed styling)
     if (listBgColor || hasTextColor || hasCompletedStyling) {
       const colorInfo = buildColorInfo({
         baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
@@ -915,36 +917,50 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 }
 
 function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isCompleted, completedStyling }) {
-  // CRITICAL FIX: Allow styling even without base color
-  // If we have text colors or completed styling set, we should apply them
-  // Use transparent background if no base color is provided
+  // COMPLETED TASKS
+  if (isCompleted) {
+    // Check if ANY custom completed styling is set
+    const hasCustomCompletedStyling = completedStyling &&
+      (completedStyling.bgColor || completedStyling.textColor ||
+       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
-  const hasAnyColorSetting = baseColor || pendingTextColor || overrideTextColor ||
-                            (isCompleted && completedStyling?.enabled);
+    if (hasCustomCompletedStyling) {
+      // Use custom completed styling (fill in missing values with defaults)
+      const defaultBgColor = 'rgba(255, 255, 255, 0)'; // Transparent = use Google's bg
+      const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
+      const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
+                       (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
 
+      return {
+        backgroundColor: bgColor,
+        textColor,
+        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0),
+        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
+      };
+    }
+
+    // No custom completed styling - fallback to Google bg + pending text color
+    if (pendingTextColor || overrideTextColor) {
+      const textColor = overrideTextColor || pendingTextColor;
+
+      return {
+        backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent - signals use Google bg
+        textColor,
+        bgOpacity: 0, // Restore Google's background
+        textOpacity: 0.6, // Google's completed task text opacity
+      };
+    }
+
+    // No styling at all - don't paint (pure Google)
+    return null;
+  }
+
+  // PENDING TASKS: Use custom colors or transparent
+  const hasAnyColorSetting = baseColor || pendingTextColor || overrideTextColor;
   if (!hasAnyColorSetting) return null;
 
   // Default to transparent if no background color
   const defaultBgColor = 'rgba(255, 255, 255, 0)';
-
-  if (isCompleted && completedStyling?.enabled) {
-    // Completed task styling
-    const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
-    const textColor =
-      overrideTextColor ||
-      completedStyling.textColor ||
-      pendingTextColor ||
-      (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
-
-    return {
-      backgroundColor: bgColor,
-      textColor,
-      bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, completedStyling.bgColor ? 1 : 0),
-      textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
-    };
-  }
-
-  // Pending task styling
   const bgColor = baseColor || defaultBgColor;
   const textColor = overrideTextColor || pendingTextColor ||
                    (bgColor === defaultBgColor ? '#202124' : pickContrastingText(bgColor));
