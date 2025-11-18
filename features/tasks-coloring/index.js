@@ -543,16 +543,32 @@ function captureGoogleTaskColors() {
     const target = getPaintTarget(taskEl);
     if (!target) continue;
 
-    // CRITICAL FIX: Check cfGoogleBg on the PAINT TARGET, not the task element
-    // taskEl might be different from target (e.g., taskEl is wrapper, target is inner div)
-    // We need to check if the ACTUAL element we paint has already been captured
-    if (target.dataset.cfGoogleBg) {
-      continue; // Already captured - skip expensive operations
+    // CRITICAL FIX: Always check if saved background matches current background
+    // Google changes background when task is completed/uncompleted
+    // If saved background doesn't match current, we need to recapture
+    const computedStyle = window.getComputedStyle(target);
+    const currentGoogleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+    const savedGoogleBg = target.dataset.cfGoogleBg;
+
+    // If we have a saved background, check if it still matches current
+    if (savedGoogleBg) {
+      // Normalize colors for comparison (remove spaces)
+      const normalizedCurrent = currentGoogleBg?.replace(/\s/g, '');
+      const normalizedSaved = savedGoogleBg?.replace(/\s/g, '');
+
+      if (normalizedCurrent === normalizedSaved) {
+        continue; // Still matches - skip expensive operations
+      } else {
+        // Background changed! Delete old saved values to force recapture
+        delete target.dataset.cfGoogleBg;
+        delete target.dataset.cfGoogleBorder;
+        delete target.dataset.cfGoogleText;
+        console.log(`[ColorKit] Background changed for task, will recapture: ${savedGoogleBg} → ${currentGoogleBg}`);
+      }
     }
 
-    // Now do the expensive work: getComputedStyle
-    const computedStyle = window.getComputedStyle(target);
-    const googleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+    // Now do the expensive work for new or changed tasks
+    const googleBg = currentGoogleBg;
     const googleBorder = target.style.borderColor || computedStyle.borderColor;
     const googleText = target.style.color || computedStyle.color;
 
@@ -691,6 +707,43 @@ function clearPaint(node) {
   });
 
   node.classList.remove(MARK);
+}
+
+/**
+ * Unpaint all tasks from a specific list - returns them to Google's default styling
+ * Works instantly without page refresh
+ */
+async function unpaintTasksFromList(listId) {
+  // Find all task elements on the page
+  const allTaskElements = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"]');
+
+  // Get the task-to-list mapping
+  const cache = await refreshColorCache();
+  const taskToListMap = cache.taskToListMap || {};
+
+  let unpaintedCount = 0;
+
+  for (const taskEl of allTaskElements) {
+    const taskId = getTaskIdFromChip(taskEl);
+    if (!taskId) continue;
+
+    // Check if this task belongs to the specified list
+    const taskListId = taskToListMap[taskId];
+    if (taskListId === listId) {
+      const paintTarget = getPaintTarget(taskEl);
+      if (paintTarget) {
+        unpaintElement(paintTarget);
+        // Delete saved Google backgrounds to force recapture on next paint
+        delete paintTarget.dataset.cfGoogleBg;
+        delete paintTarget.dataset.cfGoogleBorder;
+        delete paintTarget.dataset.cfGoogleText;
+        unpaintedCount++;
+      }
+    }
+  }
+
+  console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}`);
+  return unpaintedCount;
 }
 
 function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOpacity = 1) {
@@ -1316,54 +1369,13 @@ function initTasksColoring() {
     true,
   );
 
-  const grid = getGridRoot(); // Still needed for other functionality (repaint, etc.)
-
+  const grid = getGridRoot();
   let mutationTimeout;
   let isNavigating = false;
   let mutationCount = 0;
 
   const mo = new MutationObserver((mutations) => {
     mutationCount++;
-
-    // CRITICAL FIX: Check for ANY changes to task elements that indicate completion
-    // Google might update completion through classes, data attributes, childList, OR style
-    // Don't filter by mutation type - check ALL mutations on task elements
-    const hasTaskChange = mutations.some((m) => {
-      const target = m.target;
-
-      // Check if this is a task element
-      const isTaskElementDirect = target.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
-      const taskElement = isTaskElementDirect ?
-                          target :
-                          target.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
-
-      if (taskElement) {
-        const paintTarget = getPaintTarget(taskElement);
-        const taskId = getTaskIdFromChip(taskElement);
-
-        // Check if this element has our painted background
-        if (paintTarget && paintTarget.dataset.cfGoogleBg) {
-          const oldBg = paintTarget.dataset.cfGoogleBg;
-          delete paintTarget.dataset.cfGoogleBg;
-          delete paintTarget.dataset.cfGoogleBorder;
-          delete paintTarget.dataset.cfGoogleText;
-
-          // CRITICAL LOG: Task state changed, deleted old background to force recapture
-          console.log('[ColorKit] Task changed, deleted saved bg:', taskId, oldBg, '→ will recapture new state');
-        }
-
-        // CRITICAL FIX: Schedule multiple repaints to catch Google's updates
-        // Google might update in stages (class change, then style, then content, etc.)
-        // Use longer delays to ensure Google finishes ALL updates
-        setTimeout(repaintSoon, 100);   // After first update
-        setTimeout(repaintSoon, 250);  // After subsequent updates
-        setTimeout(repaintSoon, 500);  // Final catch-all
-
-        return true;
-      }
-
-      return false;
-    });
 
     // Detect navigation vs small updates by mutation count and types
     const hasLargeMutation = mutations.some((m) => m.addedNodes.length > 5);
@@ -1389,27 +1401,18 @@ function initTasksColoring() {
         mutationCount = 0;
       }, 500);
     } else if (!isNavigating) {
-      // If task changed (e.g., marked complete), delayed repaints are already scheduled
-      // Don't call repaintSoon() here to avoid premature capture
-      if (!hasTaskChange) {
-        // Normal debouncing for minor updates
-        clearTimeout(mutationTimeout);
-        mutationTimeout = setTimeout(repaintSoon, 50);
-      }
+      // Normal debouncing for minor updates
+      clearTimeout(mutationTimeout);
+      mutationTimeout = setTimeout(repaintSoon, 50);
     }
   });
-  // CRITICAL FIX: Watch document.body instead of grid element
-  // Task elements are NOT children of the grid - they're in a separate overlay container
-  // Observing only the grid meant we never detected task state changes (completion, etc.)
-  // This is why newly completed tasks kept their old pending background color
-  mo.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    // NO attributeFilter - we need to catch ALL attribute changes
-    // Google might update completion through class, style, data-*, or other attributes
-  });
-  console.log('[ColorKit] MutationObserver successfully attached to document.body (will catch task element changes)');
+
+  if (grid) {
+    mo.observe(grid, {
+      childList: true,
+      subtree: true,
+    });
+  }
 
 
   // Listen for URL changes (navigation events)
@@ -1469,6 +1472,15 @@ function initTasksColoring() {
       setTimeout(() => repaintSoon(true), 100);
       setTimeout(() => repaintSoon(true), 500);
       setTimeout(() => repaintSoon(true), 1000);
+    }
+
+    if (message.type === 'RESET_LIST_COLORS') {
+      // Unpaint all tasks from the specified list
+      const { listId } = message;
+      if (listId) {
+        await unpaintTasksFromList(listId);
+        console.log(`[ColorKit] Reset colors for list: ${listId}`);
+      }
     }
   });
 
