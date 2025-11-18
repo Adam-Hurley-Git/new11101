@@ -712,16 +712,19 @@ function clearPaint(node) {
 /**
  * Unpaint all tasks from a specific list - returns them to Google's default styling
  * Works instantly without page refresh
+ * ONLY unpaint tasks that use list default colors - preserve manually colored tasks
  */
 async function unpaintTasksFromList(listId) {
   // Find all task elements on the page
   const allTaskElements = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"]');
 
-  // Get the task-to-list mapping
+  // Get the task-to-list mapping and manual colors
   const cache = await refreshColorCache();
   const taskToListMap = cache.taskToListMap || {};
+  const manualColors = cache.manualColors || {};
 
   let unpaintedCount = 0;
+  let skippedManualCount = 0;
 
   for (const taskEl of allTaskElements) {
     const taskId = getTaskIdFromChip(taskEl);
@@ -730,9 +733,17 @@ async function unpaintTasksFromList(listId) {
     // Check if this task belongs to the specified list
     const taskListId = taskToListMap[taskId];
     if (taskListId === listId) {
+      // CRITICAL: Skip tasks with manual colors - only unpaint list default colored tasks
+      if (manualColors[taskId]) {
+        skippedManualCount++;
+        console.log(`[ColorKit] Skipping manually colored task: ${taskId}`);
+        continue;
+      }
+
       const paintTarget = getPaintTarget(taskEl);
       if (paintTarget) {
-        unpaintElement(paintTarget);
+        // FIX: Use clearPaint instead of non-existent unpaintElement
+        clearPaint(paintTarget);
         // Delete saved Google backgrounds to force recapture on next paint
         delete paintTarget.dataset.cfGoogleBg;
         delete paintTarget.dataset.cfGoogleBorder;
@@ -742,7 +753,7 @@ async function unpaintTasksFromList(listId) {
     }
   }
 
-  console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}`);
+  console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}, preserved ${skippedManualCount} manually colored tasks`);
   return unpaintedCount;
 }
 
