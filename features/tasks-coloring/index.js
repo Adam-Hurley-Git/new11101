@@ -526,6 +526,51 @@ let lastClickedTaskId = null;
 let lastRepaintTime = 0;
 let repaintCount = 0;
 
+/**
+ * Capture Google's original colors from tasks BEFORE we paint them
+ * This runs early to preserve the original colors for text-only mode
+ */
+function captureGoogleTaskColors() {
+  // Find all task elements that we haven't painted yet
+  const unpaintedTasks = document.querySelectorAll(`[data-eventid^="tasks."], [data-eventid^="tasks_"]`);
+
+  let capturedCount = 0;
+
+  for (const taskEl of unpaintedTasks) {
+    // Skip if in modal
+    if (taskEl.closest('[role="dialog"]')) continue;
+
+    const target = getPaintTarget(taskEl);
+    if (!target) continue;
+
+    // Only capture if we haven't captured yet AND we haven't painted yet
+    if (!target.dataset.cfGoogleBg && !target.classList.contains(MARK)) {
+      const computedStyle = window.getComputedStyle(target);
+      const googleBg = target.style.backgroundColor || computedStyle.backgroundColor;
+      const googleBorder = target.style.borderColor || computedStyle.borderColor;
+      const googleText = target.style.color || computedStyle.color;
+
+      // Save background color
+      if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
+        target.dataset.cfGoogleBg = googleBg;
+        capturedCount++;
+      }
+      // Save border color
+      if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
+        target.dataset.cfGoogleBorder = googleBorder;
+      }
+      // Save text color
+      if (googleText && googleText !== 'rgba(0, 0, 0, 0)' && googleText !== 'transparent') {
+        target.dataset.cfGoogleText = googleText;
+      }
+    }
+  }
+
+  if (capturedCount > 0) {
+    console.log(`[Task Colors] Captured Google colors from ${capturedCount} tasks`);
+  }
+}
+
 function parseCssColorToRGB(hex) {
   if (!hex) return { r: 66, g: 133, b: 244 }; // fallback G blue
   if (hex.startsWith('rgb')) {
@@ -636,26 +681,13 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
 
   const textColorValue = colorToRgba(text, textOpacity);
 
-  // CRITICAL: Store Google's original colors before any paint
-  // This allows us to use them when user sets text-only (need Google bg + custom text)
+  // Note: Google colors should already be captured by captureGoogleTaskColors()
+  // This is just a fallback in case we missed this task
   if (!node.dataset.cfGoogleBg) {
-    // First time seeing this task - capture Google's original colors
     const computedStyle = window.getComputedStyle(node);
     const googleBg = node.style.backgroundColor || computedStyle.backgroundColor;
-    const googleBorder = node.style.borderColor || computedStyle.borderColor;
-    const googleText = node.style.color || computedStyle.color;
-
-    // Save background color
     if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
       node.dataset.cfGoogleBg = googleBg;
-    }
-    // Save border color
-    if (googleBorder && googleBorder !== 'rgba(0, 0, 0, 0)' && googleBorder !== 'transparent') {
-      node.dataset.cfGoogleBorder = googleBorder;
-    }
-    // Save text color
-    if (googleText && googleText !== 'rgba(0, 0, 0, 0)' && googleText !== 'transparent') {
-      node.dataset.cfGoogleText = googleText;
     }
   }
 
@@ -998,6 +1030,10 @@ async function doRepaint(bypassThrottling = false) {
   if (!quickPickColoringEnabled && !taskListColoringEnabled) {
     return;
   }
+
+  // CRITICAL: Capture Google's original colors BEFORE we paint anything
+  // This ensures we have the colors for text-only mode
+  captureGoogleTaskColors();
 
   // Apply throttling only if not bypassing
   if (!bypassThrottling) {
