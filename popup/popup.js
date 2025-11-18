@@ -1249,6 +1249,35 @@ checkAuthAndSubscription();
   // COMPLETED TASKS STYLING SECTION BUILDER
   // ========================================
 
+  /**
+   * Update completed text color preview when pending text color changes
+   * This provides instant visual feedback showing inheritance
+   */
+  async function updateCompletedTextPreview(listId, pendingTextColor) {
+    const completedTextPreview = document.getElementById(`completedTextPreview-${listId}`);
+    if (!completedTextPreview) return;
+
+    const completedTextInput = document.getElementById(`completedTextColor-${listId}`);
+    if (!completedTextInput) return;
+
+    // Check if there's a custom completed text color set
+    const settings = await window.cc3Storage.getSettings();
+    const completedStyling = settings?.taskListColoring?.completedStyling?.[listId];
+
+    // Only update preview if no custom completed text color is set (showing inheritance)
+    if (!completedStyling?.textColor) {
+      const inheritedColor = pendingTextColor || '#666666';
+      completedTextPreview.style.backgroundColor = inheritedColor;
+      completedTextInput.value = inheritedColor;
+
+      // Also update the helper text to indicate inheritance
+      const helperText = completedTextPreview.closest('.task-list-color-control')?.querySelector('.task-list-color-helper');
+      if (helperText) {
+        helperText.textContent = 'Inheriting from pending text color (click to customize).';
+      }
+    }
+  }
+
   async function createCompletedTasksSection(list, colorConfig = {}) {
     const settings = await window.cc3Storage.getSettings();
     const completedStyling = settings.taskListColoring?.completedStyling?.[list.id] || {};
@@ -1354,7 +1383,7 @@ checkAuthAndSubscription();
       list,
       label: '',
       prefix: 'completedText',
-      currentColor: completedStyling.textColor || '#666666',
+      currentColor: completedStyling.textColor || colorConfig.text || '#666666',
       setColor: async (listId, color) => {
         await window.cc3Storage.setCompletedTextColor(listId, color);
       },
@@ -1373,11 +1402,23 @@ checkAuthAndSubscription();
             }
           }
         });
+
+        // INSTANT UPDATE: When cleared, revert to inherited color
+        const pendingTextColor = colorConfig.text;
+        updateCompletedTextPreview(listId, pendingTextColor);
       },
       toastLabel: 'Completed text color',
       messageType: 'TASK_LISTS_UPDATED',
-      helperText: 'Text color for completed tasks in this list.',
-      onColorChange: () => {},
+      helperText: completedStyling.textColor ?
+        'Custom text color for completed tasks.' :
+        'Inheriting from pending text color (click to customize).',
+      onColorChange: (value) => {
+        // INSTANT UPDATE: When custom color is set, update helper text
+        const helperText = textColorControl.querySelector('.task-list-color-helper');
+        if (helperText) {
+          helperText.textContent = 'Custom text color for completed tasks.';
+        }
+      },
     });
 
     textColorGroup.appendChild(textLabel);
@@ -1572,7 +1613,11 @@ checkAuthAndSubscription();
       toastLabel: 'Text color',
       messageType: 'TASK_LISTS_UPDATED',
       helperText: 'Overrides the auto-contrast text color for this list.',
-      onColorChange: (value) => updateSwatchDisplay(textSwatch, value, 'text'),
+      onColorChange: (value) => {
+        updateSwatchDisplay(textSwatch, value, 'text');
+        // INSTANT UPDATE: Also update completed text preview if it's inheriting
+        updateCompletedTextPreview(list.id, value);
+      },
     });
 
     controlsWrapper.appendChild(backgroundControl);
@@ -1616,6 +1661,48 @@ checkAuthAndSubscription();
       // Update both swatches to show cleared state
       updateSwatchDisplay(backgroundSwatch, null, 'background');
       updateSwatchDisplay(textSwatch, null, 'text');
+
+      // INSTANT UPDATE: Reset completed section preview to show default state
+      const completedTextPreview = document.getElementById(`completedTextPreview-${list.id}`);
+      const completedBgPreview = document.getElementById(`completedBgPreview-${list.id}`);
+
+      if (completedTextPreview) {
+        completedTextPreview.style.backgroundColor = '#666666';
+        completedTextPreview.style.backgroundImage = 'none';
+        completedTextPreview.classList.add('has-color');
+        const completedTextInput = document.getElementById(`completedTextColor-${list.id}`);
+        if (completedTextInput) completedTextInput.value = '#666666';
+
+        // Update helper text
+        const textHelper = completedTextPreview.closest('.task-list-color-control')?.querySelector('.task-list-color-helper');
+        if (textHelper) {
+          textHelper.textContent = 'Inheriting from pending text color (click to customize).';
+        }
+      }
+
+      if (completedBgPreview) {
+        completedBgPreview.style.backgroundColor = '#f3f4f6';
+        completedBgPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
+        completedBgPreview.classList.remove('has-color');
+        const completedBgInput = document.getElementById(`completedBgColor-${list.id}`);
+        if (completedBgInput) completedBgInput.value = '#4285f4';
+      }
+
+      // Reset opacity sliders to default
+      const bgOpacitySlider = document.querySelector(`input[type="range"].opacity-slider`);
+      const textOpacitySlider = document.querySelectorAll(`input[type="range"].opacity-slider`)[1];
+
+      if (bgOpacitySlider) {
+        bgOpacitySlider.value = '60';
+        const bgOpacityValue = bgOpacitySlider.nextElementSibling;
+        if (bgOpacityValue) bgOpacityValue.textContent = '60%';
+      }
+
+      if (textOpacitySlider) {
+        textOpacitySlider.value = '100';
+        const textOpacityValue = textOpacitySlider.nextElementSibling;
+        if (textOpacityValue) textOpacityValue.textContent = '100%';
+      }
 
       // Show message that refresh is needed
       showToast(`✓ "${list.title}" reset to Google default. Refresh Google Calendar to see changes.`);
@@ -1690,6 +1777,13 @@ checkAuthAndSubscription();
     }
     actions.appendChild(preview);
 
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.id = `${prefix}Color-${list.id}`;
+    colorInput.value = currentColor || '#4285f4';
+    colorInput.style.display = 'none';
+    actions.appendChild(colorInput);
+
     const colorDetails = document.createElement('div');
     colorDetails.className = 'task-list-color-details';
     colorDetails.id = `${prefix}Details-${list.id}`;
@@ -1702,13 +1796,6 @@ checkAuthAndSubscription();
         switchTaskListColorTab(list.id, tabBtn.dataset.tab, prefix);
       });
     });
-
-    const colorInput = document.createElement('input');
-    colorInput.type = 'color';
-    colorInput.id = `${prefix}Color-${list.id}`;
-    colorInput.value = currentColor || '#4285f4';
-    colorInput.style.display = 'none';
-    actions.appendChild(colorInput);
 
     const closeColorModal = () => {
       colorDetails.classList.remove('expanded');
