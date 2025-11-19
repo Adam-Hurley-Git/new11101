@@ -1675,21 +1675,27 @@ checkAuthAndSubscription();
       resetButton.style.borderColor = '#dadce0';
     };
     resetButton.onclick = async () => {
-      // Clear ALL list-level settings (pending + completed)
+      // Confirm with user before resetting
+      if (!confirm(`Reset "${list.title}" to Google's default?\n\nThis will remove:\n• Background color\n• Text color\n• Opacity settings\n• Completed task styling\n\nManually colored tasks will be preserved.\n\nYou'll need to refresh the page to see the changes.`)) {
+        return;
+      }
+
+      // Clear ALL list-level settings from storage (pending + completed)
       await Promise.all([
         window.cc3Storage.clearTaskListDefaultColor(list.id),
         window.cc3Storage.clearTaskListTextColor(list.id),
         window.cc3Storage.clearCompletedStyling(list.id),
       ]);
 
+      // Reload settings from storage
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Update pending swatches to show cleared state
+      // Update popup UI - pending swatches to show cleared state
       updateSwatchDisplay(backgroundSwatch, null, 'background');
       updateSwatchDisplay(textSwatch, null, 'text');
 
-      // Update completed section preview to show default state
+      // Update popup UI - completed section preview to show default state
       const completedTextPreview = document.getElementById(`completedTextPreview-${list.id}`);
       const completedBgPreview = document.getElementById(`completedBgPreview-${list.id}`);
 
@@ -1714,7 +1720,7 @@ checkAuthAndSubscription();
         if (completedBgInput) completedBgInput.value = '#4285f4';
       }
 
-      // Reset opacity sliders to default
+      // Update popup UI - reset opacity sliders to default
       const bgOpacitySlider = document.getElementById(`completedBgOpacity-${list.id}`);
       const bgOpacityValue = document.getElementById(`completedBgOpacityValue-${list.id}`);
       const textOpacitySlider = document.getElementById(`completedTextOpacity-${list.id}`);
@@ -1730,7 +1736,7 @@ checkAuthAndSubscription();
         textOpacityValue.textContent = '100%';
       }
 
-      // Send message to content script to unpaint tasks instantly
+      // Send message to content script to unpaint tasks (removes all our styling)
       chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
         tabs.forEach((tab) => {
           chrome.tabs.sendMessage(tab.id, {
@@ -1740,7 +1746,19 @@ checkAuthAndSubscription();
         });
       });
 
-      showToast(`✓ "${list.title}" reset to Google default (manually colored tasks preserved)`);
+      // Show success message and prompt user to refresh
+      showToast(`✓ "${list.title}" settings cleared`);
+
+      // Prompt user to refresh the page after a short delay
+      setTimeout(() => {
+        if (confirm(`✓ Settings cleared for "${list.title}"\n\nRefresh Google Calendar now to see pure Google default?\n\n(Manually colored tasks will be preserved)`)) {
+          chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
+            tabs.forEach((tab) => {
+              chrome.tabs.reload(tab.id);
+            });
+          });
+        }
+      }, 500);
     };
 
     resetButtonsContainer.appendChild(resetButton);
