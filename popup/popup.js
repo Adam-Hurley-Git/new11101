@@ -2020,38 +2020,47 @@ checkAuthAndSubscription();
         return;
       }
 
-      // Clear ONLY pending task colors (not completed styling)
-      await Promise.all([
-        window.cc3Storage.clearTaskListDefaultColor(list.id),
-        window.cc3Storage.clearTaskListTextColor(list.id),
-      ]);
+      try {
+        // Clear ONLY pending task colors (not completed styling)
+        await Promise.all([
+          window.cc3Storage.clearTaskListDefaultColor(list.id),
+          window.cc3Storage.clearTaskListTextColor(list.id),
+        ]);
 
-      // Reload settings from storage
-      settings = await window.cc3Storage.getSettings();
-      await saveSettings();
+        // Small delay to ensure storage is flushed
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-      // CRITICAL: Rebuild entire task list UI from fresh storage
-      await loadTaskLists();
+        // CRITICAL: Rebuild entire task list UI from fresh storage
+        await loadTaskLists();
 
-      // Send message to content script to unpaint tasks (removes all our styling)
-      chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
-        tabs.forEach((tab) => {
-          chrome.tabs.sendMessage(tab.id, {
-            type: 'RESET_LIST_COLORS',
-            listId: list.id,
-          });
-        });
+        // Send message to content script and reload calendar tabs
+        const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
 
-        // Auto-reload calendar tabs after a short delay (without asking)
+        // Send reset message to all calendar tabs
+        for (const tab of tabs) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              type: 'RESET_LIST_COLORS',
+              listId: list.id,
+            });
+          } catch (e) {
+            // Tab might not have content script loaded
+          }
+        }
+
+        // Reload calendar tabs after a short delay
         setTimeout(() => {
           tabs.forEach((tab) => {
             chrome.tabs.reload(tab.id);
           });
         }, 300);
-      });
 
-      // Show success message
-      showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
+        // Show success message
+        showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
+      } catch (error) {
+        console.error('[Task List Colors] Error resetting pending colors:', error);
+        showToast(`Error resetting colors. Please try again.`);
+      }
     };
 
     resetButtonsContainer.appendChild(resetPendingButton);
