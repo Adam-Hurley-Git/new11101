@@ -630,19 +630,20 @@ function colorToRgba(color, opacity = 1) {
 
 /**
  * Reverse Google's pre-fading of completed task colors.
- * Google fades completed tasks by blending with white at ~40% (60% original color).
+ * Google fades completed tasks by blending with white at ~70% (30% original color).
  * This function attempts to recover the original vibrant color.
  *
  * @param {string} fadedColor - The faded color captured from a completed task
- * @param {number} googleFade - Google's fade factor (default 0.6 = 60% of original)
+ * @param {number} googleFade - Google's fade factor (default 0.3 = 30% of original)
  * @returns {string} The unfaded color as rgb() string
  */
-function unfadeGoogleColor(fadedColor, googleFade = 0.6) {
+function unfadeGoogleColor(fadedColor, googleFade = 0.3) {
   const { r, g, b } = parseCssColorToRGB(fadedColor);
 
   // Reverse the alpha blend with white
   // Formula: faded = original * fade + white * (1 - fade)
   // Therefore: original = (faded - white * (1 - fade)) / fade
+  // Google uses ~30% of original color (70% white blend) for completed tasks
   const whiteMix = 255 * (1 - googleFade);
 
   const unfadedR = Math.min(255, Math.max(0, Math.round((r - whiteMix) / googleFade)));
@@ -825,7 +826,7 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
         const capturedWasCompleted = node.dataset.cfGoogleBgWasCompleted === 'true';
         if (capturedWasCompleted) {
           // Unfade the color to recover the original pending task color
-          bgColorToApply = unfadeGoogleColor(bgColorToApply, 0.6);
+          bgColorToApply = unfadeGoogleColor(bgColorToApply);
         }
       } else {
         // Fallback: Saved Google color not available yet, use white as default
