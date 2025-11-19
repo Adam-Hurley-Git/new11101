@@ -1007,14 +1007,53 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
   const manualColor = manualColors?.[taskId];
   if (manualColor) {
-    // Manual background color: use auto-contrast text (not list text color)
-    // unless there's an explicit override
+    // Manual background color: always preserve it, even when completed
+    // Don't let list's completed styling mode override manual colors
+
+    if (isCompleted) {
+      // For completed manual tasks: use manual color with opacity from list settings
+      // If task has no list or list has no opacity settings, find highest across all lists
+      let bgOpacity = 0.6;  // Default
+      let textOpacity = 0.6;  // Default
+
+      // First try the task's own list
+      if (completedStyling) {
+        if (completedStyling.bgOpacity !== undefined) {
+          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.6);
+        }
+        if (completedStyling.textOpacity !== undefined) {
+          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.6);
+        }
+      } else {
+        // No list for this task - find highest opacity across all lists
+        const allCompletedStyling = cache.completedStyling || {};
+        for (const listStyles of Object.values(allCompletedStyling)) {
+          if (listStyles?.bgOpacity !== undefined) {
+            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.6);
+            if (normalized > bgOpacity) bgOpacity = normalized;
+          }
+          if (listStyles?.textOpacity !== undefined) {
+            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.6);
+            if (normalized > textOpacity) textOpacity = normalized;
+          }
+        }
+      }
+
+      return {
+        backgroundColor: manualColor,
+        textColor: overrideTextColor || pickContrastingText(manualColor),
+        bgOpacity,
+        textOpacity,
+      };
+    }
+
+    // Pending manual task: full opacity
     return buildColorInfo({
       baseColor: manualColor,
       pendingTextColor: null, // Don't use list text color for manual backgrounds
       overrideTextColor,
-      isCompleted,
-      completedStyling,
+      isCompleted: false,
+      completedStyling: null,
     });
   }
 
