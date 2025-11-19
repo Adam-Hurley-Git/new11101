@@ -5276,11 +5276,7 @@ checkAuthAndSubscription();
       });
     });
 
-    // Set Day Coloring as expanded by default
-    const dayColoringHeader = document.querySelector('.section-header[data-section="day-coloring"]');
-    if (dayColoringHeader) {
-      dayColoringHeader.classList.add('expanded');
-    }
+    // All sections start collapsed by default
 
     // Toggle switch
     qs('enableDayColoring').onclick = async (e) => {
