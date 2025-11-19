@@ -1028,12 +1028,12 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: bgColor,
         textColor,
-        // Default to FULL opacity (1.0) for inherited colors
-        // User can adjust down if they want faded completed tasks
+        // Default to Google's intended opacity (0.6/60%) for completed tasks
+        // User can adjust if they want different opacity
         bgOpacity: baseColor
-          ? normalizeOpacityValue(completedStyling?.bgOpacity, 1.0) // Full color by default
+          ? normalizeOpacityValue(completedStyling?.bgOpacity, 0.6) // Google's default
           : 0,
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 1.0), // Full opacity
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Google's default
       };
     }
 
