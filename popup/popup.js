@@ -1468,7 +1468,12 @@ checkAuthAndSubscription();
         });
 
         // Update UI visibility based on mode
-        updateControlsVisibility(mode.value);
+        // Get current pending colors from storage to pass correct state
+        const currentSettings = await window.cc3Storage.getSettings();
+        const listColors = await window.cc3Storage.getTaskListColors();
+        const textColors = currentSettings?.taskListColoring?.textColors || {};
+        const currentHasPendingColors = !!(listColors[list.id] || textColors[list.id]);
+        updateControlsVisibility(mode.value, currentHasPendingColors);
 
         // Trigger repaint
         chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
