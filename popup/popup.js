@@ -2027,9 +2027,6 @@ checkAuthAndSubscription();
           window.cc3Storage.clearTaskListTextColor(list.id),
         ]);
 
-        // Small delay to ensure storage is flushed
-        await new Promise(resolve => setTimeout(resolve, 50));
-
         // CRITICAL: Rebuild entire task list UI from fresh storage
         await loadTaskLists();
 
@@ -2056,7 +2053,7 @@ checkAuthAndSubscription();
           tabs.forEach((tab) => {
             chrome.tabs.reload(tab.id);
           });
-        }, 300);
+        }, 100);
       } catch (error) {
         console.error('[Task List Colors] Error resetting pending colors:', error);
         showToast(`Error resetting colors. Please try again.`);
