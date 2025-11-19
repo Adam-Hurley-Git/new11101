@@ -1334,10 +1334,13 @@ checkAuthAndSubscription();
     // Default mode is 'google' - pure Google styling by default
     const currentMode = completedStyling.mode || 'google';
 
+    // Check if there are any pending colors to inherit
+    const hasPendingColors = !!(colorConfig.background || colorConfig.text);
+
     const modes = [
-      { value: 'google', label: 'Google', description: 'Use pure Google default styling' },
-      { value: 'inherit', label: 'Inherit', description: 'Inherit pending colors with adjustable opacity' },
-      { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity' }
+      { value: 'google', label: 'Google', description: 'Use pure Google default styling', disabled: false },
+      { value: 'inherit', label: 'Inherit', description: hasPendingColors ? 'Inherit pending colors with adjustable opacity' : 'No pending colors to inherit - set pending colors first', disabled: !hasPendingColors },
+      { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity', disabled: false }
     ];
 
     modes.forEach(mode => {
@@ -1345,6 +1348,7 @@ checkAuthAndSubscription();
       tab.type = 'button';
       tab.textContent = mode.label;
       tab.title = mode.description;
+      tab.disabled = mode.disabled;
 
       const isActive = currentMode === mode.value;
 
@@ -1355,26 +1359,28 @@ checkAuthAndSubscription();
         font-weight: 500;
         border: none;
         border-radius: 6px;
-        cursor: pointer;
+        cursor: ${mode.disabled ? 'not-allowed' : 'pointer'};
         transition: all 0.2s;
         background: ${isActive ? '#fff' : 'transparent'};
-        color: ${isActive ? '#1a73e8' : '#5f6368'};
+        color: ${mode.disabled ? '#bdc1c6' : (isActive ? '#1a73e8' : '#5f6368')};
         box-shadow: ${isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
+        opacity: ${mode.disabled ? '0.6' : '1'};
       `;
 
       tab.onmouseover = () => {
-        if (!isActive) {
+        if (!isActive && !mode.disabled) {
           tab.style.background = 'rgba(255,255,255,0.5)';
         }
       };
 
       tab.onmouseout = () => {
-        if (!isActive) {
+        if (!isActive && !mode.disabled) {
           tab.style.background = 'transparent';
         }
       };
 
       tab.onclick = async () => {
+        if (mode.disabled) return;
         await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
 
         // CRITICAL FIX: When switching to google or inherit mode, save default opacity values (60%)
