@@ -1009,27 +1009,12 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
     // Default to 'inherit' for backward compatibility
     const mode = completedStyling?.mode || 'inherit';
 
-    // MODE: Google Default - use Google's colors with adjustable opacity
+    // MODE: Google Default - pure Google styling (no extension interference)
     if (mode === 'google') {
-      // Check if user has set custom opacity (otherwise use Google's defaults)
-      const hasOpacitySettings = completedStyling &&
-        (completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
-
-      if (!hasOpacitySettings) {
-        return null; // Use pure Google default (no opacity override)
-      }
-
-      // Apply Google's default colors with custom opacity
-      // Google uses a light gray background and darker text for completed tasks
-      return {
-        backgroundColor: '#ffffff', // Google's completed task bg (white/light)
-        textColor: '#5f6368', // Google's completed task text (gray)
-        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 0.6
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 0.6
-      };
+      return null; // Always return null for pure Google default
     }
 
-    // MODE: Inherit Pending - use pending colors with adjustable opacity (default to Google's)
+    // MODE: Inherit Pending - use pending colors with adjustable opacity
     if (mode === 'inherit') {
       // Need pending background OR text color to apply inheritance
       if (!baseColor && !pendingTextColor && !overrideTextColor) {
@@ -1043,11 +1028,12 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: bgColor,
         textColor,
-        // Default to Google's opacity (0.6) if not set by user
+        // Default to FULL opacity (1.0) for inherited colors
+        // User can adjust down if they want faded completed tasks
         bgOpacity: baseColor
-          ? normalizeOpacityValue(completedStyling?.bgOpacity, 0.6) // Changed from 1 to 0.6
+          ? normalizeOpacityValue(completedStyling?.bgOpacity, 1.0) // Full color by default
           : 0,
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 1.0), // Full opacity
       };
     }
 

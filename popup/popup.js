@@ -1364,8 +1364,8 @@ checkAuthAndSubscription();
     const currentMode = completedStyling.mode || 'inherit';
 
     const modes = [
-      { value: 'google', label: 'Google', description: 'Google colors with adjustable opacity' },
-      { value: 'inherit', label: 'Inherit', description: 'Pending colors with adjustable opacity' },
+      { value: 'google', label: 'Google', description: 'Use pure Google default styling' },
+      { value: 'inherit', label: 'Inherit', description: 'Inherit pending colors with adjustable opacity' },
       { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity' }
     ];
 
@@ -1446,11 +1446,11 @@ checkAuthAndSubscription();
       const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
 
       if (mode === 'google') {
-        // Show only opacity sliders for Google default
+        // Hide everything for Google default (pure Google styling)
         if (bgColorGroup) bgColorGroup.style.display = 'none';
         if (textColorGroup) textColorGroup.style.display = 'none';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'none';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'none';
       } else if (mode === 'inherit') {
         // Show only opacity sliders for inherit mode
         if (bgColorGroup) bgColorGroup.style.display = 'none';
@@ -1611,8 +1611,8 @@ checkAuthAndSubscription();
     bgOpacitySlider.type = 'range';
     bgOpacitySlider.min = '0';
     bgOpacitySlider.max = '100';
-    // Default to Google's opacity (0.6 = 60%) if not set
-    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity !== undefined ? completedStyling.bgOpacity : 0.6) * 100));
+    // Default to full opacity (100%) if not set - user can adjust down if desired
+    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity !== undefined ? completedStyling.bgOpacity : 1.0) * 100));
     bgOpacitySlider.className = 'opacity-slider';
     bgOpacitySlider.id = `completedBgOpacity-${list.id}`;
 
@@ -1660,8 +1660,8 @@ checkAuthAndSubscription();
     textOpacitySlider.type = 'range';
     textOpacitySlider.min = '0';
     textOpacitySlider.max = '100';
-    // FIX: Default text opacity is 0.6 (60%), not 1.0 (100%) - matches Google's default
-    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity !== undefined ? completedStyling.textOpacity : 0.6) * 100));
+    // Default to full opacity (100%) if not set - user can adjust down if desired
+    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity !== undefined ? completedStyling.textOpacity : 1.0) * 100));
     textOpacitySlider.className = 'opacity-slider';
     textOpacitySlider.id = `completedTextOpacity-${list.id}`;
 
