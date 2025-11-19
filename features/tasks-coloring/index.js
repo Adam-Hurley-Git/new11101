@@ -525,6 +525,7 @@ let repaintQueued = false;
 let lastClickedTaskId = null;
 let lastRepaintTime = 0;
 let repaintCount = 0;
+let isResetting = false; // Flag to prevent repaint during reset
 
 /**
  * Capture Google's original colors from tasks BEFORE we paint them
@@ -711,11 +712,13 @@ function clearPaint(node) {
 
 /**
  * Unpaint all tasks from a specific list - returns them to Google's default styling
- * Works instantly without page refresh
+ * This removes ALL extension styling and lets Google's default CSS take over
  * ONLY unpaint tasks that use list default colors - preserve manually colored tasks
+ *
+ * IMPORTANT: This does NOT trigger a repaint - user must refresh page to see pure Google default
  */
 async function unpaintTasksFromList(listId) {
-  // CRITICAL: Invalidate cache FIRST to ensure fresh data after storage clear
+  // CRITICAL: Invalidate cache FIRST to ensure we read fresh data after storage clear
   invalidateColorCache();
 
   // Find all task elements on the page
@@ -745,25 +748,24 @@ async function unpaintTasksFromList(listId) {
 
       const paintTarget = getPaintTarget(taskEl);
       if (paintTarget) {
-        // FIX: Use clearPaint instead of non-existent unpaintElement
+        // Remove ALL extension-added styles - let Google's default CSS take over
         clearPaint(paintTarget);
-        // Delete saved Google backgrounds to force recapture on next paint
+
+        // CRITICAL: Delete saved Google backgrounds to prevent them from being reapplied
         delete paintTarget.dataset.cfGoogleBg;
         delete paintTarget.dataset.cfGoogleBorder;
         delete paintTarget.dataset.cfGoogleText;
+
         unpaintedCount++;
       }
     }
   }
 
   console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}, preserved ${skippedManualCount} manually colored tasks`);
+  console.log(`[ColorKit] User should refresh page to see pure Google default`);
 
-  // Trigger repaint after a short delay to ensure correct state based on cleared storage
-  // This prevents stale colors from being reapplied
-  setTimeout(() => {
-    invalidateColorCache();
-    repaintSoon(true); // Immediate repaint with bypassed throttling
-  }, 100);
+  // DO NOT trigger repaint - that would reapply colors from potentially stale cache
+  // User will refresh page, and with storage cleared, pure Google default will show
 
   return unpaintedCount;
 }
@@ -1471,15 +1473,24 @@ function initTasksColoring() {
       (changes['cf.taskColors'] || changes['cf.taskListColors'] || changes['cf.taskListTextColors'])
     ) {
       invalidateColorCache();
-      repaintSoon(); // Repaint with new colors
+      // CRITICAL: Don't repaint during reset - prevents reapplying stale colors
+      if (!isResetting) {
+        repaintSoon(); // Repaint with new colors
+      }
     }
     if (area === 'sync' && changes.settings) {
       invalidateColorCache();
-      repaintSoon();
+      // CRITICAL: Don't repaint during reset
+      if (!isResetting) {
+        repaintSoon();
+      }
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
       invalidateColorCache();
-      repaintSoon(); // Repaint with new mappings
+      // CRITICAL: Don't repaint during reset
+      if (!isResetting) {
+        repaintSoon(); // Repaint with new mappings
+      }
     }
   });
 
@@ -1497,12 +1508,20 @@ function initTasksColoring() {
     }
 
     if (message.type === 'RESET_LIST_COLORS') {
+      // Set flag to prevent storage listener from triggering repaint
+      isResetting = true;
+
       // Unpaint all tasks from the specified list
       const { listId } = message;
       if (listId) {
         await unpaintTasksFromList(listId);
         console.log(`[ColorKit] Reset colors for list: ${listId}`);
       }
+
+      // Reset flag after a delay (page will reload anyway)
+      setTimeout(() => {
+        isResetting = false;
+      }, 2000);
     }
   });
 

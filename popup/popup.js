@@ -1675,62 +1675,26 @@ checkAuthAndSubscription();
       resetButton.style.borderColor = '#dadce0';
     };
     resetButton.onclick = async () => {
-      // Clear ALL list-level settings (pending + completed)
+      // Confirm with user before resetting
+      if (!confirm(`Reset "${list.title}" to Google's default?\n\nThis will remove:\n• Background color\n• Text color\n• Opacity settings\n• Completed task styling\n\nManually colored tasks will be preserved.\n\nCalendar page will refresh automatically.`)) {
+        return;
+      }
+
+      // Clear ALL list-level settings from storage (pending + completed)
       await Promise.all([
         window.cc3Storage.clearTaskListDefaultColor(list.id),
         window.cc3Storage.clearTaskListTextColor(list.id),
         window.cc3Storage.clearCompletedStyling(list.id),
       ]);
 
+      // Reload settings from storage
       settings = await window.cc3Storage.getSettings();
       await saveSettings();
 
-      // Update pending swatches to show cleared state
-      updateSwatchDisplay(backgroundSwatch, null, 'background');
-      updateSwatchDisplay(textSwatch, null, 'text');
+      // CRITICAL: Rebuild entire task list UI from fresh storage
+      await loadTaskLists();
 
-      // Update completed section preview to show default state
-      const completedTextPreview = document.getElementById(`completedTextPreview-${list.id}`);
-      const completedBgPreview = document.getElementById(`completedBgPreview-${list.id}`);
-
-      if (completedTextPreview) {
-        completedTextPreview.style.backgroundColor = '#666666';
-        completedTextPreview.style.backgroundImage = 'none';
-        completedTextPreview.classList.add('has-color');
-        const completedTextInput = document.getElementById(`completedTextColor-${list.id}`);
-        if (completedTextInput) completedTextInput.value = '#666666';
-
-        const textHelper = completedTextPreview.closest('.task-list-color-control')?.querySelector('.task-list-color-helper');
-        if (textHelper) {
-          textHelper.textContent = 'Inheriting from pending text color (click to customize).';
-        }
-      }
-
-      if (completedBgPreview) {
-        completedBgPreview.style.backgroundColor = '#f3f4f6';
-        completedBgPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
-        completedBgPreview.classList.remove('has-color');
-        const completedBgInput = document.getElementById(`completedBgColor-${list.id}`);
-        if (completedBgInput) completedBgInput.value = '#4285f4';
-      }
-
-      // Reset opacity sliders to default
-      const bgOpacitySlider = document.getElementById(`completedBgOpacity-${list.id}`);
-      const bgOpacityValue = document.getElementById(`completedBgOpacityValue-${list.id}`);
-      const textOpacitySlider = document.getElementById(`completedTextOpacity-${list.id}`);
-      const textOpacityValue = document.getElementById(`completedTextOpacityValue-${list.id}`);
-
-      if (bgOpacitySlider && bgOpacityValue) {
-        bgOpacitySlider.value = '60';
-        bgOpacityValue.textContent = '60%';
-      }
-
-      if (textOpacitySlider && textOpacityValue) {
-        textOpacitySlider.value = '100';
-        textOpacityValue.textContent = '100%';
-      }
-
-      // Send message to content script to unpaint tasks instantly
+      // Send message to content script to unpaint tasks (removes all our styling)
       chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
         tabs.forEach((tab) => {
           chrome.tabs.sendMessage(tab.id, {
@@ -1738,9 +1702,17 @@ checkAuthAndSubscription();
             listId: list.id,
           });
         });
+
+        // Auto-reload calendar tabs after a short delay (without asking)
+        setTimeout(() => {
+          tabs.forEach((tab) => {
+            chrome.tabs.reload(tab.id);
+          });
+        }, 300);
       });
 
-      showToast(`✓ "${list.title}" reset to Google default (manually colored tasks preserved)`);
+      // Show success message
+      showToast(`✓ "${list.title}" reset to Google default - refreshing calendar...`);
     };
 
     resetButtonsContainer.appendChild(resetButton);
