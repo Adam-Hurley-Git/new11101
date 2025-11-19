@@ -1434,7 +1434,7 @@ checkAuthAndSubscription();
       };
 
       tab.onclick = async () => {
-        if (mode.disabled) return;
+        if (tab.disabled) return; // Use current disabled state, not closure value
         await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
 
         // CRITICAL FIX: When switching to google or inherit mode, save default opacity values (60%)
