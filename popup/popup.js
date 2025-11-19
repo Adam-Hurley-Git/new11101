@@ -1334,11 +1334,116 @@ checkAuthAndSubscription();
     header.appendChild(title);
     header.appendChild(toggleWrapper);
 
+    // Mode selector (Google Default / Inherit Pending / Custom)
+    const modeSelector = document.createElement('div');
+    modeSelector.className = 'completed-mode-selector';
+    modeSelector.style.cssText = `
+      margin: 12px 0;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    `;
+
+    const modeLabel = document.createElement('div');
+    modeLabel.style.cssText = `
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 8px;
+      font-weight: 500;
+    `;
+    modeLabel.textContent = 'Styling Mode:';
+
+    const modeOptions = document.createElement('div');
+    modeOptions.style.cssText = `
+      display: flex;
+      gap: 12px;
+    `;
+
+    // Default mode is 'inherit' to maintain current behavior
+    const currentMode = completedStyling.mode || 'inherit';
+
+    const modes = [
+      { value: 'google', label: 'Google Default', description: 'Use Google\'s original styling' },
+      { value: 'inherit', label: 'Inherit Pending', description: 'Use pending colors with custom opacity' },
+      { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity' }
+    ];
+
+    modes.forEach(mode => {
+      const optionWrapper = document.createElement('label');
+      optionWrapper.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        font-size: 12px;
+      `;
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = `completed-mode-${list.id}`;
+      radio.value = mode.value;
+      radio.checked = currentMode === mode.value;
+      radio.style.cursor = 'pointer';
+
+      radio.onchange = async () => {
+        await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
+
+        // Update UI visibility based on mode
+        updateControlsVisibility(mode.value);
+
+        // Trigger repaint
+        chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
+
+        // Show feedback
+        showToast(`Completed tasks: ${mode.label}`);
+      };
+
+      const labelText = document.createElement('span');
+      labelText.textContent = mode.label;
+      labelText.title = mode.description;
+
+      optionWrapper.appendChild(radio);
+      optionWrapper.appendChild(labelText);
+      modeOptions.appendChild(optionWrapper);
+    });
+
+    modeSelector.appendChild(modeLabel);
+    modeSelector.appendChild(modeOptions);
+
     // Controls container
     const controls = document.createElement('div');
     controls.className = 'completed-tasks-controls';
     if (!completedStyling.enabled) {
       controls.classList.add('completed-tasks-disabled');
+    }
+
+    // Function to update visibility based on mode
+    function updateControlsVisibility(mode) {
+      // Get all control elements
+      const bgColorGroup = controls.querySelector('.completed-color-group:nth-child(1)');
+      const textColorGroup = controls.querySelector('.completed-color-group:nth-child(2)');
+      const bgOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(3)');
+      const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
+
+      if (mode === 'google') {
+        // Hide everything for Google default
+        if (bgColorGroup) bgColorGroup.style.display = 'none';
+        if (textColorGroup) textColorGroup.style.display = 'none';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'none';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'none';
+      } else if (mode === 'inherit') {
+        // Show only opacity sliders for inherit mode
+        if (bgColorGroup) bgColorGroup.style.display = 'none';
+        if (textColorGroup) textColorGroup.style.display = 'none';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+      } else {
+        // Show everything for custom mode
+        if (bgColorGroup) bgColorGroup.style.display = 'block';
+        if (textColorGroup) textColorGroup.style.display = 'block';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+      }
     }
 
     // Background Color
@@ -1646,7 +1751,11 @@ checkAuthAndSubscription();
 
     // Assemble section
     section.appendChild(header);
+    section.appendChild(modeSelector);
     section.appendChild(controls);
+
+    // Apply initial visibility based on current mode
+    updateControlsVisibility(currentMode);
 
     return section;
   }
