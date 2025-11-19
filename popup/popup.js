@@ -1259,12 +1259,14 @@ checkAuthAndSubscription();
     // Update the inherit tab's disabled state
     const modeTabs = document.getElementById(`completedModeTabs-${listId}`);
     if (modeTabs) {
-      const inheritTab = modeTabs.querySelector('button:nth-child(2)'); // Inherit is second tab
+      // Use data attribute to find inherit tab reliably
+      const inheritTab = modeTabs.querySelector('button[data-mode="inherit"]');
       if (inheritTab) {
+        const isActive = inheritTab.dataset.active === 'true';
         inheritTab.disabled = !hasPendingColors;
         inheritTab.style.cursor = hasPendingColors ? 'pointer' : 'not-allowed';
         inheritTab.style.color = !hasPendingColors ? '#bdc1c6' :
-          (inheritTab.style.background === 'rgb(255, 255, 255)' ? '#1a73e8' : '#5f6368');
+          (isActive ? '#1a73e8' : '#5f6368');
         inheritTab.style.opacity = hasPendingColors ? '1' : '0.6';
         inheritTab.title = hasPendingColors ?
           'Inherit pending colors with adjustable opacity' :
@@ -1278,9 +1280,9 @@ checkAuthAndSubscription();
       const bgOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(3)');
       const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
 
-      // Check if inherit mode is active
-      const inheritTab = modeTabs?.querySelector('button:nth-child(2)');
-      const isInheritActive = inheritTab && inheritTab.style.background === 'rgb(255, 255, 255)';
+      // Check if inherit mode is active using data attribute
+      const inheritTab = modeTabs?.querySelector('button[data-mode="inherit"]');
+      const isInheritActive = inheritTab && inheritTab.dataset.active === 'true';
 
       if (isInheritActive) {
         if (bgOpacityGroup) {
@@ -1397,8 +1399,12 @@ checkAuthAndSubscription();
       tab.textContent = mode.label;
       tab.title = mode.description;
       tab.disabled = mode.disabled;
+      tab.dataset.mode = mode.value;
 
       const isActive = currentMode === mode.value;
+      if (isActive) {
+        tab.dataset.active = 'true';
+      }
 
       tab.style.cssText = `
         flex: 1;
@@ -1428,7 +1434,7 @@ checkAuthAndSubscription();
       };
 
       tab.onclick = async () => {
-        if (mode.disabled) return;
+        if (tab.disabled) return; // Use current disabled state, not closure value
         await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
 
         // CRITICAL FIX: When switching to google or inherit mode, save default opacity values (60%)
@@ -1448,16 +1454,26 @@ checkAuthAndSubscription();
           }
         }
 
-        // Update all tabs' styles
+        // Update all tabs' styles and active state
         modeTabs.querySelectorAll('button').forEach(btn => {
-          const isNowActive = btn.textContent === mode.label;
+          const isNowActive = btn.dataset.mode === mode.value;
           btn.style.background = isNowActive ? '#fff' : 'transparent';
-          btn.style.color = isNowActive ? '#1a73e8' : '#5f6368';
+          btn.style.color = btn.disabled ? '#bdc1c6' : (isNowActive ? '#1a73e8' : '#5f6368');
           btn.style.boxShadow = isNowActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+          if (isNowActive) {
+            btn.dataset.active = 'true';
+          } else {
+            delete btn.dataset.active;
+          }
         });
 
         // Update UI visibility based on mode
-        updateControlsVisibility(mode.value);
+        // Get current pending colors from storage to pass correct state
+        const currentSettings = await window.cc3Storage.getSettings();
+        const listColors = await window.cc3Storage.getTaskListColors();
+        const textColors = currentSettings?.taskListColoring?.textColors || {};
+        const currentHasPendingColors = !!(listColors[list.id] || textColors[list.id]);
+        updateControlsVisibility(mode.value, currentHasPendingColors);
 
         // Trigger repaint
         chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
@@ -2027,8 +2043,8 @@ checkAuthAndSubscription();
       ]);
 
       // Reload settings from storage
-      settings = await window.cc3Storage.getSettings();
-      await saveSettings();
+      const settings = await window.cc3Storage.getSettings();
+      await chrome.storage.sync.set({ settings });
 
       // CRITICAL: Rebuild entire task list UI from fresh storage
       await loadTaskLists();
