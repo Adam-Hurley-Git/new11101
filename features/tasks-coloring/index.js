@@ -1005,6 +1005,38 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isCompleted, completedStyling }) {
   // COMPLETED TASKS
   if (isCompleted) {
+    // Check mode: 'google' | 'inherit' | 'custom'
+    // Default to 'inherit' for backward compatibility
+    const mode = completedStyling?.mode || 'inherit';
+
+    // MODE: Google Default - return null (use pure Google styling)
+    if (mode === 'google') {
+      return null;
+    }
+
+    // MODE: Inherit Pending - use pending colors with custom opacity
+    if (mode === 'inherit') {
+      // Need pending background OR text color to apply inheritance
+      if (!baseColor && !pendingTextColor && !overrideTextColor) {
+        return null; // No pending colors to inherit - use Google default
+      }
+
+      const bgColor = baseColor || 'rgba(255, 255, 255, 0)'; // Transparent if no pending bg
+      const textColor = overrideTextColor || pendingTextColor ||
+                       (baseColor ? pickContrastingText(baseColor) : '#5f6368');
+
+      return {
+        backgroundColor: bgColor,
+        textColor,
+        // Use custom opacity if set, otherwise default (1 for bg, 0.6 for text to match Google)
+        bgOpacity: baseColor
+          ? normalizeOpacityValue(completedStyling?.bgOpacity, 1)
+          : 0,
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
+      };
+    }
+
+    // MODE: Custom - fully custom colors and opacity
     // Check if ANY custom completed styling is set
     const hasCustomCompletedStyling = completedStyling &&
       (completedStyling.bgColor || completedStyling.textColor ||
