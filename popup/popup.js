@@ -1414,11 +1414,11 @@ checkAuthAndSubscription();
       const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
 
       if (mode === 'google') {
-        // Hide everything for Google default (pure Google styling)
+        // Google mode: Show opacity sliders to adjust Google's default colors' opacity
         if (bgColorGroup) bgColorGroup.style.display = 'none';
         if (textColorGroup) textColorGroup.style.display = 'none';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'none';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'none';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
       } else if (mode === 'inherit') {
         // Show only opacity sliders for inherit mode
         if (bgColorGroup) bgColorGroup.style.display = 'none';

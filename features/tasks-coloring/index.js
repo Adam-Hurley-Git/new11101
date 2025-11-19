@@ -774,7 +774,14 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   if (!node || !color) return;
 
   node.classList.add(MARK);
-  const text = textColorOverride || pickContrastingText(color);
+  let text = textColorOverride || pickContrastingText(color);
+
+  // CRITICAL FIX: If text is transparent (signals "use Google's text color")
+  // AND we have a saved Google text color, use that with custom opacity
+  if (isTransparentColor(text) && node.dataset.cfGoogleText) {
+    text = node.dataset.cfGoogleText;
+  }
+
   node.dataset.cfTaskTextColor = textColorOverride ? text.toLowerCase() : '';
 
   const textColorValue = colorToRgba(text, textOpacity);
@@ -1010,9 +1017,24 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
     // Default to 'google' - pure Google styling unless user selects otherwise
     const mode = completedStyling?.mode || 'google';
 
-    // MODE: Google Default - pure Google styling (no extension interference)
+    // MODE: Google Default - Google's colors with adjustable opacity
     if (mode === 'google') {
-      return null; // Always return null for pure Google default
+      // Check if user has adjusted opacity sliders
+      const hasOpacitySettings = completedStyling &&
+        (completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
+
+      if (!hasOpacitySettings) {
+        return null; // Pure Google default (no painting)
+      }
+
+      // Apply user's custom opacity to Google's saved original colors
+      // Use transparent to signal "use saved Google background from dataset.cfGoogleBg"
+      return {
+        backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent = use Google's original bg
+        textColor: 'rgba(0, 0, 0, 0)', // Transparent = use Google's original text (will be handled in applyPaint)
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 60%
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 60%
+      };
     }
 
     // MODE: Inherit Pending - use pending colors with adjustable opacity
@@ -1022,19 +1044,18 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         return null; // No pending colors to inherit - use Google default
       }
 
-      const bgColor = baseColor || 'rgba(255, 255, 255, 0)'; // Transparent if no pending bg
+      // Use pending bg if available, otherwise transparent to signal "use saved Google bg"
+      const bgColor = baseColor || 'rgba(255, 255, 255, 0)';
       const textColor = overrideTextColor || pendingTextColor ||
-                       (baseColor ? pickContrastingText(baseColor) : '#5f6368');
+                       (baseColor ? pickContrastingText(baseColor) : 'rgba(0, 0, 0, 0)'); // Transparent = use saved Google text
 
       return {
         backgroundColor: bgColor,
         textColor,
-        // Default to Google's intended opacity (0.6/60%) for completed tasks
-        // User can adjust if they want different opacity
-        bgOpacity: baseColor
-          ? normalizeOpacityValue(completedStyling?.bgOpacity, 0.6) // Google's default
-          : 0,
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Google's default
+        // Always allow opacity adjustment (even when using Google's default bg)
+        // Default to Google's intended 60% opacity
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6),
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
       };
     }
 
