@@ -525,6 +525,7 @@ let repaintQueued = false;
 let lastClickedTaskId = null;
 let lastRepaintTime = 0;
 let repaintCount = 0;
+let isResetting = false; // Flag to prevent repaint during reset
 
 /**
  * Capture Google's original colors from tasks BEFORE we paint them
@@ -1472,15 +1473,24 @@ function initTasksColoring() {
       (changes['cf.taskColors'] || changes['cf.taskListColors'] || changes['cf.taskListTextColors'])
     ) {
       invalidateColorCache();
-      repaintSoon(); // Repaint with new colors
+      // CRITICAL: Don't repaint during reset - prevents reapplying stale colors
+      if (!isResetting) {
+        repaintSoon(); // Repaint with new colors
+      }
     }
     if (area === 'sync' && changes.settings) {
       invalidateColorCache();
-      repaintSoon();
+      // CRITICAL: Don't repaint during reset
+      if (!isResetting) {
+        repaintSoon();
+      }
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
       invalidateColorCache();
-      repaintSoon(); // Repaint with new mappings
+      // CRITICAL: Don't repaint during reset
+      if (!isResetting) {
+        repaintSoon(); // Repaint with new mappings
+      }
     }
   });
 
@@ -1498,12 +1508,20 @@ function initTasksColoring() {
     }
 
     if (message.type === 'RESET_LIST_COLORS') {
+      // Set flag to prevent storage listener from triggering repaint
+      isResetting = true;
+
       // Unpaint all tasks from the specified list
       const { listId } = message;
       if (listId) {
         await unpaintTasksFromList(listId);
         console.log(`[ColorKit] Reset colors for list: ${listId}`);
       }
+
+      // Reset flag after a delay (page will reload anyway)
+      setTimeout(() => {
+        isResetting = false;
+      }, 2000);
     }
   });
 
