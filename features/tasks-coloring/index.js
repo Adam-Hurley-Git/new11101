@@ -1007,8 +1007,8 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
   // COMPLETED TASKS
   if (isCompleted) {
     // Check mode: 'google' | 'inherit' | 'custom'
-    // Default to 'inherit' for backward compatibility
-    const mode = completedStyling?.mode || 'inherit';
+    // Default to 'google' - pure Google styling unless user selects otherwise
+    const mode = completedStyling?.mode || 'google';
 
     // MODE: Google Default - pure Google styling (no extension interference)
     if (mode === 'google') {
