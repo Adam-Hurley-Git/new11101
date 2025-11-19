@@ -1391,6 +1391,18 @@ checkAuthAndSubscription();
         // Trigger repaint
         chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
 
+        // Force refresh calendar tabs when switching to Google mode to ensure it works correctly
+        if (mode.value === 'google') {
+          chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
+            // Auto-reload calendar tabs after a short delay
+            setTimeout(() => {
+              tabs.forEach((tab) => {
+                chrome.tabs.reload(tab.id);
+              });
+            }, 300);
+          });
+        }
+
         // Show feedback
         showToast(`Completed tasks: ${mode.label} mode`);
       };
