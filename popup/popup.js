@@ -1338,10 +1338,7 @@ checkAuthAndSubscription();
     const modeSelector = document.createElement('div');
     modeSelector.className = 'completed-mode-selector';
     modeSelector.style.cssText = `
-      margin: 12px 0;
-      padding: 8px 12px;
-      background: #f8f9fa;
-      border-radius: 6px;
+      margin: 12px 0 16px 0;
     `;
 
     const modeLabel = document.createElement('div');
@@ -1353,40 +1350,69 @@ checkAuthAndSubscription();
     `;
     modeLabel.textContent = 'Styling Mode:';
 
-    const modeOptions = document.createElement('div');
-    modeOptions.style.cssText = `
+    // Tab-style buttons container
+    const modeTabs = document.createElement('div');
+    modeTabs.style.cssText = `
       display: flex;
-      gap: 12px;
+      gap: 4px;
+      background: #f1f3f4;
+      padding: 4px;
+      border-radius: 8px;
     `;
 
     // Default mode is 'inherit' to maintain current behavior
     const currentMode = completedStyling.mode || 'inherit';
 
     const modes = [
-      { value: 'google', label: 'Google Default', description: 'Use Google\'s original styling' },
-      { value: 'inherit', label: 'Inherit Pending', description: 'Use pending colors with custom opacity' },
+      { value: 'google', label: 'Google', description: 'Google colors with adjustable opacity' },
+      { value: 'inherit', label: 'Inherit', description: 'Pending colors with adjustable opacity' },
       { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity' }
     ];
 
     modes.forEach(mode => {
-      const optionWrapper = document.createElement('label');
-      optionWrapper.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.textContent = mode.label;
+      tab.title = mode.description;
+
+      const isActive = currentMode === mode.value;
+
+      tab.style.cssText = `
+        flex: 1;
+        padding: 6px 12px;
         font-size: 12px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: ${isActive ? '#fff' : 'transparent'};
+        color: ${isActive ? '#1a73e8' : '#5f6368'};
+        box-shadow: ${isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};
       `;
 
-      const radio = document.createElement('input');
-      radio.type = 'radio';
-      radio.name = `completed-mode-${list.id}`;
-      radio.value = mode.value;
-      radio.checked = currentMode === mode.value;
-      radio.style.cursor = 'pointer';
+      tab.onmouseover = () => {
+        if (!isActive) {
+          tab.style.background = 'rgba(255,255,255,0.5)';
+        }
+      };
 
-      radio.onchange = async () => {
+      tab.onmouseout = () => {
+        if (!isActive) {
+          tab.style.background = 'transparent';
+        }
+      };
+
+      tab.onclick = async () => {
         await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
+
+        // Update all tabs' styles
+        modeTabs.querySelectorAll('button').forEach(btn => {
+          const isNowActive = btn.textContent === mode.label;
+          btn.style.background = isNowActive ? '#fff' : 'transparent';
+          btn.style.color = isNowActive ? '#1a73e8' : '#5f6368';
+          btn.style.boxShadow = isNowActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none';
+        });
 
         // Update UI visibility based on mode
         updateControlsVisibility(mode.value);
@@ -1395,20 +1421,14 @@ checkAuthAndSubscription();
         chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
 
         // Show feedback
-        showToast(`Completed tasks: ${mode.label}`);
+        showToast(`Completed tasks: ${mode.label} mode`);
       };
 
-      const labelText = document.createElement('span');
-      labelText.textContent = mode.label;
-      labelText.title = mode.description;
-
-      optionWrapper.appendChild(radio);
-      optionWrapper.appendChild(labelText);
-      modeOptions.appendChild(optionWrapper);
+      modeTabs.appendChild(tab);
     });
 
     modeSelector.appendChild(modeLabel);
-    modeSelector.appendChild(modeOptions);
+    modeSelector.appendChild(modeTabs);
 
     // Controls container
     const controls = document.createElement('div');
@@ -1426,11 +1446,11 @@ checkAuthAndSubscription();
       const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
 
       if (mode === 'google') {
-        // Hide everything for Google default
+        // Show only opacity sliders for Google default
         if (bgColorGroup) bgColorGroup.style.display = 'none';
         if (textColorGroup) textColorGroup.style.display = 'none';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'none';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'none';
+        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
+        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
       } else if (mode === 'inherit') {
         // Show only opacity sliders for inherit mode
         if (bgColorGroup) bgColorGroup.style.display = 'none';
@@ -1591,7 +1611,8 @@ checkAuthAndSubscription();
     bgOpacitySlider.type = 'range';
     bgOpacitySlider.min = '0';
     bgOpacitySlider.max = '100';
-    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity || 0.6) * 100));
+    // Default to Google's opacity (0.6 = 60%) if not set
+    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity !== undefined ? completedStyling.bgOpacity : 0.6) * 100));
     bgOpacitySlider.className = 'opacity-slider';
     bgOpacitySlider.id = `completedBgOpacity-${list.id}`;
 
