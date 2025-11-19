@@ -2027,36 +2027,29 @@ checkAuthAndSubscription();
           window.cc3Storage.clearTaskListTextColor(list.id),
         ]);
 
-        // Small delay to ensure storage operations complete
-        await new Promise(resolve => setTimeout(resolve, 20));
+        // Show success message IMMEDIATELY after clearing
+        showToast(`✓ "${list.title}" pending tasks reset`);
 
-        // CRITICAL: Rebuild entire task list UI from fresh storage
-        await loadTaskLists();
-
-        // Send message to content script
+        // Get calendar tabs for refresh
         const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
 
-        // Send reset message to all calendar tabs
-        for (const tab of tabs) {
-          try {
-            await chrome.tabs.sendMessage(tab.id, {
+        // Run UI rebuild and tab messages in parallel for speed
+        await Promise.all([
+          // Rebuild popup UI
+          loadTaskLists(),
+          // Send reset messages to all calendar tabs
+          Promise.all(tabs.map(tab =>
+            chrome.tabs.sendMessage(tab.id, {
               type: 'RESET_LIST_COLORS',
               listId: list.id,
-            });
-          } catch (e) {
-            // Tab might not have content script loaded
-          }
-        }
+            }).catch(() => {}) // Ignore errors for tabs without content script
+          ))
+        ]);
 
-        // Show success message
-        showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
-
-        // Force refresh calendar tabs LAST after all other processes complete
-        setTimeout(() => {
-          tabs.forEach((tab) => {
-            chrome.tabs.reload(tab.id);
-          });
-        }, 100);
+        // Force refresh calendar tabs LAST
+        tabs.forEach((tab) => {
+          chrome.tabs.reload(tab.id);
+        });
       } catch (error) {
         console.error('[Task List Colors] Error resetting pending colors:', error);
         showToast(`Error resetting colors. Please try again.`);
