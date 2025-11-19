@@ -1353,8 +1353,9 @@ checkAuthAndSubscription();
       list,
       label: '',
       prefix: 'completedBg',
-      // FIX: Pass null when no custom color - shows hashed pattern to indicate "no choice made"
-      currentColor: completedStyling.bgColor || null,
+      // FIX: Show inherited pending color if set, else show hashed pattern
+      // Custom color > Inherited pending color > Hashed pattern (default Google)
+      currentColor: completedStyling.bgColor || (colorConfig.background ? colorConfig.background : null),
       inheritedColor: colorConfig.background || '#cccccc', // Fallback for color picker
       setColor: async (listId, color) => {
         await window.cc3Storage.setCompletedBgColor(listId, color);
@@ -1375,19 +1376,27 @@ checkAuthAndSubscription();
           }
         });
 
-        // INSTANT UPDATE: Show hashed pattern when cleared
+        // INSTANT UPDATE: Show inherited color or hashed pattern
         const completedBgPreview = document.getElementById(`completedBgPreview-${listId}`);
         if (completedBgPreview) {
-          completedBgPreview.style.backgroundColor = '#f3f4f6';
-          completedBgPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
-          completedBgPreview.classList.remove('has-color');
+          if (colorConfig.background) {
+            // Show inherited color from pending
+            completedBgPreview.style.backgroundColor = colorConfig.background;
+            completedBgPreview.style.backgroundImage = 'none';
+            completedBgPreview.classList.add('has-color');
+          } else {
+            // Show hashed pattern (default Google)
+            completedBgPreview.style.backgroundColor = '#f3f4f6';
+            completedBgPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
+            completedBgPreview.classList.remove('has-color');
+          }
         }
       },
       toastLabel: 'Completed card color',
       messageType: 'TASK_LISTS_UPDATED',
       helperText: completedStyling.bgColor ?
         'Custom background color for completed tasks.' :
-        'No custom color set (click to customize).',
+        (colorConfig.background ? 'Inheriting from pending color (click to customize).' : 'No custom color set (click to customize).'),
       onColorChange: () => {},
     });
 
@@ -1406,8 +1415,9 @@ checkAuthAndSubscription();
       list,
       label: '',
       prefix: 'completedText',
-      // FIX: Pass null when no custom color - shows hashed pattern to indicate "no choice made"
-      currentColor: completedStyling.textColor || null,
+      // FIX: Show inherited pending color if set, else show hashed pattern
+      // Custom color > Inherited pending color > Hashed pattern (default Google)
+      currentColor: completedStyling.textColor || (colorConfig.text ? colorConfig.text : null),
       inheritedColor: colorConfig.text || '#666666', // Fallback for color picker
       setColor: async (listId, color) => {
         await window.cc3Storage.setCompletedTextColor(listId, color);
@@ -1428,15 +1438,27 @@ checkAuthAndSubscription();
           }
         });
 
-        // INSTANT UPDATE: When cleared, revert to hashed pattern
-        const pendingTextColor = colorConfig.text;
-        updateCompletedTextPreview(listId, pendingTextColor, true); // Pass true to show hashed pattern
+        // INSTANT UPDATE: Show inherited color or hashed pattern
+        const completedTextPreview = document.getElementById(`completedTextPreview-${listId}`);
+        if (completedTextPreview) {
+          if (colorConfig.text) {
+            // Show inherited color from pending
+            completedTextPreview.style.backgroundColor = colorConfig.text;
+            completedTextPreview.style.backgroundImage = 'none';
+            completedTextPreview.classList.add('has-color');
+          } else {
+            // Show hashed pattern (default Google)
+            completedTextPreview.style.backgroundColor = '#f3f4f6';
+            completedTextPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
+            completedTextPreview.classList.remove('has-color');
+          }
+        }
       },
       toastLabel: 'Completed text color',
       messageType: 'TASK_LISTS_UPDATED',
       helperText: completedStyling.textColor ?
         'Custom text color for completed tasks.' :
-        'No custom color set (click to customize).',
+        (colorConfig.text ? 'Inheriting from pending color (click to customize).' : 'No custom color set (click to customize).'),
       onColorChange: (value) => {
         // INSTANT UPDATE: When custom color is set, update helper text
         const helperText = textColorControl.querySelector('.task-list-color-helper');

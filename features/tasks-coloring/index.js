@@ -1017,12 +1017,17 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
                        (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
 
+      // FIX: Only apply background opacity if there's an actual color (custom or inherited from pending)
+      // Without a color, applying opacity to transparent white creates unwanted overlay
+      const hasActualBgColor = !!(completedStyling.bgColor || baseColor);
+
       return {
         backgroundColor: bgColor,
         textColor,
-        // FIX: Fallback should check if we have ANY bg color (custom OR inherited from list)
-        // Not just if completedStyling.bgColor is set
-        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, (completedStyling.bgColor || baseColor) ? 1 : 0),
+        // If no actual color, force opacity to 0 (don't paint). Otherwise use user's opacity setting.
+        bgOpacity: hasActualBgColor
+          ? normalizeOpacityValue(completedStyling.bgOpacity, 1)
+          : 0,
         textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
       };
     }
