@@ -3494,8 +3494,38 @@
                   <div style="font-size: 13px; color: #5f6368; line-height: 1.6">
                     <div style="font-weight: 600; color: #202124; margin-bottom: 8px">What it does</div>
                     <div style="margin-bottom: 12px">
-                      Automatically color Google Tasks based on their list (e.g., Personal, Work). Runs locally.
+                      Automatically color all tasks in a list with your chosen colors. Set different colors for pending tasks and completed tasks.
                     </div>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to set pending task colors</div>
+                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Grant Google Tasks access (read-only) to fetch your task lists.</li>
+                      <li style="margin-bottom: 4px">Click a task list to expand its settings.</li>
+                      <li style="margin-bottom: 4px">Under <strong>Pending Tasks</strong>, click the color swatch to set card background color.</li>
+                      <li style="margin-bottom: 4px">Optionally set a text color for better contrast.</li>
+                      <li style="margin-bottom: 4px">All pending tasks in that list will now use these colors.</li>
+                    </ol>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Completed task styling modes</div>
+                    <div style="margin-bottom: 8px">Choose how completed tasks appear:</div>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 6px">
+                        <strong>Google</strong> — Uses Google's default gray strikethrough. Adjust card and text opacity sliders to fade completed tasks.
+                      </li>
+                      <li style="margin-bottom: 6px">
+                        <strong>Inherit</strong> — Uses your pending task colors with adjustable opacity. Great for keeping visual consistency while dimming completed tasks.
+                      </li>
+                      <li style="margin-bottom: 6px">
+                        <strong>Custom</strong> — Set completely custom card color, text color, and opacity for completed tasks.
+                      </li>
+                    </ul>
+
+                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Tips</div>
+                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
+                      <li style="margin-bottom: 4px">Lower opacity values (around 30%) help completed tasks fade into the background.</li>
+                      <li style="margin-bottom: 4px">You can color individual tasks differently by clicking on them in Calendar.</li>
+                      <li style="margin-bottom: 4px">Individual task colors override list default colors.</li>
+                    </ul>
 
                     <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Privacy note</div>
                     <div
@@ -3507,27 +3537,8 @@
                         font-size: 12px;
                       "
                     >
-                      Connecting to your Google task lists is required for accurate coloring. All data stays on your
-                      device; nothing is sent to us. Other ColorKit features work without this connection.
+                      All data stays on your device; nothing is sent to us. Other ColorKit features work without this connection.
                     </div>
-
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">How to use</div>
-                    <ol style="margin: 0 0 12px 0; padding-left: 20px">
-                      <li style="margin-bottom: 4px">Dashboard → Tasks → connect Google Calendar (local-only).</li>
-                      <li style="margin-bottom: 4px">Assign a default color to each task list.</li>
-                      <li style="margin-bottom: 4px">All existing and new tasks in that list adopt the color.</li>
-                      <li style="margin-bottom: 4px">
-                        To override a single task: click the task in Google Calendar → select a color → Apply.
-                      </li>
-                    </ol>
-
-                    <div style="font-weight: 600; color: #202124; margin-bottom: 8px">Notes</div>
-                    <ul style="margin: 0 0 12px 0; padding-left: 20px">
-                      <li style="margin-bottom: 4px">List defaults are easy to override per task.</li>
-                      <li style="margin-bottom: 4px">
-                        No cross-device sync unless the other device also runs ColorKit.
-                      </li>
-                    </ul>
                   </div>
                   <button
                     id="taskListVideoTutorialBtn"
