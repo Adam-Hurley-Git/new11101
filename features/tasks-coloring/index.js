@@ -376,7 +376,7 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
     });
 
     if (colorInfo) {
-      applyPaint(target, colorInfo.backgroundColor, colorInfo.textColor, colorInfo.bgOpacity, colorInfo.textOpacity);
+      applyPaint(target, colorInfo.backgroundColor, colorInfo.textColor, colorInfo.bgOpacity, colorInfo.textOpacity, isCompleted);
 
       if (!taskElementReferences.has(taskId)) {
         taskElementReferences.set(taskId, taskElement);
@@ -639,6 +639,30 @@ function colorToRgba(color, opacity = 1) {
 }
 
 /**
+ * Reverse Google's pre-fading of completed task colors.
+ * Google fades completed tasks by blending with white at ~40% (60% original color).
+ * This function attempts to recover the original vibrant color.
+ *
+ * @param {string} fadedColor - The faded color captured from a completed task
+ * @param {number} googleFade - Google's fade factor (default 0.6 = 60% of original)
+ * @returns {string} The unfaded color as rgb() string
+ */
+function unfadeGoogleColor(fadedColor, googleFade = 0.6) {
+  const { r, g, b } = parseCssColorToRGB(fadedColor);
+
+  // Reverse the alpha blend with white
+  // Formula: faded = original * fade + white * (1 - fade)
+  // Therefore: original = (faded - white * (1 - fade)) / fade
+  const whiteMix = 255 * (1 - googleFade);
+
+  const unfadedR = Math.min(255, Math.max(0, Math.round((r - whiteMix) / googleFade)));
+  const unfadedG = Math.min(255, Math.max(0, Math.round((g - whiteMix) / googleFade)));
+  const unfadedB = Math.min(255, Math.max(0, Math.round((b - whiteMix) / googleFade)));
+
+  return `rgb(${unfadedR}, ${unfadedG}, ${unfadedB})`;
+}
+
+/**
  * Check if a color is transparent (used to signal "use Google's background")
  */
 function isTransparentColor(color) {
@@ -770,7 +794,7 @@ async function unpaintTasksFromList(listId) {
   return unpaintedCount;
 }
 
-function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOpacity = 1) {
+function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOpacity = 1, isCompleted = false) {
   if (!node || !color) return;
 
   node.classList.add(MARK);
@@ -804,6 +828,14 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
       if (node.dataset.cfGoogleBg) {
         // Use saved Google background color
         bgColorToApply = node.dataset.cfGoogleBg;
+
+        // CRITICAL FIX: For completed tasks in Google mode, the captured color is pre-faded by Google.
+        // We need to "unfade" the captured color to get the true base color, then apply user's opacity.
+        // This ensures: 60% opacity = Google's default look, 100% opacity = matches pending tasks.
+        if (isCompleted) {
+          // Unfade the color to recover the original pending task color
+          bgColorToApply = unfadeGoogleColor(bgColorToApply, 0.6);
+        }
       } else {
         // Fallback: Saved Google color not available yet, use white as default
         bgColorToApply = '#ffffff';
@@ -874,7 +906,7 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     svg.style.setProperty('opacity', '1', 'important');
   }
 }
-function applyPaintIfNeeded(node, colors) {
+function applyPaintIfNeeded(node, colors, isCompleted = false) {
   if (!node || !colors || !colors.backgroundColor) return;
 
   const bgOpacity = typeof colors.bgOpacity === 'number' ? colors.bgOpacity : 1;
@@ -891,7 +923,7 @@ function applyPaintIfNeeded(node, colors) {
   }
 
   clearPaint(node);
-  applyPaint(node, colors.backgroundColor, colors.textColor, bgOpacity, textOpacity);
+  applyPaint(node, colors.backgroundColor, colors.textColor, bgOpacity, textOpacity, isCompleted);
 }
 /**
  * PERFORMANCE: Load all color/mapping data into memory cache
@@ -1246,7 +1278,7 @@ async function doRepaint(bypassThrottling = false) {
       if (colors && colors.backgroundColor) {
         const target = getPaintTarget(element);
         if (target) {
-          applyPaintIfNeeded(target, colors);
+          applyPaintIfNeeded(target, colors, isCompleted);
           processedTaskIds.add(taskId);
         }
       }
@@ -1289,7 +1321,7 @@ async function doRepaint(bypassThrottling = false) {
         // Always process tasks that have colors (manual or list default)
         const target = getPaintTarget(chip);
         if (target) {
-          applyPaintIfNeeded(target, colors);
+          applyPaintIfNeeded(target, colors, isCompleted);
           processedTaskIds.add(id);
 
           // Store reference for future fast access
@@ -1352,7 +1384,7 @@ async function doRepaint(bypassThrottling = false) {
             const isCompleted = isTaskElementCompleted(element);
             const colors = await getColorForTask(taskId, manualColorMap, { isCompleted });
             if (colors && colors.backgroundColor) {
-              applyPaintIfNeeded(target, colors);
+              applyPaintIfNeeded(target, colors, isCompleted);
               taskElementReferences.set(taskId, element);
             }
             break;
