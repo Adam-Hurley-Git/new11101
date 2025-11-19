@@ -981,8 +981,9 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
+    // CRITICAL: Also check for mode setting, not just colors/opacity
     const hasCompletedStyling = isCompleted && completedStyling &&
-      (completedStyling.bgColor || completedStyling.textColor ||
+      (completedStyling.mode || completedStyling.bgColor || completedStyling.textColor ||
        completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
     // Apply colors if we have ANY setting (background, text, or completed styling)
@@ -1006,8 +1007,8 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
   // COMPLETED TASKS
   if (isCompleted) {
     // Check mode: 'google' | 'inherit' | 'custom'
-    // Default to 'inherit' for backward compatibility
-    const mode = completedStyling?.mode || 'inherit';
+    // Default to 'google' - pure Google styling unless user selects otherwise
+    const mode = completedStyling?.mode || 'google';
 
     // MODE: Google Default - pure Google styling (no extension interference)
     if (mode === 'google') {

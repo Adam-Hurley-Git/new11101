@@ -1296,43 +1296,14 @@ checkAuthAndSubscription();
     const section = document.createElement('div');
     section.className = 'completed-tasks-section';
 
-    // Header with toggle
+    // Header (no toggle - mode selector controls behavior)
     const header = document.createElement('div');
     header.className = 'completed-tasks-header';
 
     const title = document.createElement('h4');
     title.innerHTML = '✓ Completed Tasks Styling';
 
-    const toggleWrapper = document.createElement('div');
-    toggleWrapper.className = 'completed-tasks-toggle';
-
-    const toggleLabel = document.createElement('label');
-    toggleLabel.textContent = 'Enable';
-
-    const toggle = document.createElement('div');
-    toggle.className = 'switch';
-    if (completedStyling.enabled) {
-      toggle.classList.add('active');
-    }
-
-    toggle.onclick = async () => {
-      const newEnabled = !toggle.classList.contains('active');
-      toggle.classList.toggle('active');
-
-      await window.cc3Storage.setCompletedStylingEnabled(list.id, newEnabled);
-
-      // Update controls visibility
-      controls.classList.toggle('completed-tasks-disabled', !newEnabled);
-
-      // Trigger repaint
-      chrome.runtime.sendMessage({ type: 'TASK_LISTS_UPDATED' });
-    };
-
-    toggleWrapper.appendChild(toggleLabel);
-    toggleWrapper.appendChild(toggle);
-
     header.appendChild(title);
-    header.appendChild(toggleWrapper);
 
     // Mode selector (Google Default / Inherit Pending / Custom)
     const modeSelector = document.createElement('div');
@@ -1360,8 +1331,8 @@ checkAuthAndSubscription();
       border-radius: 8px;
     `;
 
-    // Default mode is 'inherit' to maintain current behavior
-    const currentMode = completedStyling.mode || 'inherit';
+    // Default mode is 'google' - pure Google styling by default
+    const currentMode = completedStyling.mode || 'google';
 
     const modes = [
       { value: 'google', label: 'Google', description: 'Use pure Google default styling' },
@@ -1430,12 +1401,9 @@ checkAuthAndSubscription();
     modeSelector.appendChild(modeLabel);
     modeSelector.appendChild(modeTabs);
 
-    // Controls container
+    // Controls container (always enabled - mode selector controls what's shown)
     const controls = document.createElement('div');
     controls.className = 'completed-tasks-controls';
-    if (!completedStyling.enabled) {
-      controls.classList.add('completed-tasks-disabled');
-    }
 
     // Function to update visibility based on mode
     function updateControlsVisibility(mode) {
