@@ -777,9 +777,14 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   let text = textColorOverride || pickContrastingText(color);
 
   // CRITICAL FIX: If text is transparent (signals "use Google's text color")
-  // AND we have a saved Google text color, use that with custom opacity
-  if (isTransparentColor(text) && node.dataset.cfGoogleText) {
-    text = node.dataset.cfGoogleText;
+  if (isTransparentColor(text)) {
+    if (node.dataset.cfGoogleText) {
+      // Use saved Google text color
+      text = node.dataset.cfGoogleText;
+    } else {
+      // Fallback: Saved Google text not available yet, use gray as default
+      text = '#5f6368';
+    }
   }
 
   node.dataset.cfTaskTextColor = textColorOverride ? text.toLowerCase() : '';
@@ -795,9 +800,14 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
     let bgColorToApply = color;
 
     // CRITICAL FIX: If color is transparent (signals "use Google's background")
-    // AND we have a saved Google background, use that with custom opacity
-    if (isTransparentColor(color) && node.dataset.cfGoogleBg) {
-      bgColorToApply = node.dataset.cfGoogleBg;
+    if (isTransparentColor(color)) {
+      if (node.dataset.cfGoogleBg) {
+        // Use saved Google background color
+        bgColorToApply = node.dataset.cfGoogleBg;
+      } else {
+        // Fallback: Saved Google color not available yet, use white as default
+        bgColorToApply = '#ffffff';
+      }
     }
 
     const bgColorValue = colorToRgba(bgColorToApply, bgOpacity);
