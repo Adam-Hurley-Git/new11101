@@ -1253,7 +1253,7 @@ checkAuthAndSubscription();
    * Update completed text color preview when pending text color changes
    * This provides instant visual feedback showing inheritance
    */
-  async function updateCompletedTextPreview(listId, pendingTextColor) {
+  async function updateCompletedTextPreview(listId, pendingTextColor, showHashedPattern = false) {
     const completedTextPreview = document.getElementById(`completedTextPreview-${listId}`);
     if (!completedTextPreview) return;
 
@@ -1264,16 +1264,27 @@ checkAuthAndSubscription();
     const settings = await window.cc3Storage.getSettings();
     const completedStyling = settings?.taskListColoring?.completedStyling?.[listId];
 
-    // Only update preview if no custom completed text color is set (showing inheritance)
+    // Only update preview if no custom completed text color is set
     if (!completedStyling?.textColor) {
-      const inheritedColor = pendingTextColor || '#666666';
-      completedTextPreview.style.backgroundColor = inheritedColor;
-      completedTextInput.value = inheritedColor;
+      if (showHashedPattern) {
+        // FIX: Show hashed pattern when no custom color (like pending swatches)
+        completedTextPreview.style.backgroundColor = '#f3f4f6';
+        completedTextPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
+        completedTextPreview.classList.remove('has-color');
+      } else {
+        const inheritedColor = pendingTextColor || '#666666';
+        completedTextPreview.style.backgroundColor = inheritedColor;
+        completedTextPreview.style.backgroundImage = 'none';
+        completedTextPreview.classList.add('has-color');
+      }
+      completedTextInput.value = pendingTextColor || '#666666';
 
-      // Also update the helper text to indicate inheritance
+      // Also update the helper text
       const helperText = completedTextPreview.closest('.task-list-color-control')?.querySelector('.task-list-color-helper');
       if (helperText) {
-        helperText.textContent = 'Inheriting from pending text color (click to customize).';
+        helperText.textContent = showHashedPattern ?
+          'No custom color set (click to customize).' :
+          'Inheriting from pending text color (click to customize).';
       }
     }
   }
@@ -1342,7 +1353,9 @@ checkAuthAndSubscription();
       list,
       label: '',
       prefix: 'completedBg',
-      currentColor: completedStyling.bgColor || (colorConfig.background || '#cccccc'),
+      // FIX: Pass null when no custom color - shows hashed pattern to indicate "no choice made"
+      currentColor: completedStyling.bgColor || null,
+      inheritedColor: colorConfig.background || '#cccccc', // Fallback for color picker
       setColor: async (listId, color) => {
         await window.cc3Storage.setCompletedBgColor(listId, color);
       },
@@ -1361,10 +1374,20 @@ checkAuthAndSubscription();
             }
           }
         });
+
+        // INSTANT UPDATE: Show hashed pattern when cleared
+        const completedBgPreview = document.getElementById(`completedBgPreview-${listId}`);
+        if (completedBgPreview) {
+          completedBgPreview.style.backgroundColor = '#f3f4f6';
+          completedBgPreview.style.backgroundImage = 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,.05) 5px, rgba(0,0,0,.05) 10px)';
+          completedBgPreview.classList.remove('has-color');
+        }
       },
       toastLabel: 'Completed card color',
       messageType: 'TASK_LISTS_UPDATED',
-      helperText: 'Background color for completed tasks in this list.',
+      helperText: completedStyling.bgColor ?
+        'Custom background color for completed tasks.' :
+        'No custom color set (click to customize).',
       onColorChange: () => {},
     });
 
@@ -1383,7 +1406,9 @@ checkAuthAndSubscription();
       list,
       label: '',
       prefix: 'completedText',
-      currentColor: completedStyling.textColor || colorConfig.text || '#666666',
+      // FIX: Pass null when no custom color - shows hashed pattern to indicate "no choice made"
+      currentColor: completedStyling.textColor || null,
+      inheritedColor: colorConfig.text || '#666666', // Fallback for color picker
       setColor: async (listId, color) => {
         await window.cc3Storage.setCompletedTextColor(listId, color);
       },
@@ -1403,15 +1428,15 @@ checkAuthAndSubscription();
           }
         });
 
-        // INSTANT UPDATE: When cleared, revert to inherited color
+        // INSTANT UPDATE: When cleared, revert to hashed pattern
         const pendingTextColor = colorConfig.text;
-        updateCompletedTextPreview(listId, pendingTextColor);
+        updateCompletedTextPreview(listId, pendingTextColor, true); // Pass true to show hashed pattern
       },
       toastLabel: 'Completed text color',
       messageType: 'TASK_LISTS_UPDATED',
       helperText: completedStyling.textColor ?
         'Custom text color for completed tasks.' :
-        'Inheriting from pending text color (click to customize).',
+        'No custom color set (click to customize).',
       onColorChange: (value) => {
         // INSTANT UPDATE: When custom color is set, update helper text
         const helperText = textColorControl.querySelector('.task-list-color-helper');
@@ -1487,7 +1512,8 @@ checkAuthAndSubscription();
     textOpacitySlider.type = 'range';
     textOpacitySlider.min = '0';
     textOpacitySlider.max = '100';
-    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity || 1) * 100));
+    // FIX: Default text opacity is 0.6 (60%), not 1.0 (100%) - matches Google's default
+    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity !== undefined ? completedStyling.textOpacity : 0.6) * 100));
     textOpacitySlider.className = 'opacity-slider';
     textOpacitySlider.id = `completedTextOpacity-${list.id}`;
 
@@ -1819,6 +1845,7 @@ checkAuthAndSubscription();
       label,
       prefix,
       currentColor,
+      inheritedColor, // NEW: Fallback color for picker when currentColor is null
       setColor,
       clearColor,
       toastLabel,
@@ -1857,7 +1884,8 @@ checkAuthAndSubscription();
     const colorInput = document.createElement('input');
     colorInput.type = 'color';
     colorInput.id = `${prefix}Color-${list.id}`;
-    colorInput.value = currentColor || '#4285f4';
+    // FIX: Use inheritedColor as fallback when currentColor is null (for completed swatches)
+    colorInput.value = currentColor || inheritedColor || '#4285f4';
     colorInput.style.display = 'none';
     actions.appendChild(colorInput);
 
