@@ -1707,8 +1707,8 @@ checkAuthAndSubscription();
     bgOpacitySlider.type = 'range';
     bgOpacitySlider.min = '0';
     bgOpacitySlider.max = '100';
-    // Default to Google's intended opacity (60%) if not set - user can adjust as desired
-    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity !== undefined ? completedStyling.bgOpacity : 0.6) * 100));
+    // Default to 30% opacity if not set - user can adjust as desired
+    bgOpacitySlider.value = String(Math.round((completedStyling.bgOpacity !== undefined ? completedStyling.bgOpacity : 0.3) * 100));
     bgOpacitySlider.className = 'opacity-slider';
     bgOpacitySlider.id = `completedBgOpacity-${list.id}`;
 
@@ -1756,8 +1756,8 @@ checkAuthAndSubscription();
     textOpacitySlider.type = 'range';
     textOpacitySlider.min = '0';
     textOpacitySlider.max = '100';
-    // Default to Google's intended opacity (60%) if not set - user can adjust as desired
-    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity !== undefined ? completedStyling.textOpacity : 0.6) * 100));
+    // Default to 30% opacity if not set - user can adjust as desired
+    textOpacitySlider.value = String(Math.round((completedStyling.textOpacity !== undefined ? completedStyling.textOpacity : 0.3) * 100));
     textOpacitySlider.className = 'opacity-slider';
     textOpacitySlider.id = `completedTextOpacity-${list.id}`;
 
