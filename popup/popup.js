@@ -2027,6 +2027,9 @@ checkAuthAndSubscription();
           window.cc3Storage.clearTaskListTextColor(list.id),
         ]);
 
+        // Small delay to ensure storage operations complete
+        await new Promise(resolve => setTimeout(resolve, 20));
+
         // CRITICAL: Rebuild entire task list UI from fresh storage
         await loadTaskLists();
 
