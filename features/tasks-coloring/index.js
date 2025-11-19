@@ -1010,9 +1010,23 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
     // Default to 'google' - pure Google styling unless user selects otherwise
     const mode = completedStyling?.mode || 'google';
 
-    // MODE: Google Default - pure Google styling (no extension interference)
+    // MODE: Google Default - Google's colors with adjustable opacity
     if (mode === 'google') {
-      return null; // Always return null for pure Google default
+      // Check if user has adjusted opacity sliders
+      const hasOpacitySettings = completedStyling &&
+        (completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
+
+      if (!hasOpacitySettings) {
+        return null; // Pure Google default (no painting)
+      }
+
+      // Apply Google's default colors with user's custom opacity
+      return {
+        backgroundColor: '#ffffff', // Google's completed task background (white)
+        textColor: '#5f6368', // Google's completed task text (gray)
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 60%
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 60%
+      };
     }
 
     // MODE: Inherit Pending - use pending colors with adjustable opacity
@@ -1022,19 +1036,18 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         return null; // No pending colors to inherit - use Google default
       }
 
-      const bgColor = baseColor || 'rgba(255, 255, 255, 0)'; // Transparent if no pending bg
+      // Use pending bg if available, otherwise Google's default background
+      const bgColor = baseColor || '#ffffff'; // Google's default white bg
       const textColor = overrideTextColor || pendingTextColor ||
                        (baseColor ? pickContrastingText(baseColor) : '#5f6368');
 
       return {
         backgroundColor: bgColor,
         textColor,
-        // Default to Google's intended opacity (0.6/60%) for completed tasks
-        // User can adjust if they want different opacity
-        bgOpacity: baseColor
-          ? normalizeOpacityValue(completedStyling?.bgOpacity, 0.6) // Google's default
-          : 0,
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Google's default
+        // Always allow opacity adjustment (even when using Google's default bg)
+        // Default to Google's intended 60% opacity
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6),
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
       };
     }
 
