@@ -1250,6 +1250,52 @@ checkAuthAndSubscription();
   // ========================================
 
   /**
+   * Update inherit mode availability when pending colors change
+   * This provides instant feedback - unlocks inherit when colors are set
+   */
+  function updateInheritModeAvailability(listId, hasBgColor, hasTextColor) {
+    const hasPendingColors = !!(hasBgColor || hasTextColor);
+
+    // Update the inherit tab's disabled state
+    const modeTabs = document.getElementById(`completedModeTabs-${listId}`);
+    if (modeTabs) {
+      const inheritTab = modeTabs.querySelector('button:nth-child(2)'); // Inherit is second tab
+      if (inheritTab) {
+        inheritTab.disabled = !hasPendingColors;
+        inheritTab.style.cursor = hasPendingColors ? 'pointer' : 'not-allowed';
+        inheritTab.style.color = !hasPendingColors ? '#bdc1c6' :
+          (inheritTab.style.background === 'rgb(255, 255, 255)' ? '#1a73e8' : '#5f6368');
+        inheritTab.style.opacity = hasPendingColors ? '1' : '0.6';
+        inheritTab.title = hasPendingColors ?
+          'Inherit pending colors with adjustable opacity' :
+          'No pending colors to inherit - set pending colors first';
+      }
+    }
+
+    // Update sliders visibility if currently in inherit mode
+    const controls = document.getElementById(`completedControls-${listId}`);
+    if (controls) {
+      const bgOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(3)');
+      const textOpacityGroup = controls.querySelector('.completed-opacity-group:nth-child(4)');
+
+      // Check if inherit mode is active
+      const inheritTab = modeTabs?.querySelector('button:nth-child(2)');
+      const isInheritActive = inheritTab && inheritTab.style.background === 'rgb(255, 255, 255)';
+
+      if (isInheritActive) {
+        if (bgOpacityGroup) {
+          bgOpacityGroup.style.opacity = hasPendingColors ? '1' : '0.4';
+          bgOpacityGroup.style.pointerEvents = hasPendingColors ? 'auto' : 'none';
+        }
+        if (textOpacityGroup) {
+          textOpacityGroup.style.opacity = hasPendingColors ? '1' : '0.4';
+          textOpacityGroup.style.pointerEvents = hasPendingColors ? 'auto' : 'none';
+        }
+      }
+    }
+  }
+
+  /**
    * Update completed text color preview when pending text color changes
    * This provides instant visual feedback showing inheritance
    */
@@ -1323,6 +1369,8 @@ checkAuthAndSubscription();
 
     // Tab-style buttons container
     const modeTabs = document.createElement('div');
+    modeTabs.id = `completedModeTabs-${list.id}`;
+    modeTabs.dataset.listId = list.id;
     modeTabs.style.cssText = `
       display: flex;
       gap: 4px;
@@ -1439,9 +1487,13 @@ checkAuthAndSubscription();
     // Controls container (always enabled - mode selector controls what's shown)
     const controls = document.createElement('div');
     controls.className = 'completed-tasks-controls';
+    controls.id = `completedControls-${list.id}`;
 
     // Function to update visibility based on mode
-    function updateControlsVisibility(mode) {
+    function updateControlsVisibility(mode, hasPendingColorsOverride = null) {
+      // Use override if provided, otherwise use captured value
+      const pendingColorsAvailable = hasPendingColorsOverride !== null ? hasPendingColorsOverride : hasPendingColors;
+
       // Get all control elements
       const bgColorGroup = controls.querySelector('.completed-color-group:nth-child(1)');
       const textColorGroup = controls.querySelector('.completed-color-group:nth-child(2)');
@@ -1452,20 +1504,45 @@ checkAuthAndSubscription();
         // Google mode: Show opacity sliders to adjust Google's default colors' opacity
         if (bgColorGroup) bgColorGroup.style.display = 'none';
         if (textColorGroup) textColorGroup.style.display = 'none';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+        if (bgOpacityGroup) {
+          bgOpacityGroup.style.display = 'block';
+          bgOpacityGroup.style.opacity = '1';
+          bgOpacityGroup.style.pointerEvents = 'auto';
+        }
+        if (textOpacityGroup) {
+          textOpacityGroup.style.display = 'block';
+          textOpacityGroup.style.opacity = '1';
+          textOpacityGroup.style.pointerEvents = 'auto';
+        }
       } else if (mode === 'inherit') {
         // Show only opacity sliders for inherit mode
+        // Disable them if no pending colors to inherit
         if (bgColorGroup) bgColorGroup.style.display = 'none';
         if (textColorGroup) textColorGroup.style.display = 'none';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+        if (bgOpacityGroup) {
+          bgOpacityGroup.style.display = 'block';
+          bgOpacityGroup.style.opacity = pendingColorsAvailable ? '1' : '0.4';
+          bgOpacityGroup.style.pointerEvents = pendingColorsAvailable ? 'auto' : 'none';
+        }
+        if (textOpacityGroup) {
+          textOpacityGroup.style.display = 'block';
+          textOpacityGroup.style.opacity = pendingColorsAvailable ? '1' : '0.4';
+          textOpacityGroup.style.pointerEvents = pendingColorsAvailable ? 'auto' : 'none';
+        }
       } else {
         // Show everything for custom mode
         if (bgColorGroup) bgColorGroup.style.display = 'block';
         if (textColorGroup) textColorGroup.style.display = 'block';
-        if (bgOpacityGroup) bgOpacityGroup.style.display = 'block';
-        if (textOpacityGroup) textOpacityGroup.style.display = 'block';
+        if (bgOpacityGroup) {
+          bgOpacityGroup.style.display = 'block';
+          bgOpacityGroup.style.opacity = '1';
+          bgOpacityGroup.style.pointerEvents = 'auto';
+        }
+        if (textOpacityGroup) {
+          textOpacityGroup.style.display = 'block';
+          textOpacityGroup.style.opacity = '1';
+          textOpacityGroup.style.pointerEvents = 'auto';
+        }
       }
     }
 
@@ -1859,6 +1936,10 @@ checkAuthAndSubscription();
       }
     };
 
+    // Track current pending colors for instant inherit unlock
+    let currentBgColor = colorConfig.background;
+    let currentTextColor = colorConfig.text;
+
     const backgroundControl = createTaskListColorControl({
       list,
       label: 'List color',
@@ -1869,7 +1950,12 @@ checkAuthAndSubscription();
       toastLabel: 'Color',
       messageType: 'TASK_LISTS_UPDATED',
       helperText: 'Applies to every task chip from this Google Tasks list.',
-      onColorChange: (value) => updateSwatchDisplay(backgroundSwatch, value, 'background'),
+      onColorChange: (value) => {
+        currentBgColor = value;
+        updateSwatchDisplay(backgroundSwatch, value, 'background');
+        // INSTANT UPDATE: Update inherit mode availability
+        updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
+      },
     });
 
     const textControl = createTaskListColorControl({
@@ -1883,9 +1969,12 @@ checkAuthAndSubscription();
       messageType: 'TASK_LISTS_UPDATED',
       helperText: 'Overrides the auto-contrast text color for this list.',
       onColorChange: (value) => {
+        currentTextColor = value;
         updateSwatchDisplay(textSwatch, value, 'text');
         // INSTANT UPDATE: Also update completed text preview if it's inheriting
         updateCompletedTextPreview(list.id, value);
+        // INSTANT UPDATE: Update inherit mode availability
+        updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
       },
     });
 
