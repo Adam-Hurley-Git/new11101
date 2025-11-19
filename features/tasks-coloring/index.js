@@ -774,7 +774,14 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
   if (!node || !color) return;
 
   node.classList.add(MARK);
-  const text = textColorOverride || pickContrastingText(color);
+  let text = textColorOverride || pickContrastingText(color);
+
+  // CRITICAL FIX: If text is transparent (signals "use Google's text color")
+  // AND we have a saved Google text color, use that with custom opacity
+  if (isTransparentColor(text) && node.dataset.cfGoogleText) {
+    text = node.dataset.cfGoogleText;
+  }
+
   node.dataset.cfTaskTextColor = textColorOverride ? text.toLowerCase() : '';
 
   const textColorValue = colorToRgba(text, textOpacity);
@@ -1020,10 +1027,11 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         return null; // Pure Google default (no painting)
       }
 
-      // Apply Google's default colors with user's custom opacity
+      // Apply user's custom opacity to Google's saved original colors
+      // Use transparent to signal "use saved Google background from dataset.cfGoogleBg"
       return {
-        backgroundColor: '#ffffff', // Google's completed task background (white)
-        textColor: '#5f6368', // Google's completed task text (gray)
+        backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent = use Google's original bg
+        textColor: 'rgba(0, 0, 0, 0)', // Transparent = use Google's original text (will be handled in applyPaint)
         bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 60%
         textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 60%
       };
@@ -1036,10 +1044,10 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         return null; // No pending colors to inherit - use Google default
       }
 
-      // Use pending bg if available, otherwise Google's default background
-      const bgColor = baseColor || '#ffffff'; // Google's default white bg
+      // Use pending bg if available, otherwise transparent to signal "use saved Google bg"
+      const bgColor = baseColor || 'rgba(255, 255, 255, 0)';
       const textColor = overrideTextColor || pendingTextColor ||
-                       (baseColor ? pickContrastingText(baseColor) : '#5f6368');
+                       (baseColor ? pickContrastingText(baseColor) : 'rgba(0, 0, 0, 0)'); // Transparent = use saved Google text
 
       return {
         backgroundColor: bgColor,
