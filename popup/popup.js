@@ -1377,6 +1377,23 @@ checkAuthAndSubscription();
       tab.onclick = async () => {
         await window.cc3Storage.setCompletedStylingMode(list.id, mode.value);
 
+        // CRITICAL FIX: When switching to google or inherit mode, save default opacity values (60%)
+        // This ensures the values are explicitly defined in storage, not undefined
+        // Without this, the fallback logic causes 100% to not look like 100%
+        if (mode.value === 'google' || mode.value === 'inherit') {
+          // Get current settings to check if opacity values already exist
+          const currentSettings = await window.cc3Storage.getSettings();
+          const currentStyling = currentSettings?.taskListColoring?.completedStyling?.[list.id] || {};
+
+          // Only set defaults if not already defined (preserve user's existing values)
+          if (currentStyling.bgOpacity === undefined) {
+            await window.cc3Storage.setCompletedBgOpacity(list.id, 0.6);
+          }
+          if (currentStyling.textOpacity === undefined) {
+            await window.cc3Storage.setCompletedTextOpacity(list.id, 0.6);
+          }
+        }
+
         // Update all tabs' styles
         modeTabs.querySelectorAll('button').forEach(btn => {
           const isNowActive = btn.textContent === mode.label;
