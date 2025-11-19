@@ -2033,7 +2033,7 @@ checkAuthAndSubscription();
         // CRITICAL: Rebuild entire task list UI from fresh storage
         await loadTaskLists();
 
-        // Send message to content script and reload calendar tabs
+        // Send message to content script
         const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
 
         // Send reset message to all calendar tabs
@@ -2048,15 +2048,15 @@ checkAuthAndSubscription();
           }
         }
 
-        // Reload calendar tabs after a short delay
+        // Show success message
+        showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
+
+        // Force refresh calendar tabs LAST after all other processes complete
         setTimeout(() => {
           tabs.forEach((tab) => {
             chrome.tabs.reload(tab.id);
           });
         }, 300);
-
-        // Show success message
-        showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
       } catch (error) {
         console.error('[Task List Colors] Error resetting pending colors:', error);
         showToast(`Error resetting colors. Please try again.`);
