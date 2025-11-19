@@ -2020,40 +2020,38 @@ checkAuthAndSubscription();
         return;
       }
 
-      try {
-        // Clear ONLY pending task colors (not completed styling)
-        await Promise.all([
-          window.cc3Storage.clearTaskListDefaultColor(list.id),
-          window.cc3Storage.clearTaskListTextColor(list.id),
-        ]);
+      // Clear ONLY pending task colors (not completed styling)
+      await Promise.all([
+        window.cc3Storage.clearTaskListDefaultColor(list.id),
+        window.cc3Storage.clearTaskListTextColor(list.id),
+      ]);
 
-        // Show success message IMMEDIATELY after clearing
-        showToast(`✓ "${list.title}" pending tasks reset`);
+      // Reload settings from storage
+      const settings = await window.cc3Storage.getSettings();
+      await chrome.storage.sync.set({ settings });
 
-        // Get calendar tabs for refresh
-        const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
+      // CRITICAL: Rebuild entire task list UI from fresh storage
+      await loadTaskLists();
 
-        // Run UI rebuild and tab messages in parallel for speed
-        await Promise.all([
-          // Rebuild popup UI
-          loadTaskLists(),
-          // Send reset messages to all calendar tabs
-          Promise.all(tabs.map(tab =>
-            chrome.tabs.sendMessage(tab.id, {
-              type: 'RESET_LIST_COLORS',
-              listId: list.id,
-            }).catch(() => {}) // Ignore errors for tabs without content script
-          ))
-        ]);
-
-        // Force refresh calendar tabs LAST
+      // Send message to content script to unpaint tasks (removes all our styling)
+      chrome.tabs.query({ url: 'https://calendar.google.com/*' }, (tabs) => {
         tabs.forEach((tab) => {
-          chrome.tabs.reload(tab.id);
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'RESET_LIST_COLORS',
+            listId: list.id,
+          });
         });
-      } catch (error) {
-        console.error('[Task List Colors] Error resetting pending colors:', error);
-        showToast(`Error resetting colors. Please try again.`);
-      }
+
+        // Auto-reload calendar tabs after a short delay (without asking)
+        setTimeout(() => {
+          tabs.forEach((tab) => {
+            chrome.tabs.reload(tab.id);
+          });
+        }, 300);
+      });
+
+      // Show success message
+      showToast(`✓ "${list.title}" pending tasks reset - refreshing calendar...`);
     };
 
     resetButtonsContainer.appendChild(resetPendingButton);
