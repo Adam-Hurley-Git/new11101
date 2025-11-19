@@ -981,8 +981,9 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
+    // CRITICAL: Also check for mode setting, not just colors/opacity
     const hasCompletedStyling = isCompleted && completedStyling &&
-      (completedStyling.bgColor || completedStyling.textColor ||
+      (completedStyling.mode || completedStyling.bgColor || completedStyling.textColor ||
        completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
     // Apply colors if we have ANY setting (background, text, or completed styling)
