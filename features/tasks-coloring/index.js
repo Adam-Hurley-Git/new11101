@@ -629,6 +629,29 @@ function colorToRgba(color, opacity = 1) {
 }
 
 /**
+ * Blend a color with white based on opacity to create a solid opaque color.
+ * This mimics how the color would look at reduced opacity over white, but
+ * produces an opaque result that prevents colors underneath from bleeding through.
+ *
+ * Formula: blended = color * opacity + white * (1 - opacity)
+ *
+ * @param {string} color - The color to blend
+ * @param {number} opacity - The opacity (0-1), where 1 = full color, 0 = white
+ * @returns {string} The blended color as rgb() string
+ */
+function blendColorWithWhite(color, opacity = 1) {
+  const { r, g, b } = parseCssColorToRGB(color);
+  const safeOpacity = normalizeOpacityValue(opacity, 1);
+
+  // Blend with white (255, 255, 255)
+  const blendedR = Math.round(r * safeOpacity + 255 * (1 - safeOpacity));
+  const blendedG = Math.round(g * safeOpacity + 255 * (1 - safeOpacity));
+  const blendedB = Math.round(b * safeOpacity + 255 * (1 - safeOpacity));
+
+  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
+}
+
+/**
  * Reverse Google's pre-fading of completed task colors.
  * Google fades completed tasks by blending with white at ~70% (30% original color).
  * This function attempts to recover the original vibrant color.
@@ -834,7 +857,9 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
       }
     }
 
-    const bgColorValue = colorToRgba(bgColorToApply, bgOpacity);
+    // Use blendColorWithWhite to create opaque color that looks faded but blocks colors underneath
+    // This mimics how Google handles completed task backgrounds
+    const bgColorValue = blendColorWithWhite(bgColorToApply, bgOpacity);
     node.dataset.cfTaskBgColor = bgColorValue;
     node.style.setProperty('background-color', bgColorValue, 'important');
     node.style.setProperty('border-color', bgColorValue, 'important');
