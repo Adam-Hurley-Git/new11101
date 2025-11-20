@@ -1133,20 +1133,13 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
     }
 
     // MODE: Custom - fully custom colors and opacity
-    // Check if ANY custom completed styling is set
-    const hasCustomCompletedStyling = completedStyling &&
-      (completedStyling.bgColor || completedStyling.textColor ||
-       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
-
-    if (hasCustomCompletedStyling) {
+    // Always apply custom styling when mode is explicitly 'custom', using 30% defaults
+    if (mode === 'custom') {
       // Use custom completed styling (fill in missing values with defaults)
       const defaultBgColor = 'rgba(255, 255, 255, 0)'; // Transparent = use Google's bg
       const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
       const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
                        (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
-
-      // Check if there's an actual custom or pending background color
-      const hasActualBgColor = !!(completedStyling.bgColor || baseColor);
 
       return {
         backgroundColor: bgColor,
