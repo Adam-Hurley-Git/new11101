@@ -2603,6 +2603,27 @@
       .tab-content.active {
         display: block;
       }
+
+      /* Disabled Feature Styling */
+      .feature-disabled {
+        opacity: 0.4;
+        pointer-events: none;
+        filter: grayscale(30%);
+        user-select: none;
+        position: relative;
+      }
+
+      .feature-disabled::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        cursor: not-allowed;
+        z-index: 10;
+      }
     </style>
   </head>
   <body>
@@ -3576,6 +3597,7 @@
                 <div class="switch" id="enableTaskFeatures"></div>
               </div>
 
+              <div id="taskSettings">
               <!-- Task List Colors Subsection -->
               <div style="margin-bottom: 24px; padding: 16px; background: #fafafa; border-radius: 8px">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
