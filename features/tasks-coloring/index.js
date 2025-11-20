@@ -629,6 +629,29 @@ function colorToRgba(color, opacity = 1) {
 }
 
 /**
+ * Blend a color with white based on opacity to create a solid opaque color.
+ * This mimics how the color would look at reduced opacity over white, but
+ * produces an opaque result that prevents colors underneath from bleeding through.
+ *
+ * Formula: blended = color * opacity + white * (1 - opacity)
+ *
+ * @param {string} color - The color to blend
+ * @param {number} opacity - The opacity (0-1), where 1 = full color, 0 = white
+ * @returns {string} The blended color as rgb() string
+ */
+function blendColorWithWhite(color, opacity = 1) {
+  const { r, g, b } = parseCssColorToRGB(color);
+  const safeOpacity = normalizeOpacityValue(opacity, 1);
+
+  // Blend with white (255, 255, 255)
+  const blendedR = Math.round(r * safeOpacity + 255 * (1 - safeOpacity));
+  const blendedG = Math.round(g * safeOpacity + 255 * (1 - safeOpacity));
+  const blendedB = Math.round(b * safeOpacity + 255 * (1 - safeOpacity));
+
+  return `rgb(${blendedR}, ${blendedG}, ${blendedB})`;
+}
+
+/**
  * Reverse Google's pre-fading of completed task colors.
  * Google fades completed tasks by blending with white at ~70% (30% original color).
  * This function attempts to recover the original vibrant color.
@@ -834,7 +857,9 @@ function applyPaint(node, color, textColorOverride = null, bgOpacity = 1, textOp
       }
     }
 
-    const bgColorValue = colorToRgba(bgColorToApply, bgOpacity);
+    // Use blendColorWithWhite to create opaque color that looks faded but blocks colors underneath
+    // This mimics how Google handles completed task backgrounds
+    const bgColorValue = blendColorWithWhite(bgColorToApply, bgOpacity);
     node.dataset.cfTaskBgColor = bgColorValue;
     node.style.setProperty('background-color', bgColorValue, 'important');
     node.style.setProperty('border-color', bgColorValue, 'important');
@@ -905,7 +930,8 @@ function applyPaintIfNeeded(node, colors, isCompleted = false) {
   const textOpacity = typeof colors.textOpacity === 'number' ? colors.textOpacity : 1;
   const fallbackText = pickContrastingText(colors.backgroundColor);
   const textColor = colors.textColor || fallbackText;
-  const desiredBg = colorToRgba(colors.backgroundColor, bgOpacity);
+  // Use blendColorWithWhite to match what applyPaint stores
+  const desiredBg = blendColorWithWhite(colors.backgroundColor, bgOpacity);
   const desiredText = colorToRgba(textColor, textOpacity);
   const currentBg = node.dataset.cfTaskBgColor;
   const currentText = node.dataset.cfTaskTextActual;
@@ -1013,27 +1039,27 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     if (isCompleted) {
       // For completed manual tasks: use manual color with opacity from list settings
       // If task has no list or list has no opacity settings, find highest across all lists
-      let bgOpacity = 0.6;  // Default
-      let textOpacity = 0.6;  // Default
+      let bgOpacity = 0.3;  // Default 30% for completed tasks
+      let textOpacity = 0.3;  // Default 30% for completed tasks
 
       // First try the task's own list
       if (completedStyling) {
         if (completedStyling.bgOpacity !== undefined) {
-          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.6);
+          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
         }
         if (completedStyling.textOpacity !== undefined) {
-          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.6);
+          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
         }
       } else {
         // No list for this task - find highest opacity across all lists
         const allCompletedStyling = cache.completedStyling || {};
         for (const listStyles of Object.values(allCompletedStyling)) {
           if (listStyles?.bgOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.6);
+            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
             if (normalized > bgOpacity) bgOpacity = normalized;
           }
           if (listStyles?.textOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.6);
+            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
             if (normalized > textOpacity) textOpacity = normalized;
           }
         }
@@ -1105,8 +1131,8 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent = use Google's original bg
         textColor: 'rgba(0, 0, 0, 0)', // Transparent = use Google's original text (will be handled in applyPaint)
-        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 60%
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 60%
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.3), // Default 30%
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.3), // Default 30%
       };
     }
 
@@ -1126,37 +1152,27 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         backgroundColor: bgColor,
         textColor,
         // Always allow opacity adjustment (even when using Google's default bg)
-        // Default to Google's intended 60% opacity
-        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6),
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
+        // Default 30% for all completed task styling
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.3),
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.3),
       };
     }
 
     // MODE: Custom - fully custom colors and opacity
-    // Check if ANY custom completed styling is set
-    const hasCustomCompletedStyling = completedStyling &&
-      (completedStyling.bgColor || completedStyling.textColor ||
-       completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
-
-    if (hasCustomCompletedStyling) {
+    // Always apply custom styling when mode is explicitly 'custom', using 30% defaults
+    if (mode === 'custom') {
       // Use custom completed styling (fill in missing values with defaults)
       const defaultBgColor = 'rgba(255, 255, 255, 0)'; // Transparent = use Google's bg
       const bgColor = completedStyling.bgColor || baseColor || defaultBgColor;
       const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
                        (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
 
-      // FIX: Only apply background opacity if there's an actual color (custom or inherited from pending)
-      // Without a color, applying opacity to transparent white creates unwanted overlay
-      const hasActualBgColor = !!(completedStyling.bgColor || baseColor);
-
       return {
         backgroundColor: bgColor,
         textColor,
-        // If no actual color, force opacity to 0 (don't paint). Otherwise use user's opacity setting.
-        bgOpacity: hasActualBgColor
-          ? normalizeOpacityValue(completedStyling.bgOpacity, 1)
-          : 0,
-        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
+        // Default 30% for all completed task styling (matches Google's fade)
+        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, 0.3),
+        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 0.3),
       };
     }
 
