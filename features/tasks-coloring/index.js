@@ -930,7 +930,8 @@ function applyPaintIfNeeded(node, colors, isCompleted = false) {
   const textOpacity = typeof colors.textOpacity === 'number' ? colors.textOpacity : 1;
   const fallbackText = pickContrastingText(colors.backgroundColor);
   const textColor = colors.textColor || fallbackText;
-  const desiredBg = colorToRgba(colors.backgroundColor, bgOpacity);
+  // Use blendColorWithWhite to match what applyPaint stores
+  const desiredBg = blendColorWithWhite(colors.backgroundColor, bgOpacity);
   const desiredText = colorToRgba(textColor, textOpacity);
   const currentBg = node.dataset.cfTaskBgColor;
   const currentText = node.dataset.cfTaskTextActual;
