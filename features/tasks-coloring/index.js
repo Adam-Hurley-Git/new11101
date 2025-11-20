@@ -1151,13 +1151,9 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: bgColor,
         textColor,
-        // Always respect user's bgOpacity setting - applies to Google's saved bg when no custom color
-        // Default: 100% for custom completed bg, 30% otherwise (matches Google's fade for completed tasks)
-        bgOpacity: normalizeOpacityValue(
-          completedStyling.bgOpacity,
-          completedStyling.bgColor ? 1 : 0.3
-        ),
-        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
+        // Default 30% for all completed task styling (matches Google's fade)
+        bgOpacity: normalizeOpacityValue(completedStyling.bgOpacity, 0.3),
+        textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 0.3),
       };
     }
 
