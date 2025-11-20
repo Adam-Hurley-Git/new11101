@@ -405,10 +405,9 @@ async function findTaskInAllLists(taskId)            // Search for task in all l
   // 2. Fallback: Full search across all lists (parallel)
   // 3. Updates cache on success
 
-// Internal Helpers (not exported, but important for understanding)
-async function fetchTaskDetails(taskId, listId)      // Fetch specific task details
+// Additional Exported Functions
 async function safeApiCall(apiFunction, maxRetries)  // Wrapper with retry logic
-function exponentialBackoff(attempt)                 // Rate limit backoff (max 30s)
+async function exponentialBackoff(attempt)           // Rate limit backoff (max 30s)
 async function checkStorageQuota()                   // Monitor local storage usage
 ```
 
@@ -1188,7 +1187,7 @@ According to Google Tasks API documentation:
 - All completed tasks now fetched correctly
 - Completed task styling works as expected
 
-Files affected: `lib/google-tasks-api.js` (lines 145, 222)
+Files affected: `lib/google-tasks-api.js` (lines 157, 234)
 
 **Authentication**:
 
