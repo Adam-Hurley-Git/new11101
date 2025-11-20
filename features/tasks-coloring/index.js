@@ -1039,27 +1039,27 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     if (isCompleted) {
       // For completed manual tasks: use manual color with opacity from list settings
       // If task has no list or list has no opacity settings, find highest across all lists
-      let bgOpacity = 0.6;  // Default
-      let textOpacity = 0.6;  // Default
+      let bgOpacity = 0.3;  // Default 30% for completed tasks
+      let textOpacity = 0.3;  // Default 30% for completed tasks
 
       // First try the task's own list
       if (completedStyling) {
         if (completedStyling.bgOpacity !== undefined) {
-          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.6);
+          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
         }
         if (completedStyling.textOpacity !== undefined) {
-          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.6);
+          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
         }
       } else {
         // No list for this task - find highest opacity across all lists
         const allCompletedStyling = cache.completedStyling || {};
         for (const listStyles of Object.values(allCompletedStyling)) {
           if (listStyles?.bgOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.6);
+            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
             if (normalized > bgOpacity) bgOpacity = normalized;
           }
           if (listStyles?.textOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.6);
+            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
             if (normalized > textOpacity) textOpacity = normalized;
           }
         }
