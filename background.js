@@ -979,18 +979,18 @@ async function transitionPollingState(from, to) {
 
   // Set new alarm based on state
   if (to === 'ACTIVE') {
-    // 1-minute polling when actively using calendar
-    await chrome.alarms.create('task-list-sync', {
-      periodInMinutes: 1,
-      delayInMinutes: 0, // Start immediately
-    });
-    debugLog('📊 Polling: ACTIVE mode (1-minute interval)');
-  } else if (to === 'IDLE') {
-    // 5-minute polling when calendar open but inactive
+    // 5-minute polling when actively using calendar
     await chrome.alarms.create('task-list-sync', {
       periodInMinutes: 5,
+      delayInMinutes: 0, // Start immediately
     });
-    debugLog('📊 Polling: IDLE mode (5-minute interval)');
+    debugLog('📊 Polling: ACTIVE mode (5-minute interval)');
+  } else if (to === 'IDLE') {
+    // 15-minute polling when calendar open but inactive
+    await chrome.alarms.create('task-list-sync', {
+      periodInMinutes: 15,
+    });
+    debugLog('📊 Polling: IDLE mode (15-minute interval)');
   } else {
     // SLEEP - no polling when no calendar tabs
     debugLog('📊 Polling: SLEEP mode (paused)');
