@@ -1105,8 +1105,8 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       return {
         backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent = use Google's original bg
         textColor: 'rgba(0, 0, 0, 0)', // Transparent = use Google's original text (will be handled in applyPaint)
-        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6), // Default 60%
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6), // Default 60%
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.3), // Default 30%
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.3), // Default 30%
       };
     }
 
@@ -1126,9 +1126,9 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         backgroundColor: bgColor,
         textColor,
         // Always allow opacity adjustment (even when using Google's default bg)
-        // Default to Google's intended 60% opacity
-        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.6),
-        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.6),
+        // Default 30% for all completed task styling
+        bgOpacity: normalizeOpacityValue(completedStyling?.bgOpacity, 0.3),
+        textOpacity: normalizeOpacityValue(completedStyling?.textOpacity, 0.3),
       };
     }
 
