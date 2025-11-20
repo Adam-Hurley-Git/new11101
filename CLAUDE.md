@@ -541,11 +541,11 @@ When 401 Unauthorized received:
 - Grid: `[role="grid"]`
 - View detection: `body[data-viewkey]`
 
-**Priority System**:
+**Color Application**:
 
-1. Specific date colors (highest)
-2. Weekday colors (medium)
-3. No color (lowest)
+- Weekday colors applied based on day index (0=Sunday, 6=Saturday)
+- Per-day opacity controls intensity
+- Note: `dateColors` exists in storage but has no UI (unused stub code)
 
 **Performance**:
 
@@ -939,9 +939,7 @@ picker.destroy(); // Clean up
       "0": 30, "1": 30, "2": 30, "3": 30,
       "4": 30, "5": 30, "6": 30
     },
-    "dateColors": {
-      // 'YYYY-MM-DD' → hex color
-    },
+    "dateColors": {},                               // UNUSED - stub code, no UI exists
     "presetColors": [
       // Default day-color presets (10 entries, duplicates allowed)
       "#FDE68A", "#BFDBFE", "#C7D2FE", "#FBCFE8", "#BBF7D0",
