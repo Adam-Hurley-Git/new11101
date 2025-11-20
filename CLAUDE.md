@@ -1819,7 +1819,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ## Version History
 
-### v0.0.3 (November 17, 2025) - UX Fixes & Polish
+### v0.0.3 (November 2025) - UX Fixes & Polish
 
 - 🐛 **Fixed: Completed task coloring** - `showHidden: true` parameter fix
 - 🐛 **Fixed: Slider flickering** - Removed interfering hover effects
@@ -1828,36 +1828,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 - 🐛 **Fixed: Clear button UX** - Visual feedback and proper Google default reset
 - ⚡ **Performance: Smart storage listener** - Only reloads when necessary
 - 🎨 **UX: Transparent backgrounds** - Text-only and completed-only styling supported
-- 📝 **Code locations**: `lib/google-tasks-api.js`, `popup/popup.js`, `popup/popup.html`, `features/tasks-coloring/index.js`
 
-### v2.0 (January 2025) - Fail-Open Architecture
+### v0.0.2 (January 2025) - Chrome Web Store & Fail-Open
 
 - 🔒 **CRITICAL**: Refactored to fail-open architecture
 - ✅ Paying users never locked during API failures
 - ✅ Auto-refresh expired tokens (1-hour expiry)
-- ✅ Database fallback when Paddle API fails
-- ✅ Preserve lock state on network/API errors
-- 🐛 Fixed: Token expiry locking paying users
-- 🐛 Fixed: Paddle API timeouts locking paying users
-- 🐛 Fixed: Network issues locking paying users
-- 📚 Documentation: Added FAIL_OPEN_ARCHITECTURE.md
+- ❌ Removed `cookies` and `notifications` permissions
+- ✅ Added `identity` permission for Google OAuth
+- ✅ Added `minimum_chrome_version: "121"`
 
-### v1.0 (November 2025)
+### v0.0.1 (October 2024) - Initial Release
 
-- ✨ NEW: Task List Default Colors feature
-- ⚡ Performance: 99.9% faster color lookups
-- ⚡ Instant coloring for new tasks (<1 second)
-- 🐛 Fixed: Task ID encoding issues (base64 vs decoded)
-- 🐛 Fixed: Storage read spam (33/sec → 0.03/sec)
-- 🧹 Production cleanup: Removed 76 debug logs, 40 lines dead code
-
-### v0.9 (October 2025)
-
-- Initial release
-- Calendar day coloring
-- Individual task coloring
-- Time blocking
-- Supabase subscription integration
+- ✨ Calendar day coloring with per-day opacity
+- ✨ Individual task coloring
+- ✨ Task List Default Colors (Google Tasks API)
+- ✨ Time blocking
+- ✨ Supabase subscription integration
+- ⚡ In-memory cache for 99.9% faster color lookups
 
 ---
 
