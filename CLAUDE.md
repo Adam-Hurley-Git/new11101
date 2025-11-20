@@ -200,7 +200,9 @@ new11101/
 │
 ├── CLAUDE.md                           # This file
 ├── USER_GUIDE.md                       # User guide
-└── CODEBASE_AUDIT_REPORT.md            # Previous audit report
+├── CODEBASE_AUDIT_REPORT.md            # Previous audit report
+├── AUDIT_REPORT_DETAILED.md            # Detailed documentation audit
+└── AUDIT_SUMMARY.txt                   # Quick reference audit summary
 ```
 
 ---
@@ -262,12 +264,18 @@ async function setCompletedTextOpacity(listId, opacity)
 async function clearCompletedStyling(listId)
 async function getCompletedStyling(listId)
 
+// Task Color Resolution
+async function getDefaultColorForTask(taskId)
+  // Returns: { type: 'manual'|'list_default'|'none', color: string|null, listId?: string }
+  // Priority: manual color > list default > none
+
 // Time Blocking
 async function setTimeBlockingEnabled(enabled)
 async function setTimeBlockingGlobalColor(color)
 async function setTimeBlockingShadingStyle(style)
 async function setTimeBlockingSchedule(schedule)
 async function addTimeBlock(dayKey, timeBlock)       // dayKey: 'mon', 'tue', etc.
+async function updateTimeBlock(dayKey, blockIndex, timeBlock)
 async function removeTimeBlock(dayKey, blockIndex)
 async function addDateSpecificTimeBlock(dateKey, timeBlock)
 async function removeDateSpecificTimeBlock(dateKey, blockIndex)
@@ -314,6 +322,7 @@ function ymdFromDate(date)                           // Format date as YYYY-MM-D
       "lastSync": null,
       "syncInterval": 5,
       "pendingTextColors": {},                       // List ID → text color
+      "textColors": {},                              // Duplicate of pendingTextColors (kept in sync for compatibility)
       "completedStyling": {}                         // List ID → styling config
     },
     "timeBlocking": {
@@ -411,6 +420,12 @@ async function findTaskInAllLists(taskId)            // Search for task in all l
   // 1. Fast path: Search last 30 seconds of updates (parallel)
   // 2. Fallback: Full search across all lists (parallel)
   // 3. Updates cache on success
+
+// Internal Helpers (not exported, but important for understanding)
+async function fetchTaskDetails(taskId, listId)      // Fetch specific task details
+async function safeApiCall(apiFunction, maxRetries)  // Wrapper with retry logic
+function exponentialBackoff(attempt)                 // Rate limit backoff (max 30s)
+async function checkStorageQuota()                   // Monitor local storage usage
 ```
 
 **Constants**:
@@ -838,8 +853,7 @@ if (listId) {
     "mon": [                            // Day name keys
       {
         "id": "block_123",
-        "startTime": "09:00",
-        "endTime": "17:00",
+        "timeRange": ["09:00", "17:00"],
         "color": "#4285f4"
       }
     ],
@@ -850,8 +864,7 @@ if (listId) {
     "2025-11-03": [
       {
         "id": "block_456",
-        "startTime": "14:00",
-        "endTime": "16:00",
+        "timeRange": ["14:00", "16:00"],
         "color": "#ea4335"
       }
     ]
@@ -970,24 +983,24 @@ picker.destroy(); // Clean up
     "timeBlocking": {
       "enabled": false,
       "globalColor": "#FFEB3B",
-      "shadingStyle": "solid",                       // solid|striped|dotted|gradient
+      "shadingStyle": "solid",                       // solid|hashed
       "weeklySchedule": {
-        "0": [],                                     // Sunday blocks
-        "1": [                                       // Monday blocks
+        "mon": [],                                   // Monday blocks
+        "tue": [],                                   // Tuesday blocks
+        "wed": [                                     // Wednesday blocks
           {
             "id": "block_abc123",
-            "startTime": "09:00",
-            "endTime": "17:00",
+            "timeRange": ["09:00", "17:00"],
             "color": "#4285f4"                       // Optional override
           }
-        ]
+        ],
+        "thu": [], "fri": [], "sat": [], "sun": []
       },
       "dateSpecificSchedule": {
         "2025-11-03": [
           {
             "id": "block_def456",
-            "startTime": "14:00",
-            "endTime": "16:00",
+            "timeRange": ["14:00", "16:00"],
             "color": "#ea4335"
           }
         ]
