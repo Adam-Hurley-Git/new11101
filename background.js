@@ -637,6 +637,9 @@ let pollingState = 'SLEEP'; // 'ACTIVE', 'IDLE', 'SLEEP'
 let activeCalendarTabs = new Set();
 let lastUserActivity = Date.now();
 let lastSyncTime = null;
+let incrementalSyncCount = 0;
+const MAX_INCREMENTAL_SYNCS_BEFORE_FULL = 50; // Force full sync after N incremental syncs
+const STORAGE_THRESHOLD_FOR_FULL_SYNC = 70; // Force full sync if storage > 70%
 
 // OAuth request handler
 async function handleOAuthRequest() {
@@ -691,16 +694,41 @@ async function syncTaskLists(fullSync = false) {
 
     const startTime = Date.now();
 
-    if (fullSync || !lastSyncTime) {
-      // FULL SYNC: Replace entire mapping
-      debugLog('Running FULL SYNC: rebuilding entire task-to-list mapping...');
+    // Determine if we need to force a full sync for cleanup
+    let shouldDoFullSync = fullSync || !lastSyncTime;
+    let fullSyncReason = fullSync ? 'requested' : (!lastSyncTime ? 'no_previous_sync' : null);
+
+    if (!shouldDoFullSync) {
+      // Check if too many incremental syncs have accumulated
+      if (incrementalSyncCount >= MAX_INCREMENTAL_SYNCS_BEFORE_FULL) {
+        shouldDoFullSync = true;
+        fullSyncReason = 'incremental_limit_reached';
+        debugLog(`Forcing FULL SYNC: ${incrementalSyncCount} incremental syncs since last full sync`);
+      }
+
+      // Check storage quota - force full sync if getting high
+      if (!shouldDoFullSync) {
+        const { percentUsed } = await GoogleTasksAPI.checkStorageQuota();
+        if (percentUsed > STORAGE_THRESHOLD_FOR_FULL_SYNC) {
+          shouldDoFullSync = true;
+          fullSyncReason = 'storage_threshold';
+          debugLog(`Forcing FULL SYNC: storage at ${percentUsed.toFixed(1)}% (threshold: ${STORAGE_THRESHOLD_FOR_FULL_SYNC}%)`);
+        }
+      }
+    }
+
+    if (shouldDoFullSync) {
+      // FULL SYNC: Replace entire mapping (cleans up stale entries)
+      debugLog('Running FULL SYNC:', fullSyncReason);
       await GoogleTasksAPI.safeApiCall(() => GoogleTasksAPI.buildTaskToListMapping(), 3);
       lastSyncTime = new Date().toISOString();
+      incrementalSyncCount = 0; // Reset counter after full sync
     } else {
       // INCREMENTAL SYNC: Only fetch changes since last sync
       debugLog('Running INCREMENTAL SYNC: fetching tasks updated since', lastSyncTime);
       await GoogleTasksAPI.safeApiCall(() => GoogleTasksAPI.incrementalSync(lastSyncTime), 3);
       lastSyncTime = new Date().toISOString();
+      incrementalSyncCount++; // Increment counter
     }
 
     const duration = Date.now() - startTime;
@@ -733,7 +761,9 @@ async function syncTaskLists(fullSync = false) {
     debugLog('Sync diagnostics:', {
       taskCount,
       sampleIds: sampleTaskIds,
-      syncType: fullSync ? 'FULL' : 'INCREMENTAL',
+      syncType: shouldDoFullSync ? 'FULL' : 'INCREMENTAL',
+      fullSyncReason: shouldDoFullSync ? fullSyncReason : null,
+      incrementalSyncCount,
       duration
     });
 
@@ -741,7 +771,8 @@ async function syncTaskLists(fullSync = false) {
       success: true,
       taskCount,
       duration,
-      syncType: fullSync ? 'FULL' : 'INCREMENTAL',
+      syncType: shouldDoFullSync ? 'FULL' : 'INCREMENTAL',
+      fullSyncReason: shouldDoFullSync ? fullSyncReason : null,
       sampleTaskIds: sampleTaskIds.slice(0, 5) // Return first 5 for debugging
     };
   } catch (error) {
