@@ -1,6 +1,6 @@
 # ColorKit Chrome Extension - Full Codebase Reference
 
-**Last Updated**: November 17, 2025
+**Last Updated**: November 20, 2025
 **Extension Version**: 0.0.3 (Chrome Web Store Ready)
 **Manifest Version**: 3
 **Minimum Chrome Version**: 121
@@ -67,7 +67,6 @@ This document provides comprehensive context about the ColorKit Chrome extension
 #### Code Cleanup
 
 - Removed Chrome < 121 fallback code
-- Removed unused `isAuthenticated()` function
 - Removed broken Chrome update notice element
 - Simplified push notification subscription (silent mode only)
 
@@ -137,22 +136,25 @@ This document provides comprehensive context about the ColorKit Chrome extension
 ## File Structure
 
 ```
-customise calendar 3/
+new11101/
 ├── manifest.json                       # Extension manifest (V3)
-├── background.js                       # Service worker (31KB)
+├── background.js                       # Service worker
 ├── config.js                           # Development config
 ├── config.production.js                # Production config
+├── debug-clear-oauth.js                # OAuth debugging utility
 │
 ├── content/
 │   ├── index.js                        # Main content script entry
-│   ├── featureRegistry.js              # Feature loader
+│   ├── content.css                     # Content script styles
+│   ├── featureRegistry.js              # Feature registry (Map-based)
 │   ├── modalInjection.js               # Task modal detection
 │   └── toolbar.js                      # Toolbar injections
 │
 ├── lib/
 │   ├── storage.js                      # Storage abstraction layer
 │   ├── google-tasks-api.js             # Google Tasks API integration
-│   └── subscription-validator.js       # Supabase subscription validation
+│   ├── subscription-validator.js       # Supabase subscription validation
+│   └── supabase-extension.js           # Supabase client library
 │
 ├── features/
 │   ├── shared/
@@ -175,18 +177,30 @@ customise calendar 3/
 │
 ├── popup/
 │   ├── popup.html                      # Settings UI (520x650px)
-│   └── popup.js                        # Settings logic (~37k tokens)
+│   ├── popup.js                        # Settings logic
+│   └── colorkit-logo.png               # Extension logo
 │
 ├── diagnostics/
+│   ├── diagnostics.html                # Diagnostics page
 │   └── diagnostics.js                  # Debug tools
 │
 ├── images/
 │   ├── icon-16.png
 │   ├── icon-48.png
-│   └── icon-128.png
+│   ├── icon-128.png
+│   └── colorkit-logo.png               # Extension logo
 │
-└── options/
-    └── options.html                    # Options page (minimal)
+├── options/
+│   ├── options.html                    # Options page
+│   ├── options.css                     # Options styles
+│   └── options.js                      # Options logic
+│
+├── docs/
+│   └── TASK_COLORING_GOOGLE_MODE.md    # Task coloring documentation
+│
+├── CLAUDE.md                           # This file
+├── USER_GUIDE.md                       # User guide
+└── CODEBASE_AUDIT_REPORT.md            # Previous audit report
 ```
 
 ---
@@ -201,38 +215,67 @@ customise calendar 3/
 
 ```javascript
 // Settings Management
-async function getAll()                              // Get all settings
-async function setAll(newSettings)                   // Set all settings (deep merge)
+async function getAll()                              // Get all sync storage
 async function getSettings()                         // Get settings object
 async function setSettings(partialSettings)          // Update settings (deep merge)
-async function resetToDefaults()                     // Reset to default settings
+async function get(key, defaultValue)                // Get specific key with default
+async function set(key, value)                       // Set specific key
+async function onSettingsChanged(callback)           // Listen for changes
 
 // Day Coloring
-async function setDayColoringEnabled(enabled)
+async function setEnabled(enabled)                   // Enable/disable day coloring
 async function setWeekdayColor(day, color)
-async function setWeekdayOpacity(opacity)
+async function setWeekdayOpacity(weekdayIndex, opacity)  // Per-day opacity
 async function setDateColor(date, color)
 async function clearDateColor(date)
+async function addPresetColor(color)
+async function setWeekStart(weekStart)
 
-// Task Coloring (Individual)
+// Task Coloring (Presets)
 async function setTaskColoringEnabled(enabled)
-async function setTaskColor(taskId, color)
-async function clearTaskColor(taskId)
-async function getTaskColor(taskId)
-async function getTaskColors()
+async function setTaskPresetColors(colors)
+async function addTaskPresetColor(color)
+async function removeTaskPresetColor(index)
+async function updateTaskPresetColor(index, color)
+async function setTaskInlineColors(colors)
+async function updateTaskInlineColor(index, color)
 
-// Task Coloring (List Defaults - NEW)
-async function getDefaultColorForTask(taskId)        // Priority: manual > list > none
+// Task Coloring (List Defaults)
 async function setTaskListDefaultColor(listId, color)
 async function clearTaskListDefaultColor(listId)
 async function getTaskListColors()
 async function getTaskListsMeta()
+async function getTaskToListMap()
+
+// Task List Text Colors
+async function setTaskListTextColor(listId, color)
+async function clearTaskListTextColor(listId)
+async function getTaskListTextColors()
+
+// Completed Task Styling
+async function setCompletedStylingEnabled(listId, enabled)
+async function setCompletedStylingMode(listId, mode)
+async function setCompletedBgColor(listId, color)
+async function setCompletedTextColor(listId, color)
+async function setCompletedBgOpacity(listId, opacity)
+async function setCompletedTextOpacity(listId, opacity)
+async function clearCompletedStyling(listId)
+async function getCompletedStyling(listId)
 
 // Time Blocking
 async function setTimeBlockingEnabled(enabled)
-async function setGlobalTimeBlockColor(color)
-async function addWeeklyTimeBlock(day, startTime, endTime, color)
-async function removeWeeklyTimeBlock(day, blockId)
+async function setTimeBlockingGlobalColor(color)
+async function setTimeBlockingShadingStyle(style)
+async function setTimeBlockingSchedule(schedule)
+async function addTimeBlock(dayKey, timeBlock)       // dayKey: 'mon', 'tue', etc.
+async function removeTimeBlock(dayKey, blockIndex)
+async function addDateSpecificTimeBlock(dateKey, timeBlock)
+async function removeDateSpecificTimeBlock(dateKey, blockIndex)
+async function updateDateSpecificTimeBlock(dateKey, blockIndex, timeBlock)
+async function clearDateSpecificBlocks(dateKey)
+
+// Utilities
+function ymdFromDate(date)                           // Format date as YYYY-MM-DD
 ```
 
 **Storage Keys**:
@@ -242,26 +285,45 @@ async function removeWeeklyTimeBlock(day, blockId)
 {
   "settings": {
     "enabled": false,
-    "weekdayColors": { "0": "#fff", "1": "#fff", ... },
-    "weekdayOpacity": 15,
+    "weekdayColors": {                               // Default pastel colors
+      "0": "#ffd5d5",                                // Sunday - Light coral
+      "1": "#e8deff",                                // Monday - Light lavender
+      "2": "#d5f5e3",                                // Tuesday - Light mint
+      "3": "#ffe8d5",                                // Wednesday - Light peach
+      "4": "#d5f0ff",                                // Thursday - Light sky blue
+      "5": "#fff5d5",                                // Friday - Light yellow
+      "6": "#f0d5ff"                                 // Saturday - Light lilac
+    },
+    "weekdayOpacity": {                              // Per-day opacity (0-100)
+      "0": 30, "1": 30, "2": 30, "3": 30,
+      "4": 30, "5": 30, "6": 30
+    },
     "dateColors": { "2025-11-03": "#ff0000" },
-    "presetColors": ["#4285f4", "#34a853", ...],
+    "presetColors": [                                // Default preset colors
+      "#FDE68A", "#BFDBFE", "#C7D2FE", "#FBCFE8", "#BBF7D0",
+      "#FCA5A5", "#A7F3D0", "#F5D0FE", "#FDE68A", "#E9D5FF"
+    ],
     "taskColoring": {
       "enabled": false,
       "presetColors": [...],
       "inlineColors": [...]
     },
-    "taskListColoring": {                            // NEW
+    "taskListColoring": {
       "enabled": false,
       "oauthGranted": false,
       "lastSync": null,
-      "syncInterval": 5
+      "syncInterval": 5,
+      "pendingTextColors": {},                       // List ID → text color
+      "completedStyling": {}                         // List ID → styling config
     },
     "timeBlocking": {
       "enabled": false,
       "globalColor": "#FFEB3B",
       "shadingStyle": "solid",
-      "weeklySchedule": {...},
+      "weeklySchedule": {                            // Day name keys
+        "mon": [], "tue": [], "wed": [], "thu": [],
+        "fri": [], "sat": [], "sun": []
+      },
       "dateSpecificSchedule": {...}
     }
   },
@@ -272,6 +334,9 @@ async function removeWeeklyTimeBlock(day, blockId)
   "cf.taskListColors": {                             // List default colors
     "listId789": "#4285f4",
     "listIdABC": "#ea4335"
+  },
+  "cf.taskListTextColors": {                         // List text color overrides
+    "listId789": "#000000"
   },
   "customDayColors": ["#ff0000", "#00ff00"]
 }
@@ -293,8 +358,13 @@ async function removeWeeklyTimeBlock(day, blockId)
     "isActive": true,
     "status": "active",
     "reason": "subscription_active",
-    "scheduledCancellation": false
-  }
+    "scheduledCancellation": false,
+    "lastChecked": 1699000000000
+  },
+  "subscriptionActive": true,                        // Quick-check lock state
+  "subscriptionTimestamp": 1699000000000,            // Last check timestamp
+  "pushSubscription": {...},                         // Web Push subscription data
+  "pendingPushSubscription": {...}                   // Pending push registration
 }
 ```
 
@@ -324,12 +394,12 @@ async function removeWeeklyTimeBlock(day, blockId)
 // OAuth Management
 async function getAuthToken(interactive = false)     // Get/refresh OAuth token
 async function clearAuthToken()                      // Clear cached token
-async function isAuthGranted()                       // Check if OAuth granted
+async function isAuthGranted()                       // Check if OAuth granted (EXISTS)
 
 // API Calls (all return JSON)
 async function fetchTaskLists()                      // GET /users/@me/lists
 async function fetchTasksInList(listId, updatedMin) // GET /lists/{listId}/tasks
-async function fetchTaskDetails(taskId, listId)     // GET /lists/{listId}/tasks/{taskId}
+async function fetchTasksWithCompletedLimit(listId, daysLimit)  // Smart completed task limiting
 
 // Mapping & Sync
 async function buildTaskToListMapping()              // Full sync (all lists/tasks)
@@ -341,18 +411,14 @@ async function findTaskInAllLists(taskId)            // Search for task in all l
   // 1. Fast path: Search last 30 seconds of updates (parallel)
   // 2. Fallback: Full search across all lists (parallel)
   // 3. Updates cache on success
+```
 
-// Storage
-async function cacheTaskListsMeta(lists)             // Save lists metadata
-async function cacheTaskToListMap(mapping)           // Save task→list mapping
-async function getLastSyncTime()                     // Get last sync timestamp
-async function setLastSyncTime(timestamp)            // Update sync timestamp
+**Constants**:
 
-// Error Handling
-async function exponentialBackoff(attempt)           // Calculate backoff delay
-async function safeApiCall(fn, retries = 2)         // Retry wrapper
-function handleApiError(error)                       // Error classification
-async function checkStorageQuota()                   // Monitor quota usage
+```javascript
+const COMPLETED_TASKS_DAYS_LIMIT = 90;               // Only fetch completed tasks from last 90 days
+const MAX_TASKS_PER_LIST = 1000;                     // Safety limit per list
+const MAX_INCREMENTAL_SYNCS_BEFORE_FULL = 50;        // Force full sync counter
 ```
 
 **OAuth Configuration** (`manifest.json`):
@@ -464,7 +530,7 @@ When 401 Unauthorized received:
 **How It Works**:
 
 1. Content script loads on Google Calendar
-2. Waits for DOM ready (`.roMxlc` grid appears)
+2. Waits for DOM ready (grid appears)
 3. Identifies day cells by data attributes
 4. Applies background colors with opacity
 5. Watches for navigation (MutationObserver)
@@ -472,9 +538,9 @@ When 401 Unauthorized received:
 
 **DOM Selectors**:
 
-- Day cells: `[data-datekey="YYYYMMDD"]`
-- Grid container: `.roMxlc`
-- Month view: `.DShyMc-bN97Pc-Y93ICc`
+- Day containers: `div[data-datekey]:not([jsaction])`
+- Grid: `[role="grid"]`
+- View detection: `body[data-viewkey]`
 
 **Priority System**:
 
@@ -508,8 +574,7 @@ When 401 Unauthorized received:
 **DOM Selectors**:
 
 - Task chips: `[data-eventid^="tasks."]` or `[data-eventid^="tasks_"]`
-- Task popup: `[data-draggable-id]` containing task
-- Task modal: `.hWWDdQJzRQ==` (edit modal)
+- Task button class: `.GTG3wb`
 
 **Color Picker Injection**:
 
@@ -607,10 +672,10 @@ Task colored in <1 second
 
 ```javascript
 // Calendar tab active + recent activity
-→ ACTIVE mode: 1-minute polling
+→ ACTIVE mode: 5-minute polling
 
 // Calendar open, no recent activity (5 min idle)
-→ IDLE mode: 5-minute polling
+→ IDLE mode: 15-minute polling
 
 // No calendar tabs open
 → SLEEP mode: Polling paused
@@ -762,22 +827,24 @@ if (listId) {
 
 **DOM Selectors**:
 
-- Time grid: `.Nj8eUd`
 - Time slots: `[data-datekey][data-time]`
+- Grid: `[role="grid"]`
 
 **Storage**:
 
 ```javascript
 {
   "weeklySchedule": {
-    "1": [                              // Monday (0=Sunday)
+    "mon": [                            // Day name keys
       {
         "id": "block_123",
         "startTime": "09:00",
         "endTime": "17:00",
         "color": "#4285f4"
       }
-    ]
+    ],
+    "tue": [], "wed": [], "thu": [],
+    "fri": [], "sat": [], "sun": []
   },
   "dateSpecificSchedule": {
     "2025-11-03": [
@@ -1068,12 +1135,39 @@ chrome.tabs.sendMessage(tabId, {
   type: 'TASK_LISTS_UPDATED',
 });
 
-// Feature toggled
+// Subscription cancelled
 chrome.tabs.sendMessage(tabId, {
-  type: 'FEATURE_TOGGLED',
-  feature: 'taskListColoring',
-  enabled: true,
+  type: 'SUBSCRIPTION_CANCELLED',
 });
+
+// Trigger task repaint
+chrome.tabs.sendMessage(tabId, {
+  type: 'REPAINT_TASKS',
+});
+
+// Settings changed (from popup)
+chrome.tabs.sendMessage(tabId, {
+  type: 'settingsChanged',
+});
+```
+
+**Additional Message Types**:
+
+```javascript
+// Push subscription management
+chrome.runtime.sendMessage({ type: 'ENSURE_PUSH' });
+
+// OAuth status check
+chrome.runtime.sendMessage({ type: 'CHECK_OAUTH_STATUS' });
+
+// Get task lists metadata
+chrome.runtime.sendMessage({ type: 'GET_TASK_LISTS_META' });
+
+// From web app
+chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS' });
+chrome.runtime.sendMessage({ type: 'PAYMENT_SUCCESS' });
+chrome.runtime.sendMessage({ type: 'LOGOUT' });
+chrome.runtime.sendMessage({ type: 'PAGE_LOADED' });
 ```
 
 ### Background ← → Popup
@@ -1304,35 +1398,37 @@ function paintTaskImmediately(taskId, color) {
 
 ### 5. Feature Registry Pattern
 
-**Problem**: Dynamically load features based on settings
+**Problem**: Manage features with consistent lifecycle
 
 **Solution** (`content/featureRegistry.js`):
 
 ```javascript
-const features = {
-  'day-coloring': () => import('./features/calendar-coloring/index.js'),
-  'task-coloring': () => import('./features/tasks-coloring/index.js'),
-  'time-blocking': () => import('./features/time-blocking/index.js'),
+// Map-based registry - features self-register
+const featureRegistry = new Map();
+
+// Features register themselves via window.cc3Features
+window.cc3Features = {
+  register(name, feature) {
+    featureRegistry.set(name, feature);
+  }
 };
 
-async function loadFeatures() {
+// Features are loaded via manifest content_scripts, not dynamic imports
+// Each feature calls window.cc3Features.register() on load
+
+// Initialize all registered features
+async function initializeFeatures() {
   const settings = await chrome.storage.sync.get('settings');
 
-  if (settings.settings?.enabled) {
-    await features['day-coloring']();
-  }
-
-  if (settings.settings?.taskColoring?.enabled) {
-    await features['task-coloring']();
-  }
-
-  if (settings.settings?.timeBlocking?.enabled) {
-    await features['time-blocking']();
+  for (const [name, feature] of featureRegistry) {
+    if (shouldEnableFeature(name, settings)) {
+      await feature.init();
+    }
   }
 }
 ```
 
-**Why**: Only loads code for enabled features, reducing memory usage
+**Why**: All scripts loaded via manifest, features self-register for consistent lifecycle
 
 ---
 
@@ -1353,9 +1449,9 @@ async function updatePollingState() {
 
   let newState;
   if (hasActiveTabs && recentActivity) {
-    newState = 'ACTIVE'; // 1-minute polling
+    newState = 'ACTIVE'; // 5-minute polling
   } else if (hasActiveTabs) {
-    newState = 'IDLE'; // 5-minute polling
+    newState = 'IDLE'; // 15-minute polling
   } else {
     newState = 'SLEEP'; // No polling
   }
@@ -1370,9 +1466,9 @@ async function transitionPollingState(from, to) {
   await chrome.alarms.clear('task-list-sync');
 
   if (to === 'ACTIVE') {
-    await chrome.alarms.create('task-list-sync', { periodInMinutes: 1 });
-  } else if (to === 'IDLE') {
     await chrome.alarms.create('task-list-sync', { periodInMinutes: 5 });
+  } else if (to === 'IDLE') {
+    await chrome.alarms.create('task-list-sync', { periodInMinutes: 15 });
   }
   // SLEEP: no alarm
 }
@@ -1823,4 +1919,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 ---
 
-**End of CLAUDE.md** - Last updated November 17, 2025
+**End of CLAUDE.md** - Last updated November 20, 2025
