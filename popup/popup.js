@@ -825,6 +825,9 @@ checkAuthAndSubscription();
         }
       });
 
+      // Refresh all task list color picker custom palettes
+      refreshTaskListColorPickerCustomPalettes();
+
       updateColorLab();
 
       // Visual feedback
@@ -946,6 +949,9 @@ checkAuthAndSubscription();
             }
           });
 
+          // Refresh all task list color picker custom palettes
+          refreshTaskListColorPickerCustomPalettes();
+
           updateColorLab();
         }
       };
@@ -1010,10 +1016,113 @@ checkAuthAndSubscription();
             }
           });
 
+          // Refresh all task list color picker custom palettes
+          refreshTaskListColorPickerCustomPalettes();
+
           updateColorLab();
         }
       };
     }
+  }
+
+  // Helper function to refresh all task list color picker custom palettes
+  function refreshTaskListColorPickerCustomPalettes() {
+    document.querySelectorAll('.task-list-item').forEach((item) => {
+      const listId = item.dataset.listId;
+      if (!listId) return;
+
+      // Refresh both background and text color picker custom palettes
+      ['taskList', 'taskListText'].forEach((prefix) => {
+        const customPalette = qs(`${prefix}CustomPalette-${listId}`);
+        if (!customPalette) return;
+
+        // Keep track of currently selected color before clearing
+        const selectedSwatch = customPalette.querySelector('.color-swatch.selected');
+        const selectedColor = selectedSwatch?.dataset.color;
+
+        customPalette.innerHTML = '';
+        customColors.forEach((color) => {
+          const swatch = document.createElement('div');
+          swatch.className = 'color-swatch custom-color-swatch';
+          swatch.style.backgroundColor = color;
+          swatch.title = color;
+          swatch.dataset.color = color;
+
+          // Restore selection if this was the selected color
+          if (color === selectedColor) {
+            swatch.classList.add('selected');
+          }
+
+          swatch.onclick = (e) => {
+            e.stopPropagation();
+            // Find the color input for this picker and update it
+            const colorInput = qs(`${prefix}Color-${listId}`);
+            if (colorInput) {
+              colorInput.value = color;
+              colorInput.dispatchEvent(new Event('change'));
+            }
+          };
+
+          // Add remove button
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'custom-color-remove';
+          removeBtn.innerHTML = 'x';
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeCustomColor(color);
+          };
+          swatch.appendChild(removeBtn);
+
+          customPalette.appendChild(swatch);
+        });
+      });
+
+      // Also refresh completed task custom palettes
+      ['completedBg', 'completedText'].forEach((prefix) => {
+        const customPalette = qs(`${prefix}CustomPalette-${listId}`);
+        if (!customPalette) return;
+
+        // Keep track of currently selected color before clearing
+        const selectedSwatch = customPalette.querySelector('.color-swatch.selected');
+        const selectedColor = selectedSwatch?.dataset.color;
+
+        customPalette.innerHTML = '';
+        customColors.forEach((color) => {
+          const swatch = document.createElement('div');
+          swatch.className = 'color-swatch custom-color-swatch';
+          swatch.style.backgroundColor = color;
+          swatch.title = color;
+          swatch.dataset.color = color;
+
+          // Restore selection if this was the selected color
+          if (color === selectedColor) {
+            swatch.classList.add('selected');
+          }
+
+          swatch.onclick = (e) => {
+            e.stopPropagation();
+            // Find the color input for this picker and update it
+            const colorInput = qs(`${prefix}Color-${listId}`);
+            if (colorInput) {
+              colorInput.value = color;
+              colorInput.dispatchEvent(new Event('change'));
+            }
+          };
+
+          // Add remove button
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'custom-color-remove';
+          removeBtn.innerHTML = 'x';
+          removeBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeCustomColor(color);
+          };
+          swatch.appendChild(removeBtn);
+
+          customPalette.appendChild(swatch);
+        });
+      });
+    });
   }
 
   async function loadSettings() {
