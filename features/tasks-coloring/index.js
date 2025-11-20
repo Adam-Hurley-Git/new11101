@@ -123,6 +123,9 @@ function resolveTaskIdFromEventTarget(t) {
 const KEY = 'cf.taskColors';
 let taskElementReferences = new Map();
 
+// Initialization guard to prevent duplicate listeners/observers
+let initialized = false;
+
 // PERFORMANCE: In-memory cache to avoid constant storage reads
 let taskToListMapCache = null;
 let listColorsCache = null;
@@ -1465,6 +1468,14 @@ function repaintSoon(immediate = false) {
 }
 
 function initTasksColoring() {
+  // Prevent duplicate initialization (listeners/observers would accumulate)
+  if (initialized) {
+    // Already initialized - just trigger a repaint for any new settings
+    repaintSoon();
+    return;
+  }
+  initialized = true;
+
   // AUTO-SYNC ON PAGE LOAD
   // Trigger incremental sync if last sync > 30 minutes ago
   (async () => {
