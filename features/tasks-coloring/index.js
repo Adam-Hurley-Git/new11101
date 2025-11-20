@@ -1152,10 +1152,10 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
         backgroundColor: bgColor,
         textColor,
         // Always respect user's bgOpacity setting - applies to Google's saved bg when no custom color
-        // Default: 100% for custom/pending color, 30% for Google's background (matches Google's fade)
+        // Default: 100% for custom completed bg, 30% otherwise (matches Google's fade for completed tasks)
         bgOpacity: normalizeOpacityValue(
           completedStyling.bgOpacity,
-          hasActualBgColor ? 1 : 0.3
+          completedStyling.bgColor ? 1 : 0.3
         ),
         textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
       };
