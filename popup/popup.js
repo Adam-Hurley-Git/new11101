@@ -121,10 +121,18 @@ function showTrialBanner(trialEnding) {
 
   const banner = document.createElement('div');
   banner.className = 'trial-banner';
-  banner.innerHTML = `
-		<span>🎉 Free Trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} remaining</span>
-		<a href="${CONFIG.WEB_APP_URL}/dashboard/subscriptions" target="_blank">Manage</a>
-	`;
+
+  // Create elements safely to prevent XSS
+  const span = document.createElement('span');
+  span.textContent = `🎉 Free Trial: ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} remaining`;
+
+  const link = document.createElement('a');
+  link.href = `${CONFIG.WEB_APP_URL}/dashboard/subscriptions`;
+  link.target = '_blank';
+  link.textContent = 'Manage';
+
+  banner.appendChild(span);
+  banner.appendChild(link);
 
   const mainContent = document.getElementById('mainContent');
   if (mainContent && mainContent.firstChild) {
@@ -156,10 +164,19 @@ function showCancellationBanner(cancellationDate) {
 		font-size: 13px;
 		color: #856404;
 	`;
-  banner.innerHTML = `
-		<span>⚠️ Subscription ends ${formattedDate}</span>
-		<a href="${CONFIG.WEB_APP_URL}/dashboard/subscriptions" target="_blank" style="color: #856404; text-decoration: underline; font-weight: 500;">Manage</a>
-	`;
+
+  // Create elements safely to prevent XSS
+  const span = document.createElement('span');
+  span.textContent = `⚠️ Subscription ends ${formattedDate}`;
+
+  const link = document.createElement('a');
+  link.href = `${CONFIG.WEB_APP_URL}/dashboard/subscriptions`;
+  link.target = '_blank';
+  link.style.cssText = 'color: #856404; text-decoration: underline; font-weight: 500;';
+  link.textContent = 'Manage';
+
+  banner.appendChild(span);
+  banner.appendChild(link);
 
   const mainContent = document.getElementById('mainContent');
   if (mainContent && mainContent.firstChild) {

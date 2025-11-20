@@ -403,6 +403,22 @@ async function checkSubscriptionStatus() {
     };
   } catch (error) {
     console.error('Subscription check failed:', error);
+
+    // FAIL-OPEN: Preserve current state on error to avoid locking paying users
+    try {
+      const { subscriptionStatus } = await chrome.storage.local.get('subscriptionStatus');
+      if (subscriptionStatus && subscriptionStatus.isActive) {
+        debugLog('Preserving active subscription state due to validation error');
+        return {
+          isActive: true,
+          status: 'error_preserved',
+          reason: 'validation_failed_state_preserved',
+        };
+      }
+    } catch (storageError) {
+      console.error('Failed to read subscription status from storage:', storageError);
+    }
+
     return {
       isActive: false,
       status: 'error',
