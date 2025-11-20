@@ -615,16 +615,7 @@ checkAuthAndSubscription();
 
   // Color Lab Functions
   function updateColorLabToggle() {
-    const arrow = qs('colorLabArrow');
-    const colorLabSettings = qs('colorLabSettings');
-
-    if (colorLabEnabled) {
-      arrow.classList.remove('collapsed');
-      colorLabSettings.style.display = 'block';
-    } else {
-      arrow.classList.add('collapsed');
-      colorLabSettings.style.display = 'none';
-    }
+    // Expand/collapse now handled by CSS via data-section mechanism
   }
 
   function updateColorLab() {
@@ -860,14 +851,7 @@ checkAuthAndSubscription();
   }
 
   function setupColorLabEventListeners() {
-    // Color Lab expand/collapse
-    const header = qs('colorLabHeader');
-    if (header) {
-      header.onclick = () => {
-        colorLabEnabled = !colorLabEnabled;
-        updateColorLabToggle();
-      };
-    }
+    // Color Lab expand/collapse now handled by standard data-section mechanism
 
     // Color picker sync with hex input
     const colorPicker = qs('colorLabPicker');
