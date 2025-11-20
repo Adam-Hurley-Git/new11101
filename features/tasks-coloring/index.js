@@ -1145,17 +1145,18 @@ function buildColorInfo({ baseColor, pendingTextColor, overrideTextColor, isComp
       const textColor = overrideTextColor || completedStyling.textColor || pendingTextColor ||
                        (bgColor === defaultBgColor ? '#5f6368' : pickContrastingText(bgColor));
 
-      // FIX: Only apply background opacity if there's an actual color (custom or inherited from pending)
-      // Without a color, applying opacity to transparent white creates unwanted overlay
+      // Check if there's an actual custom or pending background color
       const hasActualBgColor = !!(completedStyling.bgColor || baseColor);
 
       return {
         backgroundColor: bgColor,
         textColor,
-        // If no actual color, force opacity to 0 (don't paint). Otherwise use user's opacity setting.
-        bgOpacity: hasActualBgColor
-          ? normalizeOpacityValue(completedStyling.bgOpacity, 1)
-          : 0,
+        // Always respect user's bgOpacity setting - applies to Google's saved bg when no custom color
+        // Default: 100% for custom/pending color, 60% for Google's background
+        bgOpacity: normalizeOpacityValue(
+          completedStyling.bgOpacity,
+          hasActualBgColor ? 1 : 0.6
+        ),
         textOpacity: normalizeOpacityValue(completedStyling.textOpacity, 1),
       };
     }
