@@ -306,15 +306,21 @@ function ymdFromDate(date)                           // Format date as YYYY-MM-D
       "0": 30, "1": 30, "2": 30, "3": 30,
       "4": 30, "5": 30, "6": 30
     },
-    "dateColors": { "2025-11-03": "#ff0000" },
+    "dateColors": {},
     "presetColors": [                                // Default preset colors
       "#FDE68A", "#BFDBFE", "#C7D2FE", "#FBCFE8", "#BBF7D0",
       "#FCA5A5", "#A7F3D0", "#F5D0FE", "#FDE68A", "#E9D5FF"
     ],
     "taskColoring": {
       "enabled": false,
-      "presetColors": [...],
-      "inlineColors": [...]
+      "presetColors": [                              // Calendar popup colors (12 max)
+        "#4285f4", "#34a853", "#ea4335", "#fbbc04", "#ff6d01", "#9c27b0",
+        "#e91e63", "#00bcd4", "#8bc34a", "#ff9800", "#607d8b", "#795548"
+      ],
+      "inlineColors": [                              // Task modal inline colors (8)
+        "#4285f4", "#34a853", "#ea4335", "#fbbc04",
+        "#ff6d01", "#9c27b0", "#e91e63", "#00bcd4"
+      ]
     },
     "taskListColoring": {
       "enabled": false,
@@ -322,7 +328,7 @@ function ymdFromDate(date)                           // Format date as YYYY-MM-D
       "lastSync": null,
       "syncInterval": 5,
       "pendingTextColors": {},                       // List ID → text color
-      "textColors": {},                              // Duplicate of pendingTextColors (kept in sync for compatibility)
+      "textColors": {},                              // Legacy mirror; only present if previously set
       "completedStyling": {}                         // List ID → styling config
     },
     "timeBlocking": {
@@ -333,49 +339,27 @@ function ymdFromDate(date)                           // Format date as YYYY-MM-D
         "mon": [], "tue": [], "wed": [], "thu": [],
         "fri": [], "sat": [], "sun": []
       },
-      "dateSpecificSchedule": {...}
+      "dateSpecificSchedule": {}
     }
   },
-  "cf.taskColors": {                                 // Manual task colors
-    "taskId123": "#4285f4",
-    "taskId456": "#34a853"
-  },
-  "cf.taskListColors": {                             // List default colors
-    "listId789": "#4285f4",
-    "listIdABC": "#ea4335"
-  },
-  "cf.taskListTextColors": {                         // List text color overrides
-    "listId789": "#000000"
-  },
-  "customDayColors": ["#ff0000", "#00ff00"]
-}
+  "cf.taskColors": {},                               // Manual task colors
+  "cf.taskListColors": {},                           // List default colors
+  "cf.taskListTextColors": {},                       // List text color overrides
+  "customDayColors": []
+},
 
 // Chrome Storage Local (max 10MB, device-specific)
 {
-  "cf.taskToListMap": {                              // Task → List mapping cache
-    "taskId123": "listId789",
-    "taskId456": "listIdABC"
-  },
-  "cf.taskListsMeta": [                              // Task lists metadata
-    {
-      "id": "listId789",
-      "title": "My Tasks",
-      "updated": "2025-11-03T00:00:00Z"
-    }
-  ],
-  "subscriptionStatus": {                            // Supabase subscription
-    "isActive": true,
-    "status": "active",
-    "reason": "subscription_active",
-    "scheduledCancellation": false,
-    "lastChecked": 1699000000000
-  },
-  "subscriptionActive": true,                        // Quick-check lock state
-  "subscriptionTimestamp": 1699000000000,            // Last check timestamp
-  "pushSubscription": {...},                         // Web Push subscription data
-  "pendingPushSubscription": {...}                   // Pending push registration
+  "cf.taskToListMap": {},                             // Task → List mapping cache
+  "cf.taskListsMeta": [],                             // Task lists metadata
+  "subscriptionStatus": null,                         // Supabase subscription
+  "subscriptionActive": false,                        // Quick-check lock state
+  "subscriptionTimestamp": null,                      // Last check timestamp
+  "pushSubscription": null,                           // Web Push subscription data
+  "pendingPushSubscription": null                     // Pending push registration
 }
 ```
+
 
 **Global Access**:
 
@@ -942,90 +926,71 @@ picker.destroy(); // Clean up
   // Main settings object
   "settings": {
     "enabled": false,                                // Day coloring enabled
-    "weekdayColors": {
-      "0": "#ffffff",                                // Sunday
-      "1": "#ffffff",                                // Monday
-      "2": "#ffffff",                                // Tuesday
-      "3": "#ffffff",                                // Wednesday
-      "4": "#ffffff",                                // Thursday
-      "5": "#ffffff",                                // Friday
-      "6": "#ffffff"                                 // Saturday
+    "weekdayColors": {                               // Default pastel colors
+      "0": "#ffd5d5",                                // Sunday - Light coral
+      "1": "#e8deff",                                // Monday - Light lavender
+      "2": "#d5f5e3",                                // Tuesday - Light mint
+      "3": "#ffe8d5",                                // Wednesday - Light peach
+      "4": "#d5f0ff",                                // Thursday - Light sky blue
+      "5": "#fff5d5",                                // Friday - Light yellow
+      "6": "#f0d5ff"                                 // Saturday - Light lilac
     },
-    "weekdayOpacity": 15,                            // 0-100
+    "weekdayOpacity": {                              // Per-day opacity (0-100)
+      "0": 30, "1": 30, "2": 30, "3": 30,
+      "4": 30, "5": 30, "6": 30
+    },
     "dateColors": {
-      "2025-11-03": "#ff0000",                       // YYYY-MM-DD format
-      "2025-12-25": "#34a853"
+      // 'YYYY-MM-DD' → hex color
     },
     "presetColors": [
-      "#4285f4", "#ea4335", "#fbbc04", "#34a853",    // 12 preset colors
-      "#ff6d00", "#46bdc6", "#7baaf7", "#f07b72",
-      "#fdd663", "#81c995", "#9e69af", "#e8710a"
+      // Default day-color presets (10 entries, duplicates allowed)
+      "#FDE68A", "#BFDBFE", "#C7D2FE", "#FBCFE8", "#BBF7D0",
+      "#FCA5A5", "#A7F3D0", "#F5D0FE", "#FDE68A", "#E9D5FF"
     ],
     "weekStart": 0,                                  // 0=Sunday, 1=Monday
     "taskColoring": {
       "enabled": false,
-      "presetColors": [                              // Calendar popup colors
-        "#4285f4", "#ea4335", "#fbbc04", "#34a853",
-        "#ff6d00", "#46bdc6", "#7baaf7", "#f07b72",
-        "#fdd663", "#81c995", "#9e69af", "#e8710a"
+      "presetColors": [                              // Calendar popup colors (12 max)
+        "#4285f4", "#34a853", "#ea4335", "#fbbc04",
+        "#ff6d01", "#9c27b0", "#e91e63", "#00bcd4",
+        "#8bc34a", "#ff9800", "#607d8b", "#795548"
       ],
-      "inlineColors": [                              // Task modal inline colors
-        "#4285f4", "#ea4335", "#fbbc04", "#34a853",
-        "#ff6d00", "#46bdc6", "#7baaf7", "#f07b72"
+      "inlineColors": [                              // Task modal inline colors (8)
+        "#4285f4", "#34a853", "#ea4335", "#fbbc04",
+        "#ff6d01", "#9c27b0", "#e91e63", "#00bcd4"
       ]
     },
     "taskListColoring": {
       "enabled": false,
       "oauthGranted": false,
       "lastSync": null,                              // Timestamp
-      "syncInterval": 5                              // Minutes
+      "syncInterval": 5,                             // Minutes
+      "pendingTextColors": {},                       // List ID → pending text color
+      "completedStyling": {}                         // List ID → styling config
     },
     "timeBlocking": {
       "enabled": false,
       "globalColor": "#FFEB3B",
       "shadingStyle": "solid",                       // solid|hashed
       "weeklySchedule": {
-        "mon": [],                                   // Monday blocks
-        "tue": [],                                   // Tuesday blocks
-        "wed": [                                     // Wednesday blocks
-          {
-            "id": "block_abc123",
-            "timeRange": ["09:00", "17:00"],
-            "color": "#4285f4"                       // Optional override
-          }
-        ],
-        "thu": [], "fri": [], "sat": [], "sun": []
+        "mon": [], "tue": [], "wed": [], "thu": [],
+        "fri": [], "sat": [], "sun": []
       },
-      "dateSpecificSchedule": {
-        "2025-11-03": [
-          {
-            "id": "block_def456",
-            "timeRange": ["14:00", "16:00"],
-            "color": "#ea4335"
-          }
-        ]
-      }
+      "dateSpecificSchedule": {}
     }
   },
 
   // Manual task colors
-  "cf.taskColors": {
-    "taskId_abc123": "#4285f4",
-    "taskId_def456": "#ea4335"
-  },
+  "cf.taskColors": {},
 
   // Task list default colors
-  "cf.taskListColors": {
-    "listId_xyz789": "#4285f4",                      // "Work Tasks" → Blue
-    "listId_mno012": "#34a853"                       // "Personal" → Green
-  },
+  "cf.taskListColors": {},
+
+  // Task list text color overrides (written in parallel with taskListColoring.pendingTextColors)
+  "cf.taskListTextColors": {},
 
   // User's custom saved colors
-  "customDayColors": [
-    "#ff0000",
-    "#00ff00",
-    "#0000ff"
-  ]
+  "customDayColors": []
 }
 ```
 
@@ -1034,34 +999,13 @@ picker.destroy(); // Clean up
 ```javascript
 {
   // Task ID → List ID mapping (cached from Google Tasks API)
-  "cf.taskToListMap": {
-    "LVhVQzRlWm9Idk9sRzRnNA": "MTIzNDU2Nzg5",       // Base64 task ID → List ID
-    "NTNWX1FUaFBrdWE0Vnl5Uw": "MTIzNDU2Nzg5",
-    "-XUC4eZoHvOlG4g4": "listId_work"               // Decoded task ID → List ID
-  },
+  "cf.taskToListMap": {},
 
   // Task lists metadata
-  "cf.taskListsMeta": [
-    {
-      "id": "MTIzNDU2Nzg5",
-      "title": "My Tasks",
-      "updated": "2025-11-03T12:00:00.000Z"
-    },
-    {
-      "id": "listId_work",
-      "title": "Work Tasks",
-      "updated": "2025-11-03T10:30:00.000Z"
-    }
-  ],
+  "cf.taskListsMeta": [],
 
   // Subscription status (from Supabase)
-  "subscriptionStatus": {
-    "isActive": true,
-    "status": "active",                              // active|trialing|canceled|past_due
-    "reason": "subscription_active",
-    "scheduledCancellation": false,
-    "lastChecked": 1699000000000                     // Timestamp
-  }
+  "subscriptionStatus": null                         // Populated after Supabase check
 }
 ```
 
