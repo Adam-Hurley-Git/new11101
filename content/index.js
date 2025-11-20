@@ -103,28 +103,8 @@
       console.warn('Toolbar init failed:', e);
     }
 
-    // initialize task coloring - it's already loaded as a content script
-    try {
-      if (window.cfTasksColoring && window.cfTasksColoring.initTasksColoring) {
-        window.cfTasksColoring.initTasksColoring();
-      } else {
-        // Wait for the module to be available
-        let retries = 0;
-        const checkTasksColoring = () => {
-          if (window.cfTasksColoring && window.cfTasksColoring.initTasksColoring) {
-            window.cfTasksColoring.initTasksColoring();
-          } else if (retries < 20) {
-            retries++;
-            setTimeout(checkTasksColoring, 100);
-          } else {
-            console.warn('Tasks coloring module not available after waiting');
-          }
-        };
-        checkTasksColoring();
-      }
-    } catch (e) {
-      console.warn('Task coloring init failed:', e);
-    }
+    // Task coloring is initialized via the feature registry (cc3Features.boot())
+    // No need to call initTasksColoring() directly - it's handled by taskColoringFeature.init()
 
     // Initialize activity tracking for smart polling state machine
     initActivityTracking();

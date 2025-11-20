@@ -123,6 +123,9 @@ function resolveTaskIdFromEventTarget(t) {
 const KEY = 'cf.taskColors';
 let taskElementReferences = new Map();
 
+// Initialization guard to prevent duplicate listeners/observers
+let initialized = false;
+
 // PERFORMANCE: In-memory cache to avoid constant storage reads
 let taskToListMapCache = null;
 let listColorsCache = null;
@@ -151,6 +154,13 @@ async function loadMap() {
 
   return new Promise((res) =>
     chrome.storage.sync.get(KEY, (o) => {
+      if (chrome.runtime.lastError) {
+        // Storage read failed - return empty map to maintain functionality
+        cachedColorMap = {};
+        colorMapLastLoaded = now;
+        res(cachedColorMap);
+        return;
+      }
       cachedColorMap = o[KEY] || {};
       colorMapLastLoaded = now;
       res(cachedColorMap);
@@ -159,7 +169,12 @@ async function loadMap() {
 }
 
 async function saveMap(map) {
-  return new Promise((res) => chrome.storage.sync.set({ [KEY]: map }, res));
+  return new Promise((res) => chrome.storage.sync.set({ [KEY]: map }, () => {
+    if (chrome.runtime.lastError) {
+      // Storage write failed - resolve anyway to not break flow
+    }
+    res();
+  }));
 }
 
 async function setTaskColor(taskId, color) {
@@ -418,7 +433,9 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
   // Immediately show the current task color in the calendar when modal opens
   if (map[taskId]) {
     // Use non-blocking immediate paint for instant modal response
-    paintTaskImmediately(taskId, map[taskId]); // Remove await for faster modal opening
+    paintTaskImmediately(taskId, map[taskId]).catch(() => {
+      // Silent catch - paint failure is non-critical for modal opening
+    });
   }
 
   applyBtn.addEventListener('click', async (e) => {
@@ -1465,6 +1482,14 @@ function repaintSoon(immediate = false) {
 }
 
 function initTasksColoring() {
+  // Prevent duplicate initialization (listeners/observers would accumulate)
+  if (initialized) {
+    // Already initialized - just trigger a repaint for any new settings
+    repaintSoon();
+    return;
+  }
+  initialized = true;
+
   // AUTO-SYNC ON PAGE LOAD
   // Trigger incremental sync if last sync > 30 minutes ago
   (async () => {
@@ -1484,6 +1509,10 @@ function initTasksColoring() {
         if (shouldSync) {
           // Trigger incremental sync in background
           chrome.runtime.sendMessage({ type: 'SYNC_TASK_LISTS', fullSync: false }, (response) => {
+            if (chrome.runtime.lastError) {
+              // Background script not ready or extension context invalidated
+              return;
+            }
             if (response?.success) {
               // Repaint tasks with fresh data
               setTimeout(() => {
