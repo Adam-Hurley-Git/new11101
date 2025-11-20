@@ -261,13 +261,13 @@
 
       // Set CSS variables that the CSS file will use
       blockEl.style.setProperty('--cc3-block-color', color);
-      blockEl.style.setProperty('--cc3-block-opacity', this.settings.shadingStyle === 'solid' ? '0.7' : '0.8');
+      blockEl.style.setProperty('--cc3-block-opacity', '1');
 
       if (this.settings.shadingStyle === 'solid') {
         // Force background via multiple methods
         blockEl.style.setProperty('background-color', color, 'important');
         blockEl.style.setProperty('background', color, 'important');
-        blockEl.style.setProperty('opacity', '0.7', 'important');
+        blockEl.style.setProperty('opacity', '1', 'important');
         blockEl.style.setProperty('border', `1px solid ${color}`, 'important');
       } else {
         // Hashed pattern
@@ -276,7 +276,7 @@
 
         blockEl.style.setProperty('background', hashedPattern + ' transparent repeat', 'important');
         blockEl.style.setProperty('background-color', 'transparent', 'important');
-        blockEl.style.setProperty('opacity', '0.8', 'important');
+        blockEl.style.setProperty('opacity', '1', 'important');
         blockEl.style.setProperty('border', `1px solid ${color}`, 'important');
       }
 
@@ -350,7 +350,7 @@
 					max-height: calc(100% - 8px);
 					overflow: hidden;
 					pointer-events: none;
-					opacity: 0.95;
+					opacity: 1;
 				`;
         blockEl.appendChild(verticalLabel);
       }
