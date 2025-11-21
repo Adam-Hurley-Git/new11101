@@ -2624,6 +2624,15 @@
         cursor: not-allowed;
         z-index: 10;
       }
+
+      /* Keep info boxes accessible when feature is disabled */
+      .feature-disabled [id$="InfoCard"] {
+        opacity: 2.5;
+        pointer-events: auto;
+        filter: none;
+        position: relative;
+        z-index: 20;
+      }
     </style>
   </head>
   <body>
