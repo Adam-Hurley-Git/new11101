@@ -2606,32 +2606,22 @@
 
       /* Disabled Feature Styling */
       .feature-disabled {
+        position: relative;
+      }
+
+      .feature-disabled > *:not([id$="InfoCard"]) {
         opacity: 0.4;
         pointer-events: none;
         filter: grayscale(30%);
         user-select: none;
-        position: relative;
       }
 
-      .feature-disabled::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: transparent;
-        cursor: not-allowed;
-        z-index: 10;
-      }
-
-      /* Keep info boxes accessible when feature is disabled */
+      /* Keep info boxes fully accessible */
       .feature-disabled [id$="InfoCard"] {
-        opacity: 2.5;
-        pointer-events: auto;
-        filter: none;
-        position: relative;
-        z-index: 20;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        filter: none !important;
+        user-select: auto !important;
       }
     </style>
   </head>
