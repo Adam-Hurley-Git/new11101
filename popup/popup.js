@@ -2897,6 +2897,7 @@ checkAuthAndSubscription();
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
+          style: block.style, // Preserve existing style
         };
         await window.cc3Storage.updateTimeBlock(dayKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
@@ -2960,11 +2961,12 @@ checkAuthAndSubscription();
       };
 
       // Handle time block creation
-      const handleBlockCreate = async (timeRange, isAllDay, label, color) => {
+      const handleBlockCreate = async (timeRange, isAllDay, label, color, style) => {
         const newBlock = {
           timeRange: isAllDay ? ['00:00', '23:59'] : timeRange,
           color: color || settings.timeBlocking?.globalColor || '#FFEB3B',
           label: label || '',
+          style: style || settings.timeBlocking?.shadingStyle || 'solid',
         };
         await window.cc3Storage.addTimeBlock(dayKey, newBlock);
         settings = await window.cc3Storage.getSettings();
@@ -3247,6 +3249,84 @@ checkAuthAndSubscription();
     labelSection.appendChild(labelTitle);
     labelSection.appendChild(labelInput);
 
+    // Style selector section
+    const styleSection = document.createElement('div');
+    styleSection.style.cssText = `
+			margin-bottom: 20px;
+		`;
+
+    const styleTitle = document.createElement('div');
+    styleTitle.textContent = 'Style:';
+    styleTitle.style.cssText = `
+			font-size: 12px;
+			font-weight: 600;
+			color: #5f6368;
+			margin-bottom: 8px;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		`;
+
+    const styleButtonsContainer = document.createElement('div');
+    styleButtonsContainer.style.cssText = `
+			display: flex;
+			gap: 8px;
+		`;
+
+    const defaultStyle = settings.timeBlocking?.shadingStyle || 'solid';
+
+    const solidBtn = document.createElement('button');
+    solidBtn.textContent = 'Solid';
+    solidBtn.className = 'cc3-style-btn';
+    solidBtn.dataset.style = 'solid';
+    solidBtn.style.cssText = `
+			flex: 1;
+			padding: 10px 16px;
+			border: 2px solid ${defaultStyle === 'solid' ? '#1a73e8' : '#dadce0'};
+			border-radius: 8px;
+			font-size: 13px;
+			color: ${defaultStyle === 'solid' ? '#1a73e8' : '#5f6368'};
+			background: ${defaultStyle === 'solid' ? '#e8f0fe' : 'white'};
+			cursor: pointer;
+			font-weight: ${defaultStyle === 'solid' ? '600' : '500'};
+			transition: all 0.2s ease;
+		`;
+
+    const hashedBtn = document.createElement('button');
+    hashedBtn.textContent = 'Dashed';
+    hashedBtn.className = 'cc3-style-btn';
+    hashedBtn.dataset.style = 'hashed';
+    hashedBtn.style.cssText = `
+			flex: 1;
+			padding: 10px 16px;
+			border: 2px solid ${defaultStyle === 'hashed' ? '#1a73e8' : '#dadce0'};
+			border-radius: 8px;
+			font-size: 13px;
+			color: ${defaultStyle === 'hashed' ? '#1a73e8' : '#5f6368'};
+			background: ${defaultStyle === 'hashed' ? '#e8f0fe' : 'white'};
+			cursor: pointer;
+			font-weight: ${defaultStyle === 'hashed' ? '600' : '500'};
+			transition: all 0.2s ease;
+		`;
+
+    // Style button click handlers
+    const updateStyleButtons = (selectedStyle) => {
+      [solidBtn, hashedBtn].forEach((btn) => {
+        const isSelected = btn.dataset.style === selectedStyle;
+        btn.style.borderColor = isSelected ? '#1a73e8' : '#dadce0';
+        btn.style.color = isSelected ? '#1a73e8' : '#5f6368';
+        btn.style.background = isSelected ? '#e8f0fe' : 'white';
+        btn.style.fontWeight = isSelected ? '600' : '500';
+      });
+    };
+
+    solidBtn.onclick = () => updateStyleButtons('solid');
+    hashedBtn.onclick = () => updateStyleButtons('hashed');
+
+    styleButtonsContainer.appendChild(solidBtn);
+    styleButtonsContainer.appendChild(hashedBtn);
+    styleSection.appendChild(styleTitle);
+    styleSection.appendChild(styleButtonsContainer);
+
     // Color picker section
     const defaultColor = settings.timeBlocking?.globalColor || '#FFEB3B';
     const colorSection = createTimeBlockColorPicker('recurring', defaultColor);
@@ -3305,6 +3385,7 @@ checkAuthAndSubscription();
     picker.appendChild(header);
     picker.appendChild(timeSection);
     picker.appendChild(labelSection);
+    picker.appendChild(styleSection);
     picker.appendChild(colorSection);
     picker.appendChild(actions);
     modal.appendChild(picker);
@@ -3327,6 +3408,7 @@ checkAuthAndSubscription();
     const allDayCheckbox = modal.querySelector('.cc3-all-day-checkbox');
     const labelInput = modal.querySelector('.cc3-label-input');
     const colorInput = modal.querySelector('.cc3-color-input');
+    const styleButtons = modal.querySelectorAll('.cc3-style-btn');
 
     // Helper to get values
     const getValues = () => {
@@ -3334,7 +3416,14 @@ checkAuthAndSubscription();
       const timeRange = [startTimeInput.value || '09:00', endTimeInput.value || '17:00'];
       const label = labelInput.value.trim();
       const color = colorInput.value;
-      return { timeRange, isAllDay, label, color };
+      // Get selected style from buttons
+      let style = 'solid';
+      styleButtons.forEach((btn) => {
+        if (btn.style.borderColor === 'rgb(26, 115, 232)') {
+          style = btn.dataset.style;
+        }
+      });
+      return { timeRange, isAllDay, label, color, style };
     };
 
     // Close handlers
@@ -3344,8 +3433,8 @@ checkAuthAndSubscription();
 
     // Confirm button handler
     confirmBtn.onclick = () => {
-      const { timeRange, isAllDay, label, color } = getValues();
-      onBlockCreate(timeRange, isAllDay, label, color);
+      const { timeRange, isAllDay, label, color, style } = getValues();
+      onBlockCreate(timeRange, isAllDay, label, color, style);
     };
 
     // Click outside to close
@@ -3360,8 +3449,8 @@ checkAuthAndSubscription();
       if (e.key === 'Escape') {
         handleClose();
       } else if (e.key === 'Enter') {
-        const { timeRange, isAllDay, label, color } = getValues();
-        onBlockCreate(timeRange, isAllDay, label, color);
+        const { timeRange, isAllDay, label, color, style } = getValues();
+        onBlockCreate(timeRange, isAllDay, label, color, style);
       }
     };
 
@@ -3906,6 +3995,7 @@ checkAuthAndSubscription();
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
+          style: block.style, // Preserve existing style
         };
         await window.cc3Storage.updateDateSpecificTimeBlock(dateKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
@@ -4011,12 +4101,13 @@ checkAuthAndSubscription();
       };
 
       // Handle date selection with time range
-      const handleDateSelect = async (selectedDate, timeRange, isAllDay, label, color) => {
+      const handleDateSelect = async (selectedDate, timeRange, isAllDay, label, color, style) => {
         if (selectedDate) {
           const newBlock = {
             timeRange: isAllDay ? ['00:00', '23:59'] : timeRange,
             color: color || settings.timeBlocking?.globalColor || '#FFEB3B',
             label: label || '',
+            style: style || settings.timeBlocking?.shadingStyle || 'solid',
           };
           await window.cc3Storage.addDateSpecificTimeBlock(selectedDate, newBlock);
           settings = await window.cc3Storage.getSettings();
@@ -4393,6 +4484,84 @@ checkAuthAndSubscription();
     labelSection.appendChild(labelTitle);
     labelSection.appendChild(labelInput);
 
+    // Style selector section
+    const styleSection = document.createElement('div');
+    styleSection.style.cssText = `
+			margin-bottom: 20px;
+		`;
+
+    const styleTitle = document.createElement('div');
+    styleTitle.textContent = 'Style:';
+    styleTitle.style.cssText = `
+			font-size: 12px;
+			font-weight: 600;
+			color: #5f6368;
+			margin-bottom: 8px;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		`;
+
+    const styleButtonsContainer = document.createElement('div');
+    styleButtonsContainer.style.cssText = `
+			display: flex;
+			gap: 8px;
+		`;
+
+    const defaultStyle = settings.timeBlocking?.shadingStyle || 'solid';
+
+    const solidBtn = document.createElement('button');
+    solidBtn.textContent = 'Solid';
+    solidBtn.className = 'cc3-style-btn';
+    solidBtn.dataset.style = 'solid';
+    solidBtn.style.cssText = `
+			flex: 1;
+			padding: 10px 16px;
+			border: 2px solid ${defaultStyle === 'solid' ? '#1a73e8' : '#dadce0'};
+			border-radius: 8px;
+			font-size: 13px;
+			color: ${defaultStyle === 'solid' ? '#1a73e8' : '#5f6368'};
+			background: ${defaultStyle === 'solid' ? '#e8f0fe' : 'white'};
+			cursor: pointer;
+			font-weight: ${defaultStyle === 'solid' ? '600' : '500'};
+			transition: all 0.2s ease;
+		`;
+
+    const hashedBtn = document.createElement('button');
+    hashedBtn.textContent = 'Dashed';
+    hashedBtn.className = 'cc3-style-btn';
+    hashedBtn.dataset.style = 'hashed';
+    hashedBtn.style.cssText = `
+			flex: 1;
+			padding: 10px 16px;
+			border: 2px solid ${defaultStyle === 'hashed' ? '#1a73e8' : '#dadce0'};
+			border-radius: 8px;
+			font-size: 13px;
+			color: ${defaultStyle === 'hashed' ? '#1a73e8' : '#5f6368'};
+			background: ${defaultStyle === 'hashed' ? '#e8f0fe' : 'white'};
+			cursor: pointer;
+			font-weight: ${defaultStyle === 'hashed' ? '600' : '500'};
+			transition: all 0.2s ease;
+		`;
+
+    // Style button click handlers
+    const updateStyleButtons = (selectedStyle) => {
+      [solidBtn, hashedBtn].forEach((btn) => {
+        const isSelected = btn.dataset.style === selectedStyle;
+        btn.style.borderColor = isSelected ? '#1a73e8' : '#dadce0';
+        btn.style.color = isSelected ? '#1a73e8' : '#5f6368';
+        btn.style.background = isSelected ? '#e8f0fe' : 'white';
+        btn.style.fontWeight = isSelected ? '600' : '500';
+      });
+    };
+
+    solidBtn.onclick = () => updateStyleButtons('solid');
+    hashedBtn.onclick = () => updateStyleButtons('hashed');
+
+    styleButtonsContainer.appendChild(solidBtn);
+    styleButtonsContainer.appendChild(hashedBtn);
+    styleSection.appendChild(styleTitle);
+    styleSection.appendChild(styleButtonsContainer);
+
     // Color picker section
     const defaultColor = settings.timeBlocking?.globalColor || '#FFEB3B';
     const colorSection = createTimeBlockColorPicker('datespecific', defaultColor);
@@ -4453,6 +4622,7 @@ checkAuthAndSubscription();
     picker.appendChild(customSection);
     picker.appendChild(timeSection);
     picker.appendChild(labelSection);
+    picker.appendChild(styleSection);
     picker.appendChild(colorSection);
     picker.appendChild(actions);
     modal.appendChild(picker);
@@ -4477,6 +4647,7 @@ checkAuthAndSubscription();
     const allDayCheckbox = modal.querySelector('.cc3-all-day-checkbox');
     const labelInput = modal.querySelector('.cc3-label-input');
     const colorInput = modal.querySelector('.cc3-color-input');
+    const styleButtons = modal.querySelectorAll('.cc3-style-btn');
 
     // Helper to get time values
     const getTimeValues = () => {
@@ -4484,7 +4655,14 @@ checkAuthAndSubscription();
       const timeRange = [startTimeInput.value || '09:00', endTimeInput.value || '17:00'];
       const label = labelInput.value.trim();
       const color = colorInput.value;
-      return { timeRange, isAllDay, label, color };
+      // Get selected style from buttons
+      let style = 'solid';
+      styleButtons.forEach((btn) => {
+        if (btn.style.borderColor === 'rgb(26, 115, 232)') {
+          style = btn.dataset.style;
+        }
+      });
+      return { timeRange, isAllDay, label, color, style };
     };
 
     // Close handlers
@@ -4502,8 +4680,8 @@ checkAuthAndSubscription();
     // Confirm button handler
     confirmBtn.onclick = () => {
       if (dateInput.value) {
-        const { timeRange, isAllDay, label, color } = getTimeValues();
-        onDateSelect(dateInput.value, timeRange, isAllDay, label, color);
+        const { timeRange, isAllDay, label, color, style } = getTimeValues();
+        onDateSelect(dateInput.value, timeRange, isAllDay, label, color, style);
       }
     };
 
@@ -4520,8 +4698,8 @@ checkAuthAndSubscription();
         handleClose();
       } else if (e.key === 'Enter') {
         if (dateInput.value) {
-          const { timeRange, isAllDay, label, color } = getTimeValues();
-          onDateSelect(dateInput.value, timeRange, isAllDay, label, color);
+          const { timeRange, isAllDay, label, color, style } = getTimeValues();
+          onDateSelect(dateInput.value, timeRange, isAllDay, label, color, style);
         }
       }
     };

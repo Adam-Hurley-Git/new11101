@@ -186,7 +186,7 @@
 
     // Render a single time block
     renderTimeBlock: function (container, block, pixelsPerHour, dayKey, index, dateString) {
-      const { timeRange, color, label, blockType } = block;
+      const { timeRange, color, label, blockType, style } = block;
       const [startTime, endTime] = timeRange;
 
       // Parse times
@@ -220,11 +220,12 @@
       blockEl.dataset.timeRange = `${startTime}-${endTime}`;
       blockEl.dataset.blockType = blockType || 'weekly';
 
-      // Determine final color
+      // Determine final color and style
       const finalColor = color || this.settings.globalColor || '#FFEB3B';
+      const finalStyle = style || this.settings.shadingStyle || 'solid';
 
       // Apply styles
-      this.applyBlockStyles(blockEl, topPos, height, finalColor, label);
+      this.applyBlockStyles(blockEl, topPos, height, finalColor, label, finalStyle);
 
       // Add label tooltip if present
       if (label) {
@@ -236,7 +237,7 @@
     },
 
     // Apply styles to time block element
-    applyBlockStyles: function (blockEl, topPos, height, color, label) {
+    applyBlockStyles: function (blockEl, topPos, height, color, label, style) {
       // Ensure container has relative positioning
       const container = blockEl.parentElement;
       if (container) {
@@ -263,7 +264,10 @@
       blockEl.style.setProperty('--cc3-block-color', color);
       blockEl.style.setProperty('--cc3-block-opacity', '1');
 
-      if (this.settings.shadingStyle === 'solid') {
+      // Use per-block style with fallback to global setting
+      const blockStyle = style || this.settings.shadingStyle || 'solid';
+
+      if (blockStyle === 'solid') {
         // Force background via multiple methods
         blockEl.style.setProperty('background-color', color, 'important');
         blockEl.style.setProperty('background', color, 'important');
@@ -488,8 +492,9 @@
         }
 
         if (block) {
-          // Determine new color
+          // Determine new color and style
           const finalColor = block.color || this.settings.globalColor || '#FFEB3B';
+          const finalStyle = block.style || this.settings.shadingStyle || 'solid';
 
           // Update block styles with new color
           this.applyBlockStyles(
@@ -498,6 +503,7 @@
             parseFloat(blockEl.style.height),
             finalColor,
             block.label,
+            finalStyle,
           );
 
           // Update tooltip color if it has a label
