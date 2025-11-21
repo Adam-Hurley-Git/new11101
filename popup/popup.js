@@ -2918,11 +2918,19 @@ checkAuthAndSubscription();
       if (startTime && endTime && startTime < endTime) {
         // Valid time range - hide error indicator
         errorIndicator.style.display = 'none';
+
+        // Get current style from buttons
+        let currentStyle = block.style || 'solid';
+        const activeStyleBtn = colorContainer.querySelector('.style-btn[style*="rgb(26, 115, 232)"]');
+        if (activeStyleBtn) {
+          currentStyle = activeStyleBtn.dataset.style;
+        }
+
         const newBlock = {
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
-          style: block.style, // Preserve existing style
+          style: currentStyle,
         };
         await window.cc3Storage.updateTimeBlock(dayKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
@@ -4050,11 +4058,19 @@ checkAuthAndSubscription();
       if (startTime && endTime && startTime < endTime) {
         // Valid time range - hide error indicator
         errorIndicator.style.display = 'none';
+
+        // Get current style from buttons
+        let currentStyle = block.style || 'solid';
+        const activeStyleBtn = colorContainer.querySelector('.style-btn[style*="rgb(26, 115, 232)"]');
+        if (activeStyleBtn) {
+          currentStyle = activeStyleBtn.dataset.style;
+        }
+
         const newBlock = {
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
-          style: block.style, // Preserve existing style
+          style: currentStyle,
         };
         await window.cc3Storage.updateDateSpecificTimeBlock(dateKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
