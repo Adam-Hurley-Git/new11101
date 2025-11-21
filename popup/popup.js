@@ -2659,13 +2659,47 @@ checkAuthAndSubscription();
 
     const colorPreview = document.createElement('div');
     colorPreview.className = 'time-block-color-preview';
-    colorPreview.style.backgroundColor = block.color || settings.timeBlocking?.globalColor || '#FFEB3B';
+    const previewColor = block.color || settings.timeBlocking?.globalColor || '#FFEB3B';
+    colorPreview.style.backgroundColor = previewColor;
     colorPreview.id = `timeBlockPreview-${blockColorId}`;
 
+    // Apply dashed pattern if block style is hashed
+    if (block.style === 'hashed') {
+      const encodedColor = encodeURIComponent(previewColor);
+      const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
+      colorPreview.style.background = hashedPattern;
+      colorPreview.style.backgroundColor = 'white';
+    }
+
+    const blockStyle = block.style || settings.timeBlocking?.shadingStyle || 'solid';
     const colorDetails = document.createElement('div');
     colorDetails.className = 'time-block-color-details';
     colorDetails.id = `timeBlockDetails-${blockColorId}`;
     colorDetails.innerHTML = `
+			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px;">
+				<button class="style-btn ${blockStyle === 'solid' ? 'active' : ''}" data-style="solid" data-timeblock="${blockColorId}" style="
+					flex: 1;
+					padding: 6px 10px;
+					border: 2px solid ${blockStyle === 'solid' ? '#1a73e8' : '#dadce0'};
+					border-radius: 6px;
+					font-size: 11px;
+					color: ${blockStyle === 'solid' ? '#1a73e8' : '#5f6368'};
+					background: ${blockStyle === 'solid' ? '#e8f0fe' : 'white'};
+					cursor: pointer;
+					font-weight: ${blockStyle === 'solid' ? '600' : '500'};
+				">Solid</button>
+				<button class="style-btn ${blockStyle === 'hashed' ? 'active' : ''}" data-style="hashed" data-timeblock="${blockColorId}" style="
+					flex: 1;
+					padding: 6px 10px;
+					border: 2px solid ${blockStyle === 'hashed' ? '#1a73e8' : '#dadce0'};
+					border-radius: 6px;
+					font-size: 11px;
+					color: ${blockStyle === 'hashed' ? '#1a73e8' : '#5f6368'};
+					background: ${blockStyle === 'hashed' ? '#e8f0fe' : 'white'};
+					cursor: pointer;
+					font-weight: ${blockStyle === 'hashed' ? '600' : '500'};
+				">Dashed</button>
+			</div>
 			<div class="color-picker-tabs">
 				<button class="color-tab active" data-tab="vibrant" data-timeblock="${blockColorId}">Vibrant</button>
 				<button class="color-tab" data-tab="pastel" data-timeblock="${blockColorId}">Pastel</button>
@@ -3757,13 +3791,47 @@ checkAuthAndSubscription();
 
     const colorPreview = document.createElement('div');
     colorPreview.className = 'time-block-color-preview';
-    colorPreview.style.backgroundColor = block.color || settings.timeBlocking?.globalColor || '#FFEB3B';
+    const previewColor = block.color || settings.timeBlocking?.globalColor || '#FFEB3B';
+    colorPreview.style.backgroundColor = previewColor;
     colorPreview.id = `timeBlockPreview-${blockColorId}`;
 
+    // Apply dashed pattern if block style is hashed
+    if (block.style === 'hashed') {
+      const encodedColor = encodeURIComponent(previewColor);
+      const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
+      colorPreview.style.background = hashedPattern;
+      colorPreview.style.backgroundColor = 'white';
+    }
+
+    const blockStyle = block.style || settings.timeBlocking?.shadingStyle || 'solid';
     const colorDetails = document.createElement('div');
     colorDetails.className = 'time-block-color-details';
     colorDetails.id = `timeBlockDetails-${blockColorId}`;
     colorDetails.innerHTML = `
+			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px;">
+				<button class="style-btn ${blockStyle === 'solid' ? 'active' : ''}" data-style="solid" data-timeblock="${blockColorId}" style="
+					flex: 1;
+					padding: 6px 10px;
+					border: 2px solid ${blockStyle === 'solid' ? '#1a73e8' : '#dadce0'};
+					border-radius: 6px;
+					font-size: 11px;
+					color: ${blockStyle === 'solid' ? '#1a73e8' : '#5f6368'};
+					background: ${blockStyle === 'solid' ? '#e8f0fe' : 'white'};
+					cursor: pointer;
+					font-weight: ${blockStyle === 'solid' ? '600' : '500'};
+				">Solid</button>
+				<button class="style-btn ${blockStyle === 'hashed' ? 'active' : ''}" data-style="hashed" data-timeblock="${blockColorId}" style="
+					flex: 1;
+					padding: 6px 10px;
+					border: 2px solid ${blockStyle === 'hashed' ? '#1a73e8' : '#dadce0'};
+					border-radius: 6px;
+					font-size: 11px;
+					color: ${blockStyle === 'hashed' ? '#1a73e8' : '#5f6368'};
+					background: ${blockStyle === 'hashed' ? '#e8f0fe' : 'white'};
+					cursor: pointer;
+					font-weight: ${blockStyle === 'hashed' ? '600' : '500'};
+				">Dashed</button>
+			</div>
 			<div class="color-picker-tabs">
 				<button class="color-tab active" data-tab="vibrant" data-timeblock="${blockColorId}">Vibrant</button>
 				<button class="color-tab" data-tab="pastel" data-timeblock="${blockColorId}">Pastel</button>
@@ -5304,6 +5372,70 @@ checkAuthAndSubscription();
     }
 
     const blockRef = { colorInput, preview };
+
+    // Set up style button handlers
+    const colorDetails = qs(`timeBlockDetails-${blockColorId}`);
+    if (colorDetails) {
+      const styleButtons = colorDetails.querySelectorAll('.style-btn');
+      styleButtons.forEach((btn) => {
+        btn.onclick = async () => {
+          const newStyle = btn.dataset.style;
+
+          // Update button visual state
+          styleButtons.forEach((b) => {
+            const isSelected = b.dataset.style === newStyle;
+            b.style.borderColor = isSelected ? '#1a73e8' : '#dadce0';
+            b.style.color = isSelected ? '#1a73e8' : '#5f6368';
+            b.style.background = isSelected ? '#e8f0fe' : 'white';
+            b.style.fontWeight = isSelected ? '600' : '500';
+          });
+
+          // Update preview swatch
+          const currentColor = colorInput.value;
+          if (newStyle === 'hashed') {
+            const encodedColor = encodeURIComponent(currentColor);
+            const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
+            preview.style.background = hashedPattern;
+            preview.style.backgroundColor = 'white';
+          } else {
+            preview.style.background = '';
+            preview.style.backgroundColor = currentColor;
+          }
+
+          // Update storage - parse blockColorId to get dayKey/dateKey and index
+          // Format: "dayKey-index" for weekly or "date-dateKey-index" for date-specific
+          if (blockColorId.startsWith('date-')) {
+            // Date-specific block
+            const parts = blockColorId.split('-');
+            const dateKey = `${parts[1]}-${parts[2]}-${parts[3]}`;
+            const index = parseInt(parts[4]);
+
+            const currentSettings = await window.cc3Storage.getSettings();
+            const dateBlocks = currentSettings.timeBlocking?.dateSpecificSchedule?.[dateKey] || [];
+            if (dateBlocks[index]) {
+              const updatedBlock = { ...dateBlocks[index], style: newStyle };
+              await window.cc3Storage.updateDateSpecificTimeBlock(dateKey, index, updatedBlock);
+            }
+          } else {
+            // Weekly block
+            const parts = blockColorId.split('-');
+            const dayKey = parts[0];
+            const index = parseInt(parts[1]);
+
+            const currentSettings = await window.cc3Storage.getSettings();
+            const dayBlocks = currentSettings.timeBlocking?.weeklySchedule?.[dayKey] || [];
+            if (dayBlocks[index]) {
+              const updatedBlock = { ...dayBlocks[index], style: newStyle };
+              await window.cc3Storage.updateTimeBlock(dayKey, index, updatedBlock);
+            }
+          }
+
+          // Refresh settings and notify calendar
+          settings = await window.cc3Storage.getSettings();
+          notifyTimeBlockingChange();
+        };
+      });
+    }
 
     // Vibrant palette
     const vibrantPalette = qs(`timeBlockPalette-${blockColorId}`);
