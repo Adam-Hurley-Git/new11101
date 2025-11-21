@@ -1182,24 +1182,30 @@ checkAuthAndSubscription();
 
   function updateToggle() {
     const toggle = qs('enableDayColoring');
+    const colorSettings = qs('colorSettings');
 
     if (settings.enabled) {
       toggle.classList.add('active');
+      colorSettings?.classList.remove('feature-disabled');
     } else {
       toggle.classList.remove('active');
+      colorSettings?.classList.add('feature-disabled');
     }
   }
 
   function updateTaskFeaturesToggle() {
     const toggle = qs('enableTaskFeatures');
+    const taskSettings = qs('taskSettings');
 
     // Check if either task coloring or task list coloring is enabled
     const isEnabled = settings.taskColoring?.enabled || settings.taskListColoring?.enabled;
 
     if (isEnabled) {
       toggle.classList.add('active');
+      taskSettings?.classList.remove('feature-disabled');
     } else {
       toggle.classList.remove('active');
+      taskSettings?.classList.add('feature-disabled');
     }
   }
 
@@ -1209,11 +1215,14 @@ checkAuthAndSubscription();
 
   function updateTimeBlockingToggle() {
     const toggle = qs('enableTimeBlocking');
+    const timeBlockSettings = qs('timeBlockSettings');
 
     if (settings.timeBlocking?.enabled) {
       toggle.classList.add('active');
+      timeBlockSettings?.classList.remove('feature-disabled');
     } else {
       toggle.classList.remove('active');
+      timeBlockSettings?.classList.add('feature-disabled');
     }
   }
 

@@ -2603,6 +2603,26 @@
       .tab-content.active {
         display: block;
       }
+
+      /* Disabled Feature Styling */
+      .feature-disabled {
+        position: relative;
+      }
+
+      .feature-disabled > *:not([id$="InfoCard"]) {
+        opacity: 0.4;
+        pointer-events: none;
+        filter: grayscale(30%);
+        user-select: none;
+      }
+
+      /* Keep info boxes fully accessible */
+      .feature-disabled [id$="InfoCard"] {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        filter: none !important;
+        user-select: auto !important;
+      }
     </style>
   </head>
   <body>
@@ -3576,6 +3596,7 @@
                 <div class="switch" id="enableTaskFeatures"></div>
               </div>
 
+              <div id="taskSettings">
               <!-- Task List Colors Subsection -->
               <div style="margin-bottom: 24px; padding: 16px; background: #fafafa; border-radius: 8px">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
@@ -4124,6 +4145,7 @@
               </div>
               </div>
             </div>
+          </div>
           </div>
 
           <div class="section time-blocking">
