@@ -2676,7 +2676,7 @@ checkAuthAndSubscription();
     colorDetails.className = 'time-block-color-details';
     colorDetails.id = `timeBlockDetails-${blockColorId}`;
     colorDetails.innerHTML = `
-			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px;">
+			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px;">
 				<button class="style-btn ${blockStyle === 'solid' ? 'active' : ''}" data-style="solid" data-timeblock="${blockColorId}" style="
 					flex: 1;
 					padding: 6px 10px;
@@ -3808,7 +3808,7 @@ checkAuthAndSubscription();
     colorDetails.className = 'time-block-color-details';
     colorDetails.id = `timeBlockDetails-${blockColorId}`;
     colorDetails.innerHTML = `
-			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px;">
+			<div class="style-selector-row" style="display: flex; gap: 6px; margin-bottom: 8px; padding: 8px; background: #f8f9fa; border-radius: 8px;">
 				<button class="style-btn ${blockStyle === 'solid' ? 'active' : ''}" data-style="solid" data-timeblock="${blockColorId}" style="
 					flex: 1;
 					padding: 6px 10px;
