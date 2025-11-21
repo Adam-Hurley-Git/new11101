@@ -2888,6 +2888,7 @@ checkAuthAndSubscription();
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
+          style: block.style, // Preserve existing style
         };
         await window.cc3Storage.updateTimeBlock(dayKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
@@ -3985,6 +3986,7 @@ checkAuthAndSubscription();
           timeRange: [startTime, endTime],
           color: colorInput.value,
           label: labelInput.getValue(),
+          style: block.style, // Preserve existing style
         };
         await window.cc3Storage.updateDateSpecificTimeBlock(dateKey, index, newBlock);
         settings = await window.cc3Storage.getSettings();
