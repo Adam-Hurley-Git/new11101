@@ -618,32 +618,12 @@
 				position: relative;
 			`;
 
-      // Add remove button to custom swatch
-      const removeBtn = document.createElement('button');
-      removeBtn.innerHTML = '×';
-      removeBtn.style.cssText = `
-				position: absolute;
-				top: -6px;
-				right: -6px;
-				width: 16px;
-				height: 16px;
-				border: none;
-				border-radius: 50%;
-				background: #ea4335;
-				color: white;
-				font-size: 10px;
-				cursor: pointer;
-				display: none;
-			`;
-
       customSwatch.addEventListener('mouseover', () => {
-        removeBtn.style.display = 'block';
         customSwatch.style.transform = 'scale(1.1)';
         customSwatch.style.borderColor = '#1a73e8';
       });
 
       customSwatch.addEventListener('mouseout', () => {
-        removeBtn.style.display = 'none';
         customSwatch.style.transform = 'scale(1)';
         customSwatch.style.borderColor = '#e0e0e0';
       });
@@ -657,24 +637,6 @@
         onColorChange(color);
       });
 
-      removeBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        customSwatch.remove();
-
-        // Also remove from extension storage
-        try {
-          if (typeof chrome !== 'undefined' && chrome.storage) {
-            const result = await chrome.storage.sync.get('customDayColors');
-            const customColors = result.customDayColors || [];
-            const updatedColors = customColors.filter((c) => c !== color);
-            await chrome.storage.sync.set({ customDayColors: updatedColors });
-          }
-        } catch (error) {
-          console.warn('Could not remove color from extension storage:', error);
-        }
-      });
-
-      customSwatch.appendChild(removeBtn);
       return customSwatch;
     }
 
@@ -685,9 +647,6 @@
 				border-color: #1a73e8 !important;
 				box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2) !important;
 				transform: scale(1.05) !important;
-			}
-			.custom-color-swatch:hover .custom-color-remove {
-				display: block !important;
 			}
 		`;
     if (!document.head.querySelector('style[data-cf-color-picker]')) {
