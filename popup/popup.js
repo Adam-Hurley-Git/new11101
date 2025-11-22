@@ -5571,16 +5571,6 @@ checkAuthAndSubscription();
     colorPickerPalette.forEach((color) => {
       palette.appendChild(createColorSwatch(color, dayIndex, palette));
     });
-
-    // Add task inline colors to the palette as well
-    const taskInlineColors =
-      settings.taskColoring?.inlineColors || window.cc3Storage.defaultSettings.taskColoring.inlineColors;
-    taskInlineColors.forEach((color) => {
-      // Only add if not already in the main palette
-      if (!colorPickerPalette.includes(color)) {
-        palette.appendChild(createColorSwatch(color, dayIndex, palette));
-      }
-    });
   }
 
   // Create pastel color palette
