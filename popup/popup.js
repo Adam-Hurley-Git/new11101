@@ -5814,6 +5814,9 @@ checkAuthAndSubscription();
     if (grantOAuthButton) {
       grantOAuthButton.onclick = async () => {
         try {
+          // Check if this is the first grant
+          const wasOAuthGranted = settings.taskListColoring?.oauthGranted || false;
+
           // Show loading state
           const originalText = grantOAuthButton.textContent;
           grantOAuthButton.textContent = 'Granting access...';
@@ -5834,6 +5837,18 @@ checkAuthAndSubscription();
             // Reload the UI
             settings = await window.cc3Storage.getSettings();
             await initTaskListColoring();
+
+            // Reload calendar tabs on first OAuth grant so features become visible
+            if (!wasOAuthGranted) {
+              try {
+                const tabs = await chrome.tabs.query({ url: '*://calendar.google.com/*' });
+                for (const tab of tabs) {
+                  chrome.tabs.reload(tab.id);
+                }
+              } catch (e) {
+                // Tab reload failed, user can refresh manually
+              }
+            }
           } else {
             // Show specific error messages based on error type
             if (response?.error === 'USER_DENIED') {
