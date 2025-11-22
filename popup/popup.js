@@ -2246,7 +2246,7 @@ checkAuthAndSubscription();
     pendingHeader.className = 'pending-tasks-header';
     pendingHeader.innerHTML = `
       <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/></svg>Pending Tasks</h4>
-      <p class="pending-tasks-subtitle">Colors for tasks not yet completed</p>
+      <p class="pending-tasks-subtitle">Colors for tasks not yet completed in '<strong>${list.title}</strong>'. Choose how the completed style of this list looks below.</p>
     `;
 
     settingsSection.appendChild(pendingHeader);
