@@ -6199,6 +6199,9 @@ checkAuthAndSubscription();
           if (hexInput) {
             hexInput.value = e.target.value.toUpperCase();
           }
+          // Update preview with current opacity
+          const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
+          updatePreview(i, e.target.value, opacity);
         };
       }
 
