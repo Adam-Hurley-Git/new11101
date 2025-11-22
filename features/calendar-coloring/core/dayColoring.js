@@ -188,7 +188,7 @@
   }
 
   function hexToRgba(hex, alpha = 0.3) {
-    if (!hex || hex === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
+    if (!hex || hex.toLowerCase() === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return `rgba(255, 255, 255, ${alpha})`;
     const r = parseInt(result[1], 16);
@@ -274,7 +274,7 @@
         const dayOfWeek = currentDate.getDay();
         const color = settings.weekdayColors?.[String(dayOfWeek)];
 
-        if (color && color !== '#ffffff') {
+        if (color && color.toLowerCase() !== '#ffffff') {
           // Use opacity from settings instead of hardcoded theme-based alpha
           const opacity = settings.weekdayOpacity?.[String(dayOfWeek)] || 30; // Default to 30% if not set
           const alpha = opacity / 100; // Convert percentage to decimal
@@ -618,7 +618,7 @@
           for (let i = 0; i < 7; i++) {
             const color = settings.weekdayColors[String(i)];
             const opacity = settings.weekdayOpacity?.[String(i)] || 30; // Default to 30% if not set
-            if (color && color !== '#ffffff') {
+            if (color && color.toLowerCase() !== '#ffffff') {
               userColors[i] = color;
               userOpacity[i] = opacity;
             }

@@ -314,7 +314,7 @@ checkAuthAndSubscription();
 
   // Helper function to convert hex color to rgba with opacity
   function hexToRgba(hex, alpha) {
-    if (!hex || hex === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
+    if (!hex || hex.toLowerCase() === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     if (!result) return `rgba(255, 255, 255, ${alpha})`;
     const r = parseInt(result[1], 16);
@@ -2648,8 +2648,7 @@ checkAuthAndSubscription();
     if (block.style === 'hashed') {
       const encodedColor = encodeURIComponent(previewColor);
       const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
-      colorPreview.style.background = hashedPattern;
-      colorPreview.style.backgroundColor = 'white';
+      colorPreview.style.background = `white ${hashedPattern}`;
     }
 
     const blockStyle = block.style || settings.timeBlocking?.shadingStyle || 'solid';
@@ -2691,7 +2690,6 @@ checkAuthAndSubscription();
 				<div class="color-picker-container" style="margin-bottom: 8px;">
 					<input type="color" id="timeBlockColor-${blockColorId}" value="${block.color || settings.timeBlocking?.globalColor || '#FFEB3B'}" style="width: 60%; height: 28px;">
 					<input type="text" id="timeBlockHex-${blockColorId}" value="${(block.color || settings.timeBlocking?.globalColor || '#FFEB3B').toUpperCase()}" placeholder="#FF0000" maxlength="7" class="hex-input-small" style="width: 35%; height: 24px; margin-left: 4px; font-size: 10px; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; text-transform: uppercase;">
-					<div class="color-picker-icon" data-timeblock="${blockColorId}" title="Click to open/close color picker">🎨</div>
 				</div>
 				<div class="color-tab-panel active" id="timeblock-${blockColorId}-vibrant-panel">
 					<div class="color-palette" id="timeBlockPalette-${blockColorId}"></div>
@@ -3788,8 +3786,7 @@ checkAuthAndSubscription();
     if (block.style === 'hashed') {
       const encodedColor = encodeURIComponent(previewColor);
       const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
-      colorPreview.style.background = hashedPattern;
-      colorPreview.style.backgroundColor = 'white';
+      colorPreview.style.background = `white ${hashedPattern}`;
     }
 
     const blockStyle = block.style || settings.timeBlocking?.shadingStyle || 'solid';
@@ -3831,7 +3828,6 @@ checkAuthAndSubscription();
 				<div class="color-picker-container" style="margin-bottom: 8px;">
 					<input type="color" id="timeBlockColor-${blockColorId}" value="${block.color || settings.timeBlocking?.globalColor || '#FFEB3B'}" style="width: 60%; height: 28px;">
 					<input type="text" id="timeBlockHex-${blockColorId}" value="${(block.color || settings.timeBlocking?.globalColor || '#FFEB3B').toUpperCase()}" placeholder="#FF0000" maxlength="7" class="hex-input-small" style="width: 35%; height: 24px; margin-left: 4px; font-size: 10px; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; text-transform: uppercase;">
-					<div class="color-picker-icon" data-timeblock="${blockColorId}" title="Click to open/close color picker">🎨</div>
 				</div>
 				<div class="color-tab-panel active" id="timeblock-${blockColorId}-vibrant-panel">
 					<div class="color-palette" id="timeBlockPalette-${blockColorId}"></div>

@@ -257,7 +257,7 @@ function computeColumnPositionMap(cols, startWeekDay) {
 
 // Helper function to convert hex color to rgba with opacity
 function hexToRgba(hex, alpha) {
-  if (!hex || hex === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
+  if (!hex || hex.toLowerCase() === '#ffffff') return `rgba(255, 255, 255, ${alpha})`;
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   if (!result) return `rgba(255, 255, 255, ${alpha})`;
   const r = parseInt(result[1], 16);
