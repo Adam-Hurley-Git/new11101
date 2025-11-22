@@ -1388,7 +1388,6 @@
         margin-top: 4px;
         min-width: 300px;
         max-width: 340px;
-        max-height: 280px;
         overflow: visible;
       }
       .color-picker-tabs {
@@ -1425,8 +1424,6 @@
         padding: 12px;
         background: white;
         border-radius: 0 0 8px 8px;
-        max-height: 220px;
-        overflow-y: auto;
       }
       .color-tab-panel {
         display: none;
@@ -3023,12 +3020,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color0"
-                            value="#ffd5d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview0" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color0"
+                              value="#ffd5d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex0"
@@ -3100,12 +3099,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color1"
-                            value="#e8deff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview1" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color1"
+                              value="#e8deff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex1"
@@ -3177,12 +3178,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color2"
-                            value="#d5f5e3"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview2" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color2"
+                              value="#d5f5e3"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex2"
@@ -3254,12 +3257,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color3"
-                            value="#ffe8d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview3" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color3"
+                              value="#ffe8d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex3"
@@ -3331,12 +3336,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color4"
-                            value="#d5f0ff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview4" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color4"
+                              value="#d5f0ff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex4"
@@ -3408,12 +3415,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color5"
-                            value="#fff5d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview5" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color5"
+                              value="#fff5d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex5"
@@ -3485,12 +3494,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color6"
-                            value="#f0d5ff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview6" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color6"
+                              value="#f0d5ff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex6"

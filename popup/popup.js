@@ -325,11 +325,19 @@ checkAuthAndSubscription();
 
   // Helper function to update preview with color and opacity
   function updatePreview(dayIndex, color, opacity) {
+    const alpha = opacity / 100; // Convert percentage to decimal
+    const rgba = hexToRgba(color, alpha);
+
+    // Update the day grid preview
     const preview = qs(`preview${dayIndex}`);
     if (preview && color) {
-      const alpha = opacity / 100; // Convert percentage to decimal
-      const rgba = hexToRgba(color, alpha);
       preview.style.backgroundColor = rgba;
+    }
+
+    // Update the color input preview wrapper in the modal
+    const colorPreview = qs(`colorPreview${dayIndex}`);
+    if (colorPreview && color) {
+      colorPreview.style.backgroundColor = rgba;
     }
   }
 
@@ -5541,19 +5549,38 @@ checkAuthAndSubscription();
     swatch.style.backgroundColor = color;
     swatch.title = color;
 
-    swatch.onclick = () => {
+    swatch.onclick = async () => {
       // Remove selected class from all swatches in this day's palettes
       document.querySelectorAll(`#details${dayIndex} .color-swatch`).forEach((s) => s.classList.remove('selected'));
       // Add selected class to clicked swatch
       swatch.classList.add('selected');
       // Update the color input
       const colorInput = qs(`color${dayIndex}`);
+      const hexInput = qs(`hex${dayIndex}`);
       if (colorInput) {
         colorInput.value = color;
-        // Update preview with current opacity
-        const opacity = settings.weekdayOpacity?.[String(dayIndex)] || defaultOpacity[String(dayIndex)];
-        updatePreview(dayIndex, color, opacity);
-        colorInput.dispatchEvent(new Event('change'));
+
+        // Reset opacity to 100% when selecting a new color
+        const opacityInput = qs(`opacity${dayIndex}`);
+        if (opacityInput) {
+          opacityInput.value = 100;
+          updateOpacityDisplay(dayIndex, 100);
+          updateSliderFill(dayIndex, 100);
+          updateOpacityPresetButtons(dayIndex, 100);
+        }
+
+        // Save color first, then opacity - avoid race condition by not using dispatchEvent
+        settings = await window.cc3Storage.setWeekdayColor(dayIndex, color);
+        settings = await window.cc3Storage.setWeekdayOpacity(dayIndex, 100);
+
+        // Update hex input
+        if (hexInput) {
+          hexInput.value = color.toUpperCase();
+        }
+
+        // Update preview with 100% opacity
+        updatePreview(dayIndex, color, 100);
+        await saveSettings();
       }
     };
 
@@ -5570,16 +5597,6 @@ checkAuthAndSubscription();
     // Add main color picker palette
     colorPickerPalette.forEach((color) => {
       palette.appendChild(createColorSwatch(color, dayIndex, palette));
-    });
-
-    // Add task inline colors to the palette as well
-    const taskInlineColors =
-      settings.taskColoring?.inlineColors || window.cc3Storage.defaultSettings.taskColoring.inlineColors;
-    taskInlineColors.forEach((color) => {
-      // Only add if not already in the main palette
-      if (!colorPickerPalette.includes(color)) {
-        palette.appendChild(createColorSwatch(color, dayIndex, palette));
-      }
     });
   }
 
