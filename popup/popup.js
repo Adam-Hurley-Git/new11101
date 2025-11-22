@@ -1476,11 +1476,6 @@ checkAuthAndSubscription();
     const subtitle = document.createElement('p');
     subtitle.className = 'completed-tasks-subtitle';
     subtitle.innerHTML = `How completed tasks in '<strong>${list.title}</strong>' appear on your calendar.`;
-    subtitle.style.cssText = `
-      margin: 4px 0 0 0;
-      font-size: 11px;
-      color: #92400e;
-    `;
 
     header.appendChild(title);
     header.appendChild(subtitle);
