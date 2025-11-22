@@ -5548,6 +5548,7 @@ checkAuthAndSubscription();
       swatch.classList.add('selected');
       // Update the color input
       const colorInput = qs(`color${dayIndex}`);
+      const hexInput = qs(`hex${dayIndex}`);
       if (colorInput) {
         colorInput.value = color;
 
@@ -5558,12 +5559,20 @@ checkAuthAndSubscription();
           updateOpacityDisplay(dayIndex, 100);
           updateSliderFill(dayIndex, 100);
           updateOpacityPresetButtons(dayIndex, 100);
-          settings = await window.cc3Storage.setWeekdayOpacity(dayIndex, 100);
+        }
+
+        // Save color first, then opacity - avoid race condition by not using dispatchEvent
+        settings = await window.cc3Storage.setWeekdayColor(dayIndex, color);
+        settings = await window.cc3Storage.setWeekdayOpacity(dayIndex, 100);
+
+        // Update hex input
+        if (hexInput) {
+          hexInput.value = color.toUpperCase();
         }
 
         // Update preview with 100% opacity
         updatePreview(dayIndex, color, 100);
-        colorInput.dispatchEvent(new Event('change'));
+        await saveSettings();
       }
     };
 
