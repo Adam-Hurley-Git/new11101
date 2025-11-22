@@ -325,11 +325,19 @@ checkAuthAndSubscription();
 
   // Helper function to update preview with color and opacity
   function updatePreview(dayIndex, color, opacity) {
+    const alpha = opacity / 100; // Convert percentage to decimal
+    const rgba = hexToRgba(color, alpha);
+
+    // Update the day grid preview
     const preview = qs(`preview${dayIndex}`);
     if (preview && color) {
-      const alpha = opacity / 100; // Convert percentage to decimal
-      const rgba = hexToRgba(color, alpha);
       preview.style.backgroundColor = rgba;
+    }
+
+    // Update the modal preview
+    const modalPreview = qs(`modalPreview${dayIndex}`);
+    if (modalPreview && color) {
+      modalPreview.style.backgroundColor = rgba;
     }
   }
 
