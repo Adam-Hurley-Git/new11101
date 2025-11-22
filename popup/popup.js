@@ -5041,6 +5041,26 @@ checkAuthAndSubscription();
     }
   }
 
+  // Function to notify calendar tabs when a feature is toggled on/off
+  async function notifyFeatureToggle(featureName, featureSettings) {
+    try {
+      const tabs = await chrome.tabs.query({ url: '*://calendar.google.com/*' });
+      for (const tab of tabs) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: 'settingsChanged',
+            feature: featureName,
+            settings: featureSettings,
+          });
+        } catch (e) {
+          // Tab might not be ready or extension not loaded
+        }
+      }
+    } catch (error) {
+      console.error('Error notifying feature toggle:', error);
+    }
+  }
+
   function updateInlineColorsGrid() {
     // Initialize task color previews with current settings
     const inlineColors =
@@ -5751,11 +5771,9 @@ checkAuthAndSubscription();
       updateToggle();
       await saveSettings();
 
-      // Trigger immediate update for day coloring feature (same as toolbar)
+      // Notify calendar tabs to refresh day coloring
       const newSettings = await window.cc3Storage.getSettings();
-      if (window.cc3Features && window.cc3Features.updateFeature) {
-        window.cc3Features.updateFeature('dayColoring', newSettings);
-      }
+      await notifyFeatureToggle('dayColoring', newSettings);
     };
 
     // Master task features toggle switch
@@ -5772,11 +5790,9 @@ checkAuthAndSubscription();
       updateTaskListColoringToggle();
       await saveSettings();
 
-      // Trigger immediate update for task coloring feature
+      // Notify calendar tabs to refresh task coloring
       const newSettings = await window.cc3Storage.getSettings();
-      if (window.cc3Features && window.cc3Features.updateFeature) {
-        window.cc3Features.updateFeature('taskColoring', newSettings.taskColoring || {});
-      }
+      await notifyFeatureToggle('taskColoring', newSettings.taskColoring || {});
     };
 
     // Time blocking toggle switch
@@ -5798,6 +5814,9 @@ checkAuthAndSubscription();
     if (grantOAuthButton) {
       grantOAuthButton.onclick = async () => {
         try {
+          // Check if this is the first grant
+          const wasOAuthGranted = settings.taskListColoring?.oauthGranted || false;
+
           // Show loading state
           const originalText = grantOAuthButton.textContent;
           grantOAuthButton.textContent = 'Granting access...';
@@ -5818,6 +5837,18 @@ checkAuthAndSubscription();
             // Reload the UI
             settings = await window.cc3Storage.getSettings();
             await initTaskListColoring();
+
+            // Reload calendar tabs on first OAuth grant so features become visible
+            if (!wasOAuthGranted) {
+              try {
+                const tabs = await chrome.tabs.query({ url: '*://calendar.google.com/*' });
+                for (const tab of tabs) {
+                  chrome.tabs.reload(tab.id);
+                }
+              } catch (e) {
+                // Tab reload failed, user can refresh manually
+              }
+            }
           } else {
             // Show specific error messages based on error type
             if (response?.error === 'USER_DENIED') {
