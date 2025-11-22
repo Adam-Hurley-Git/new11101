@@ -334,10 +334,10 @@ checkAuthAndSubscription();
       preview.style.backgroundColor = rgba;
     }
 
-    // Update the modal preview
-    const modalPreview = qs(`modalPreview${dayIndex}`);
-    if (modalPreview && color) {
-      modalPreview.style.backgroundColor = rgba;
+    // Update the color input preview wrapper in the modal
+    const colorPreview = qs(`colorPreview${dayIndex}`);
+    if (colorPreview && color) {
+      colorPreview.style.backgroundColor = rgba;
     }
   }
 

@@ -592,16 +592,6 @@
         font-weight: 500;
       }
 
-      /* Modal Preview Bar */
-      .modal-color-preview {
-        height: 24px;
-        border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        margin-top: 8px;
-        margin-bottom: 4px;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-
       /* Enhanced Opacity Controls */
       .enhanced-opacity-control {
         margin-top: 8px;
@@ -3030,12 +3020,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color0"
-                            value="#ffd5d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview0" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color0"
+                              value="#ffd5d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex0"
@@ -3072,8 +3064,6 @@
                           <div class="color-palette" id="custom-palette0"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview0"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3109,12 +3099,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color1"
-                            value="#e8deff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview1" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color1"
+                              value="#e8deff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex1"
@@ -3151,8 +3143,6 @@
                           <div class="color-palette" id="custom-palette1"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview1"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3188,12 +3178,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color2"
-                            value="#d5f5e3"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview2" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color2"
+                              value="#d5f5e3"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex2"
@@ -3230,8 +3222,6 @@
                           <div class="color-palette" id="custom-palette2"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview2"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3267,12 +3257,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color3"
-                            value="#ffe8d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview3" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color3"
+                              value="#ffe8d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex3"
@@ -3309,8 +3301,6 @@
                           <div class="color-palette" id="custom-palette3"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview3"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3346,12 +3336,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color4"
-                            value="#d5f0ff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview4" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color4"
+                              value="#d5f0ff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex4"
@@ -3388,8 +3380,6 @@
                           <div class="color-palette" id="custom-palette4"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview4"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3425,12 +3415,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color5"
-                            value="#fff5d5"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview5" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color5"
+                              value="#fff5d5"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex5"
@@ -3467,8 +3459,6 @@
                           <div class="color-palette" id="custom-palette5"></div>
                         </div>
 
-                        <div class="modal-color-preview" id="modalPreview5"></div>
-
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
                             <div class="opacity-label">🎚️ Opacity</div>
@@ -3504,12 +3494,14 @@
                       </div>
                       <div class="color-tab-content">
                         <div class="color-picker-container" style="margin-bottom: 8px">
-                          <input
-                            type="color"
-                            id="color6"
-                            value="#f0d5ff"
-                            style="width: 60%; height: 32px"
-                          />
+                          <div class="color-input-preview" id="colorPreview6" style="width: 60%; height: 32px; position: relative; border-radius: 4px; overflow: hidden;">
+                            <input
+                              type="color"
+                              id="color6"
+                              value="#f0d5ff"
+                              style="width: 100%; height: 100%; opacity: 0; cursor: pointer;"
+                            />
+                          </div>
                           <input
                             type="text"
                             id="hex6"
@@ -3545,8 +3537,6 @@
                         <div class="color-tab-panel" id="custom-panel-6">
                           <div class="color-palette" id="custom-palette6"></div>
                         </div>
-
-                        <div class="modal-color-preview" id="modalPreview6"></div>
 
                         <div class="enhanced-opacity-control">
                           <div class="opacity-header">
