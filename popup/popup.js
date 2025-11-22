@@ -388,6 +388,9 @@ checkAuthAndSubscription();
     '#795548',
     '#607d8b',
     '#9e9e9e',
+    // Black and white
+    '#000000',
+    '#ffffff',
   ];
 
   // Pastel color palette - soft, muted colors
