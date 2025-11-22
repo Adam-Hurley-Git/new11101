@@ -1174,12 +1174,24 @@ checkAuthAndSubscription();
   function updateToggle() {
     const toggle = qs('enableDayColoring');
     const colorSettings = qs('colorSettings');
+    const weekStartSetupPrompt = qs('weekStartSetupPrompt');
 
     if (settings.enabled) {
       toggle.classList.add('active');
-      colorSettings?.classList.remove('feature-disabled');
+
+      // Check if week start has been configured
+      if (settings.weekStartConfigured) {
+        // Normal state - show color settings, hide setup prompt
+        weekStartSetupPrompt.style.display = 'none';
+        colorSettings?.classList.remove('feature-disabled');
+      } else {
+        // Setup needed - show setup prompt, grey out color settings
+        weekStartSetupPrompt.style.display = 'block';
+        colorSettings?.classList.add('feature-disabled');
+      }
     } else {
       toggle.classList.remove('active');
+      weekStartSetupPrompt.style.display = 'none';
       colorSettings?.classList.add('feature-disabled');
     }
   }
@@ -6288,9 +6300,59 @@ checkAuthAndSubscription();
     if (weekStartSelect) {
       weekStartSelect.onchange = async (e) => {
         settings = await window.cc3Storage.setWeekStart(parseInt(e.target.value, 10));
+        // Also mark as configured when changed from the main dropdown
+        if (!settings.weekStartConfigured) {
+          settings = await window.cc3Storage.setWeekStartConfigured(true);
+        }
         await saveSettings();
         // Reorganize day color row to match new week start
         reorganizeWeekdaysDisplay();
+      };
+    }
+
+    // Week start setup prompt handlers
+    const weekStartSetupSelect = qs('weekStartSetup');
+    const confirmWeekStartBtn = qs('confirmWeekStart');
+
+    if (weekStartSetupSelect && confirmWeekStartBtn) {
+      // Enable confirm button when a selection is made
+      weekStartSetupSelect.onchange = (e) => {
+        if (e.target.value) {
+          confirmWeekStartBtn.style.opacity = '1';
+          confirmWeekStartBtn.style.pointerEvents = 'auto';
+          confirmWeekStartBtn.disabled = false;
+        } else {
+          confirmWeekStartBtn.style.opacity = '0.5';
+          confirmWeekStartBtn.style.pointerEvents = 'none';
+          confirmWeekStartBtn.disabled = true;
+        }
+      };
+
+      // Handle confirm button click
+      confirmWeekStartBtn.onclick = async () => {
+        const selectedValue = weekStartSetupSelect.value;
+        if (!selectedValue) return;
+
+        // Save the week start value
+        settings = await window.cc3Storage.setWeekStart(parseInt(selectedValue, 10));
+        // Mark as configured
+        settings = await window.cc3Storage.setWeekStartConfigured(true);
+        await saveSettings();
+
+        // Sync the main weekStart dropdown
+        if (weekStartSelect) {
+          weekStartSelect.value = selectedValue;
+        }
+
+        // Update UI
+        updateToggle();
+        reorganizeWeekdaysDisplay();
+
+        // Notify calendar tabs to refresh day coloring
+        const newSettings = await window.cc3Storage.getSettings();
+        await notifyFeatureToggle('dayColoring', newSettings);
+
+        showToast('Week start configured! You can now customize your day colors.');
       };
     }
 

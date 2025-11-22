@@ -3006,6 +3006,67 @@
                 <div class="switch" id="enableDayColoring"></div>
               </div>
 
+              <!-- Week Start Setup Prompt (shown when enabled but not configured) -->
+              <div id="weekStartSetupPrompt" style="display: none; margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%); border-radius: 12px; border: 2px solid #4285f4;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" fill="#4285f4"/>
+                  </svg>
+                  <span style="font-weight: 600; font-size: 15px; color: #1a73e8;">Set Your Week Start Day</span>
+                </div>
+                <p style="font-size: 13px; color: #5f6368; line-height: 1.5; margin: 0 0 16px 0;">
+                  Your Google Calendar has a "Week starts on" setting (found in Settings &gt; General &gt; Start week on). <strong>Select the same day here</strong> so your colors align correctly with your calendar layout.
+                </p>
+                <div style="margin-bottom: 16px;">
+                  <label style="font-size: 12px; color: #333; display: block; margin-bottom: 8px; font-weight: 500;">
+                    My week starts on:
+                  </label>
+                  <select
+                    id="weekStartSetup"
+                    style="
+                      width: 100%;
+                      padding: 12px;
+                      border: 2px solid #dadce0;
+                      border-radius: 8px;
+                      font-size: 14px;
+                      background: white;
+                      cursor: pointer;
+                      transition: border-color 0.2s ease;
+                    "
+                    onfocus="this.style.borderColor='#4285f4';"
+                    onblur="this.style.borderColor='#dadce0';"
+                  >
+                    <option value="" disabled selected>Choose your week start day...</option>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="6">Saturday</option>
+                  </select>
+                </div>
+                <button
+                  id="confirmWeekStart"
+                  style="
+                    width: 100%;
+                    padding: 12px 20px;
+                    background: #4285f4;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    opacity: 0.5;
+                    pointer-events: none;
+                  "
+                  disabled
+                >
+                  Confirm & Continue
+                </button>
+                <p style="font-size: 11px; color: #80868b; margin: 12px 0 0 0; text-align: center;">
+                  You can change this later in the settings below.
+                </p>
+              </div>
+
               <div id="colorSettings" style="overflow: visible">
                 <div class="weekdays">
                   <div class="day-color-item" data-day="0">
