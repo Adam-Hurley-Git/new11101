@@ -50,8 +50,34 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Service Worker Startup
 // OPTIMIZED: Only ensure push subscription is registered on startup
 // No need to validate subscription - storage already has current state
-chrome.runtime.onStartup.addListener(() => {
-  debugLog('Browser started, ensuring Web Push subscription registered...');
+chrome.runtime.onStartup.addListener(async () => {
+  debugLog('Browser started, restoring state machine and ensuring Web Push subscription...');
+
+  // Restore persisted state (lastSyncTime, incrementalSyncCount, etc.)
+  await restoreStateMachineState();
+
+  // Query ACTUAL open calendar tabs (don't trust old tab IDs from storage)
+  // This handles the case where tabs were open when browser closed
+  try {
+    const calendarTabs = await chrome.tabs.query({
+      url: 'https://calendar.google.com/*'
+    });
+
+    // Rebuild activeCalendarTabs from real tabs
+    activeCalendarTabs.clear();
+    for (const tab of calendarTabs) {
+      if (tab.id) {
+        activeCalendarTabs.add(tab.id);
+      }
+    }
+
+    debugLog(`Found ${activeCalendarTabs.size} existing calendar tab(s) on startup`);
+
+    // Restore correct polling state based on actual tabs
+    await updatePollingState();
+  } catch (error) {
+    console.error('Failed to query calendar tabs on startup:', error);
+  }
 
   if (CONFIG.VAPID_PUBLIC_KEY) {
     setTimeout(() => {
@@ -218,6 +244,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'USER_ACTIVITY':
       lastUserActivity = Date.now();
       updatePollingState();
+      persistStateMachineState(); // Persist updated activity time
       sendResponse({ received: true });
       break;
 
@@ -641,6 +668,69 @@ let incrementalSyncCount = 0;
 const MAX_INCREMENTAL_SYNCS_BEFORE_FULL = 50; // Force full sync after N incremental syncs
 const STORAGE_THRESHOLD_FOR_FULL_SYNC = 70; // Force full sync if storage > 70%
 
+// Persist state machine state to storage (survives service worker restart)
+async function persistStateMachineState() {
+  try {
+    await chrome.storage.local.set({
+      'cf.stateMachine': {
+        pollingState,
+        lastUserActivity,
+        lastSyncTime,
+        incrementalSyncCount,
+        activeTabIds: Array.from(activeCalendarTabs)
+      }
+    });
+  } catch (error) {
+    console.error('Failed to persist state machine state:', error);
+  }
+}
+
+// Restore state machine state from storage (called on wake/startup)
+async function restoreStateMachineState() {
+  try {
+    const { 'cf.stateMachine': state } = await chrome.storage.local.get('cf.stateMachine');
+    if (state) {
+      lastSyncTime = state.lastSyncTime || null;
+      incrementalSyncCount = state.incrementalSyncCount || 0;
+      lastUserActivity = state.lastUserActivity || Date.now();
+      debugLog('Restored state machine state:', {
+        lastSyncTime,
+        incrementalSyncCount,
+        lastUserActivity: new Date(lastUserActivity).toISOString()
+      });
+    }
+  } catch (error) {
+    console.error('Failed to restore state machine state:', error);
+  }
+}
+
+// Initialize state machine on service worker wake (not just browser startup)
+// This runs immediately when the service worker script loads
+(async function initializeOnWake() {
+  try {
+    const { 'cf.stateMachine': state } = await chrome.storage.local.get('cf.stateMachine');
+
+    if (state) {
+      // Restore timing state (always safe to restore)
+      lastSyncTime = state.lastSyncTime || null;
+      incrementalSyncCount = state.incrementalSyncCount || 0;
+      lastUserActivity = state.lastUserActivity || Date.now();
+
+      // Restore tab IDs temporarily - will be validated when tabs send messages
+      // or on browser startup when we query actual tabs
+      if (state.activeTabIds?.length > 0) {
+        for (const tabId of state.activeTabIds) {
+          activeCalendarTabs.add(tabId);
+        }
+        pollingState = state.pollingState || 'SLEEP';
+        debugLog(`Service worker wake: restored ${activeCalendarTabs.size} tabs, state: ${pollingState}`);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to initialize state on wake:', error);
+  }
+})();
+
 // OAuth request handler
 async function handleOAuthRequest() {
   try {
@@ -730,6 +820,9 @@ async function syncTaskLists(fullSync = false) {
       lastSyncTime = new Date().toISOString();
       incrementalSyncCount++; // Increment counter
     }
+
+    // Persist sync state to survive service worker restart
+    await persistStateMachineState();
 
     const duration = Date.now() - startTime;
     debugLog(`Sync complete in ${duration}ms`);
@@ -940,6 +1033,7 @@ function handleCalendarTabActive(tabId) {
     debugLog(`Calendar tab ${tabId} active (${activeCalendarTabs.size} active tabs)`);
   }
   updatePollingState();
+  persistStateMachineState(); // Persist tab change
 }
 
 // State machine: Calendar tab inactive
@@ -949,6 +1043,7 @@ function handleCalendarTabInactive(tabId) {
     debugLog(`Calendar tab ${tabId} inactive (${activeCalendarTabs.size} active tabs)`);
   }
   updatePollingState();
+  persistStateMachineState(); // Persist tab change
 }
 
 // Update polling state based on activity
@@ -969,6 +1064,8 @@ async function updatePollingState() {
     debugLog(`Polling state transition: ${pollingState} → ${newState}`);
     await transitionPollingState(pollingState, newState);
     pollingState = newState;
+    // Persist state transition (tab changes already persist separately)
+    await persistStateMachineState();
   }
 }
 
