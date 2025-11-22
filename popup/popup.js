@@ -5047,6 +5047,12 @@ checkAuthAndSubscription();
       if (colorInput) {
         colorInput.value = color;
       }
+
+      // Update hex input value
+      const hexInput = qs(`taskHex${index}`);
+      if (hexInput) {
+        hexInput.value = color.toUpperCase();
+      }
     });
 
     // Create all color palettes for each task color
@@ -5055,6 +5061,53 @@ checkAuthAndSubscription();
       createTaskPastelColorPalette(i);
       createTaskDarkColorPalette(i);
       createTaskCustomColorPalette(i);
+    }
+
+    // Setup hex input sync for task colors
+    setupTaskColorHexInputs();
+  }
+
+  // Setup hex input synchronization for task inline colors
+  function setupTaskColorHexInputs() {
+    for (let i = 0; i < 8; i++) {
+      const colorInput = qs(`taskColor${i}`);
+      const hexInput = qs(`taskHex${i}`);
+      const preview = qs(`taskPreview${i}`);
+
+      if (colorInput && hexInput) {
+        // Color picker to hex sync
+        colorInput.oninput = (e) => {
+          hexInput.value = e.target.value.toUpperCase();
+        };
+
+        colorInput.onchange = async (e) => {
+          const color = e.target.value;
+          hexInput.value = color.toUpperCase();
+          if (preview) {
+            preview.style.backgroundColor = color;
+          }
+          await saveTaskColorChange(i, color);
+        };
+
+        // Hex input to color picker sync
+        hexInput.oninput = async () => {
+          const hexValue = hexInput.value.trim();
+          const normalizedHex = hexValue.startsWith('#') ? hexValue : '#' + hexValue;
+
+          if (/^#[0-9A-Fa-f]{6}$/.test(normalizedHex)) {
+            colorInput.value = normalizedHex;
+            hexInput.style.borderColor = '#1a73e8';
+            if (preview) {
+              preview.style.backgroundColor = normalizedHex;
+            }
+            await saveTaskColorChange(i, normalizedHex);
+          } else {
+            hexInput.style.borderColor = '#dc2626';
+          }
+        };
+
+        hexInput.onchange = hexInput.oninput;
+      }
     }
   }
 
@@ -5117,6 +5170,11 @@ checkAuthAndSubscription();
       const colorInput = qs(`taskColor${taskIndex}`);
       if (colorInput) {
         colorInput.value = color;
+        // Update hex input
+        const hexInput = qs(`taskHex${taskIndex}`);
+        if (hexInput) {
+          hexInput.value = color.toUpperCase();
+        }
         // Update preview
         const preview = qs(`taskPreview${taskIndex}`);
         if (preview) {
