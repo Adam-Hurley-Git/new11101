@@ -1513,22 +1513,22 @@ checkAuthAndSubscription();
       {
         value: 'google',
         label: "Google's",
-        tooltip: "Use Google's default gray strikethrough styling",
-        activeDescription: 'Default gray styling. Adjust sliders to fade completed tasks.',
+        tooltip: "Use Google's default completed task styling",
+        activeDescription: "Uses Google's default completed task styling. Adjust the sliders below to control how much completed tasks fade into the background.",
         disabled: false
       },
       {
         value: 'inherit',
         label: 'Inherit ↑',
         tooltip: hasPendingColors ? 'Apply the pending task colors above with reduced opacity' : 'Set pending colors above first to use this mode',
-        activeDescription: 'Uses your pending colors with reduced opacity.',
+        activeDescription: 'Applies your pending task colors from above to completed tasks, with reduced opacity so they appear dimmed but visually consistent.',
         disabled: !hasPendingColors
       },
       {
         value: 'custom',
         label: 'Custom',
         tooltip: 'Set completely custom colors for completed tasks',
-        activeDescription: 'Pick your own colors for completed tasks.',
+        activeDescription: 'Choose your own card and text colors for completed tasks. Use the color pickers and sliders below to fully customize the appearance.',
         disabled: false
       }
     ];
