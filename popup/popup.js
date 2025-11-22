@@ -1080,16 +1080,6 @@ checkAuthAndSubscription();
             }
           };
 
-          // Add remove button
-          const removeBtn = document.createElement('button');
-          removeBtn.className = 'custom-color-remove';
-          removeBtn.innerHTML = 'x';
-          removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            removeCustomColor(color);
-          };
-          swatch.appendChild(removeBtn);
-
           customPalette.appendChild(swatch);
         });
       });
@@ -1125,16 +1115,6 @@ checkAuthAndSubscription();
               colorInput.dispatchEvent(new Event('change'));
             }
           };
-
-          // Add remove button
-          const removeBtn = document.createElement('button');
-          removeBtn.className = 'custom-color-remove';
-          removeBtn.innerHTML = 'x';
-          removeBtn.onclick = (e) => {
-            e.stopPropagation();
-            removeCustomColor(color);
-          };
-          swatch.appendChild(removeBtn);
 
           customPalette.appendChild(swatch);
         });
@@ -2503,17 +2483,6 @@ checkAuthAndSubscription();
       listRef.colorInput.value = color;
       await listRef.updateColor(color);
     };
-
-    if (isCustom) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'custom-color-remove';
-      removeBtn.innerHTML = 'x';
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        removeCustomColor(color);
-      };
-      swatch.appendChild(removeBtn);
-    }
 
     return swatch;
   }
@@ -5158,18 +5127,6 @@ checkAuthAndSubscription();
       }
     };
 
-    // Add remove button for custom colors
-    if (isCustom) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'custom-color-remove';
-      removeBtn.innerHTML = '×';
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        removeCustomColor(color);
-      };
-      swatch.appendChild(removeBtn);
-    }
-
     return swatch;
   }
 
@@ -5309,18 +5266,6 @@ checkAuthAndSubscription();
         blockId.colorInput.dispatchEvent(new Event('change'));
       }
     };
-
-    // Add remove button for custom colors
-    if (isCustom) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'custom-color-remove';
-      removeBtn.innerHTML = '×';
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        removeCustomColor(color);
-      };
-      swatch.appendChild(removeBtn);
-    }
 
     return swatch;
   }
@@ -5550,18 +5495,6 @@ checkAuthAndSubscription();
         colorInput.dispatchEvent(new Event('change'));
       }
     };
-
-    // Add remove button for custom colors
-    if (isCustom) {
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'custom-color-remove';
-      removeBtn.innerHTML = '×';
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        removeCustomColor(color);
-      };
-      swatch.appendChild(removeBtn);
-    }
 
     return swatch;
   }
