@@ -5558,16 +5558,22 @@ checkAuthAndSubscription();
   function updateColors() {
     for (let i = 0; i < 7; i++) {
       const colorInput = qs(`color${i}`);
+      const hexInput = qs(`hex${i}`);
       const opacityInput = qs(`opacity${i}`);
       const opacityValue = qs(`opacityValue${i}`);
       const preview = qs(`preview${i}`);
 
+      const color = settings.weekdayColors[String(i)] || defaultColors[String(i)];
+
       if (colorInput) {
-        colorInput.value = settings.weekdayColors[String(i)] || defaultColors[String(i)];
+        colorInput.value = color;
+      }
+
+      if (hexInput) {
+        hexInput.value = color.toUpperCase();
       }
 
       if (preview) {
-        const color = settings.weekdayColors[String(i)] || defaultColors[String(i)];
         const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
         updatePreview(i, color, opacity);
       }
@@ -6093,6 +6099,7 @@ checkAuthAndSubscription();
     // Color pickers and opacity controls
     for (let i = 0; i < 7; i++) {
       const colorInput = qs(`color${i}`);
+      const hexInput = qs(`hex${i}`);
       const opacityInput = qs(`opacity${i}`);
       const opacityValue = qs(`opacityValue${i}`);
       const preview = qs(`preview${i}`);
@@ -6102,8 +6109,41 @@ checkAuthAndSubscription();
           settings = await window.cc3Storage.setWeekdayColor(i, e.target.value);
           const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
           updatePreview(i, e.target.value, opacity);
+          // Update hex input
+          if (hexInput) {
+            hexInput.value = e.target.value.toUpperCase();
+          }
           await saveSettings();
         };
+
+        // Real-time feedback during color picking
+        colorInput.oninput = (e) => {
+          if (hexInput) {
+            hexInput.value = e.target.value.toUpperCase();
+          }
+        };
+      }
+
+      // Hex input synchronization
+      if (hexInput && colorInput) {
+        hexInput.oninput = async () => {
+          const hexValue = hexInput.value.trim();
+          const normalizedHex = hexValue.startsWith('#') ? hexValue : '#' + hexValue;
+
+          if (/^#[0-9A-Fa-f]{6}$/.test(normalizedHex)) {
+            colorInput.value = normalizedHex;
+            hexInput.style.borderColor = '#1a73e8';
+            // Update preview and save
+            settings = await window.cc3Storage.setWeekdayColor(i, normalizedHex);
+            const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
+            updatePreview(i, normalizedHex, opacity);
+            await saveSettings();
+          } else {
+            hexInput.style.borderColor = '#dc2626';
+          }
+        };
+
+        hexInput.onchange = hexInput.oninput;
       }
 
       if (opacityInput) {
