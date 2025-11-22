@@ -243,8 +243,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'USER_ACTIVITY':
       lastUserActivity = Date.now();
-      updatePollingState();
-      persistStateMachineState(); // Persist updated activity time
+      updatePollingState().then(() => {
+        persistStateMachineState(); // Persist after state update completes
+      });
       sendResponse({ received: true });
       break;
 
@@ -1027,23 +1028,23 @@ async function applyListColorToExistingTasks(listId, color) {
 }
 
 // State machine: Calendar tab active
-function handleCalendarTabActive(tabId) {
+async function handleCalendarTabActive(tabId) {
   if (tabId) {
     activeCalendarTabs.add(tabId);
     debugLog(`Calendar tab ${tabId} active (${activeCalendarTabs.size} active tabs)`);
   }
-  updatePollingState();
-  persistStateMachineState(); // Persist tab change
+  await updatePollingState();
+  await persistStateMachineState(); // Persist tab change after state update completes
 }
 
 // State machine: Calendar tab inactive
-function handleCalendarTabInactive(tabId) {
+async function handleCalendarTabInactive(tabId) {
   if (tabId) {
     activeCalendarTabs.delete(tabId);
     debugLog(`Calendar tab ${tabId} inactive (${activeCalendarTabs.size} active tabs)`);
   }
-  updatePollingState();
-  persistStateMachineState(); // Persist tab change
+  await updatePollingState();
+  await persistStateMachineState(); // Persist tab change after state update completes
 }
 
 // Update polling state based on activity
