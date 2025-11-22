@@ -1663,9 +1663,10 @@ checkAuthAndSubscription();
 
         // Update UI visibility based on mode
         // Get current pending colors from storage to pass correct state
-        const currentSettings = await window.cc3Storage.getSettings();
-        const listColors = await window.cc3Storage.getTaskListColors();
-        const textColors = currentSettings?.taskListColoring?.textColors || {};
+        const [listColors, textColors] = await Promise.all([
+          window.cc3Storage.getTaskListColors(),
+          window.cc3Storage.getTaskListTextColors(),
+        ]);
         const currentHasPendingColors = !!(listColors[list.id] || textColors[list.id]);
         updateControlsVisibility(mode.value, currentHasPendingColors);
 
