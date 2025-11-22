@@ -1391,8 +1391,8 @@ checkAuthAndSubscription();
           (isActive ? '#1a73e8' : '#5f6368');
         inheritTab.style.opacity = hasPendingColors ? '1' : '0.6';
         inheritTab.title = hasPendingColors ?
-          'Inherit pending colors with adjustable opacity' :
-          'No pending colors to inherit - set pending colors first';
+          'Apply the pending task colors above with reduced opacity' :
+          'Set pending colors above first to use this mode';
       }
     }
 
@@ -1414,6 +1414,39 @@ checkAuthAndSubscription();
         if (textOpacityGroup) {
           textOpacityGroup.style.opacity = hasPendingColors ? '1' : '0.4';
           textOpacityGroup.style.pointerEvents = hasPendingColors ? 'auto' : 'none';
+        }
+      }
+    }
+  }
+
+  /**
+   * Auto-switch to inherit mode when pending colors are set
+   * This ensures completed tasks automatically match pending colors
+   */
+  async function autoSwitchToInheritMode(listId) {
+    // Get current mode
+    const settings = await window.cc3Storage.getSettings();
+    const currentMode = settings?.taskListColoring?.completedStyling?.[listId]?.mode || 'google';
+
+    // Only switch if not already in inherit or custom mode
+    if (currentMode === 'google') {
+      await window.cc3Storage.setCompletedStylingMode(listId, 'inherit');
+
+      // Set default opacity values for inherit mode
+      const currentStyling = settings?.taskListColoring?.completedStyling?.[listId] || {};
+      if (currentStyling.bgOpacity === undefined) {
+        await window.cc3Storage.setCompletedBgOpacity(listId, 0.6);
+      }
+      if (currentStyling.textOpacity === undefined) {
+        await window.cc3Storage.setCompletedTextOpacity(listId, 0.6);
+      }
+
+      // Update UI - find and click the inherit tab to trigger visual update
+      const modeTabs = document.getElementById(`completedModeTabs-${listId}`);
+      if (modeTabs) {
+        const inheritTab = modeTabs.querySelector('button[data-mode="inherit"]');
+        if (inheritTab && !inheritTab.disabled) {
+          inheritTab.click();
         }
       }
     }
@@ -1471,9 +1504,14 @@ checkAuthAndSubscription();
     header.className = 'completed-tasks-header';
 
     const title = document.createElement('h4');
-    title.innerHTML = '✓ Completed Tasks Styling';
+    title.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>Completed Tasks';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'completed-tasks-subtitle';
+    subtitle.innerHTML = `How completed tasks in '<strong>${list.title}</strong>' appear on your calendar.`;
 
     header.appendChild(title);
+    header.appendChild(subtitle);
 
     // Mode selector (Google Default / Inherit Pending / Custom)
     const modeSelector = document.createElement('div');
@@ -1510,16 +1548,50 @@ checkAuthAndSubscription();
     const hasPendingColors = !!(colorConfig.background || colorConfig.text);
 
     const modes = [
-      { value: 'google', label: 'Google', description: 'Use pure Google default styling', disabled: false },
-      { value: 'inherit', label: 'Inherit', description: hasPendingColors ? 'Inherit pending colors with adjustable opacity' : 'No pending colors to inherit - set pending colors first', disabled: !hasPendingColors },
-      { value: 'custom', label: 'Custom', description: 'Fully custom colors and opacity', disabled: false }
+      {
+        value: 'google',
+        label: "Google's",
+        tooltip: "Use Google's default completed task styling",
+        activeDescription: "Uses Google's default completed task styling. Adjust the sliders below to control how much completed tasks fade into the background.",
+        disabled: false
+      },
+      {
+        value: 'inherit',
+        label: 'Inherit ↑',
+        tooltip: hasPendingColors ? 'Apply the pending task colors above with reduced opacity' : 'Set pending colors above first to use this mode',
+        activeDescription: 'Applies your pending task colors from above to completed tasks, with reduced opacity so they appear dimmed but visually consistent.',
+        disabled: !hasPendingColors
+      },
+      {
+        value: 'custom',
+        label: 'Custom',
+        tooltip: 'Set completely custom colors for completed tasks',
+        activeDescription: 'Choose your own card and text colors for completed tasks. Use the color pickers and sliders below to fully customize the appearance.',
+        disabled: false
+      }
     ];
+
+    // Create mode description element that updates dynamically
+    const modeDescription = document.createElement('div');
+    modeDescription.id = `modeDescription-${list.id}`;
+    modeDescription.className = 'mode-description';
+    const currentModeData = modes.find(m => m.value === currentMode);
+    modeDescription.textContent = currentModeData?.activeDescription || '';
+    modeDescription.style.cssText = `
+      font-size: 11px;
+      color: #5f6368;
+      margin-top: 8px;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 4px;
+      line-height: 1.4;
+    `;
 
     modes.forEach(mode => {
       const tab = document.createElement('button');
       tab.type = 'button';
       tab.textContent = mode.label;
-      tab.title = mode.description;
+      tab.title = mode.tooltip;
       tab.disabled = mode.disabled;
       tab.dataset.mode = mode.value;
 
@@ -1612,6 +1684,12 @@ checkAuthAndSubscription();
           });
         }
 
+        // Update mode description text
+        const descEl = document.getElementById(`modeDescription-${list.id}`);
+        if (descEl) {
+          descEl.textContent = mode.activeDescription;
+        }
+
         // Show feedback
         showToast(`Completed tasks: ${mode.label} mode`);
       };
@@ -1621,6 +1699,7 @@ checkAuthAndSubscription();
 
     modeSelector.appendChild(modeLabel);
     modeSelector.appendChild(modeTabs);
+    modeSelector.appendChild(modeDescription);
 
     // Controls container (always enabled - mode selector controls what's shown)
     const controls = document.createElement('div');
@@ -1820,7 +1899,8 @@ checkAuthAndSubscription();
 
     const bgOpacityLabel = document.createElement('div');
     bgOpacityLabel.className = 'completed-color-label';
-    bgOpacityLabel.textContent = 'Card Opacity';
+    bgOpacityLabel.textContent = 'Card fade';
+    bgOpacityLabel.title = 'Lower values fade the card more';
 
     const bgOpacityContainer = document.createElement('div');
     bgOpacityContainer.className = 'opacity-slider-container';
@@ -1869,7 +1949,8 @@ checkAuthAndSubscription();
 
     const textOpacityLabel = document.createElement('div');
     textOpacityLabel.className = 'completed-color-label';
-    textOpacityLabel.textContent = 'Text Opacity';
+    textOpacityLabel.textContent = 'Text fade';
+    textOpacityLabel.title = 'Lower values fade the text more';
 
     const textOpacityContainer = document.createElement('div');
     textOpacityContainer.className = 'opacity-slider-container';
@@ -2093,6 +2174,10 @@ checkAuthAndSubscription();
         updateSwatchDisplay(backgroundSwatch, value, 'background');
         // INSTANT UPDATE: Update inherit mode availability
         updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
+        // AUTO-SWITCH: Switch to inherit mode when color is set
+        if (value) {
+          autoSwitchToInheritMode(list.id);
+        }
       },
     });
 
@@ -2113,6 +2198,10 @@ checkAuthAndSubscription();
         updateCompletedTextPreview(list.id, value);
         // INSTANT UPDATE: Update inherit mode availability
         updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
+        // AUTO-SWITCH: Switch to inherit mode when color is set
+        if (value) {
+          autoSwitchToInheritMode(list.id);
+        }
       },
     });
 
@@ -2197,6 +2286,16 @@ checkAuthAndSubscription();
 
     const settingsSection = document.createElement('div');
     settingsSection.className = 'task-list-card-section';
+
+    // Add Pending Tasks section header
+    const pendingHeader = document.createElement('div');
+    pendingHeader.className = 'pending-tasks-header';
+    pendingHeader.innerHTML = `
+      <h4><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 6px;"><circle cx="12" cy="12" r="10"/></svg>Pending Tasks</h4>
+      <p class="pending-tasks-subtitle">Colors for tasks not yet completed in '<strong>${list.title}</strong>'. Choose how the completed style of this list looks below.</p>
+    `;
+
+    settingsSection.appendChild(pendingHeader);
     settingsSection.appendChild(controlsWrapper);
 
     // Completed tasks section (will be added asynchronously)
