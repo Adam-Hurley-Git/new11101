@@ -6413,6 +6413,10 @@ checkAuthAndSubscription();
           details.classList.toggle('expanded');
           if (details.classList.contains('expanded')) {
             details.style.zIndex = '999999';
+            // Scroll the details panel into view
+            setTimeout(() => {
+              details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 50);
           } else {
             details.style.zIndex = '';
           }
@@ -6449,6 +6453,10 @@ checkAuthAndSubscription();
             if (details.classList.contains('expanded')) {
               // Ensure this picker has maximum z-index
               details.style.zIndex = '2147483000';
+              // Scroll the details panel into view
+              setTimeout(() => {
+                details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }, 50);
             } else {
               details.style.zIndex = '';
             }
