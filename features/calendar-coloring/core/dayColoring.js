@@ -274,7 +274,7 @@
         const dayOfWeek = currentDate.getDay();
         const color = settings.weekdayColors?.[String(dayOfWeek)];
 
-        if (color && color !== '#ffffff') {
+        if (color) {
           // Use opacity from settings instead of hardcoded theme-based alpha
           const opacity = settings.weekdayOpacity?.[String(dayOfWeek)] || 30; // Default to 30% if not set
           const alpha = opacity / 100; // Convert percentage to decimal
@@ -330,7 +330,7 @@
       }
 
       const color = settings.weekdayColors?.[String(weekday)];
-      if (!color || color === '#ffffff') {
+      if (!color) {
         console.log(`No color for weekday ${weekday} (column ${col})`);
         continue;
       }
