@@ -1420,6 +1420,39 @@ checkAuthAndSubscription();
   }
 
   /**
+   * Auto-switch to inherit mode when pending colors are set
+   * This ensures completed tasks automatically match pending colors
+   */
+  async function autoSwitchToInheritMode(listId) {
+    // Get current mode
+    const settings = await window.cc3Storage.getSettings();
+    const currentMode = settings?.taskListColoring?.completedStyling?.[listId]?.mode || 'google';
+
+    // Only switch if not already in inherit or custom mode
+    if (currentMode === 'google') {
+      await window.cc3Storage.setCompletedStylingMode(listId, 'inherit');
+
+      // Set default opacity values for inherit mode
+      const currentStyling = settings?.taskListColoring?.completedStyling?.[listId] || {};
+      if (currentStyling.bgOpacity === undefined) {
+        await window.cc3Storage.setCompletedBgOpacity(listId, 0.6);
+      }
+      if (currentStyling.textOpacity === undefined) {
+        await window.cc3Storage.setCompletedTextOpacity(listId, 0.6);
+      }
+
+      // Update UI - find and click the inherit tab to trigger visual update
+      const modeTabs = document.getElementById(`completedModeTabs-${listId}`);
+      if (modeTabs) {
+        const inheritTab = modeTabs.querySelector('button[data-mode="inherit"]');
+        if (inheritTab && !inheritTab.disabled) {
+          inheritTab.click();
+        }
+      }
+    }
+  }
+
+  /**
    * Update completed text color preview when pending text color changes
    * This provides instant visual feedback showing inheritance
    */
@@ -2141,6 +2174,10 @@ checkAuthAndSubscription();
         updateSwatchDisplay(backgroundSwatch, value, 'background');
         // INSTANT UPDATE: Update inherit mode availability
         updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
+        // AUTO-SWITCH: Switch to inherit mode when color is set
+        if (value) {
+          autoSwitchToInheritMode(list.id);
+        }
       },
     });
 
@@ -2161,6 +2198,10 @@ checkAuthAndSubscription();
         updateCompletedTextPreview(list.id, value);
         // INSTANT UPDATE: Update inherit mode availability
         updateInheritModeAvailability(list.id, currentBgColor, currentTextColor);
+        // AUTO-SWITCH: Switch to inherit mode when color is set
+        if (value) {
+          autoSwitchToInheritMode(list.id);
+        }
       },
     });
 
