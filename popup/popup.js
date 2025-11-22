@@ -388,6 +388,9 @@ checkAuthAndSubscription();
     '#795548',
     '#607d8b',
     '#9e9e9e',
+    // Black and white
+    '#000000',
+    '#ffffff',
   ];
 
   // Pastel color palette - soft, muted colors
@@ -5047,6 +5050,12 @@ checkAuthAndSubscription();
       if (colorInput) {
         colorInput.value = color;
       }
+
+      // Update hex input value
+      const hexInput = qs(`taskHex${index}`);
+      if (hexInput) {
+        hexInput.value = color.toUpperCase();
+      }
     });
 
     // Create all color palettes for each task color
@@ -5055,6 +5064,53 @@ checkAuthAndSubscription();
       createTaskPastelColorPalette(i);
       createTaskDarkColorPalette(i);
       createTaskCustomColorPalette(i);
+    }
+
+    // Setup hex input sync for task colors
+    setupTaskColorHexInputs();
+  }
+
+  // Setup hex input synchronization for task inline colors
+  function setupTaskColorHexInputs() {
+    for (let i = 0; i < 8; i++) {
+      const colorInput = qs(`taskColor${i}`);
+      const hexInput = qs(`taskHex${i}`);
+      const preview = qs(`taskPreview${i}`);
+
+      if (colorInput && hexInput) {
+        // Color picker to hex sync
+        colorInput.oninput = (e) => {
+          hexInput.value = e.target.value.toUpperCase();
+        };
+
+        colorInput.onchange = async (e) => {
+          const color = e.target.value;
+          hexInput.value = color.toUpperCase();
+          if (preview) {
+            preview.style.backgroundColor = color;
+          }
+          await saveTaskColorChange(i, color);
+        };
+
+        // Hex input to color picker sync
+        hexInput.oninput = async () => {
+          const hexValue = hexInput.value.trim();
+          const normalizedHex = hexValue.startsWith('#') ? hexValue : '#' + hexValue;
+
+          if (/^#[0-9A-Fa-f]{6}$/.test(normalizedHex)) {
+            colorInput.value = normalizedHex;
+            hexInput.style.borderColor = '#1a73e8';
+            if (preview) {
+              preview.style.backgroundColor = normalizedHex;
+            }
+            await saveTaskColorChange(i, normalizedHex);
+          } else {
+            hexInput.style.borderColor = '#dc2626';
+          }
+        };
+
+        hexInput.onchange = hexInput.oninput;
+      }
     }
   }
 
@@ -5117,6 +5173,11 @@ checkAuthAndSubscription();
       const colorInput = qs(`taskColor${taskIndex}`);
       if (colorInput) {
         colorInput.value = color;
+        // Update hex input
+        const hexInput = qs(`taskHex${taskIndex}`);
+        if (hexInput) {
+          hexInput.value = color.toUpperCase();
+        }
         // Update preview
         const preview = qs(`taskPreview${taskIndex}`);
         if (preview) {
@@ -5558,16 +5619,22 @@ checkAuthAndSubscription();
   function updateColors() {
     for (let i = 0; i < 7; i++) {
       const colorInput = qs(`color${i}`);
+      const hexInput = qs(`hex${i}`);
       const opacityInput = qs(`opacity${i}`);
       const opacityValue = qs(`opacityValue${i}`);
       const preview = qs(`preview${i}`);
 
+      const color = settings.weekdayColors[String(i)] || defaultColors[String(i)];
+
       if (colorInput) {
-        colorInput.value = settings.weekdayColors[String(i)] || defaultColors[String(i)];
+        colorInput.value = color;
+      }
+
+      if (hexInput) {
+        hexInput.value = color.toUpperCase();
       }
 
       if (preview) {
-        const color = settings.weekdayColors[String(i)] || defaultColors[String(i)];
         const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
         updatePreview(i, color, opacity);
       }
@@ -6093,6 +6160,7 @@ checkAuthAndSubscription();
     // Color pickers and opacity controls
     for (let i = 0; i < 7; i++) {
       const colorInput = qs(`color${i}`);
+      const hexInput = qs(`hex${i}`);
       const opacityInput = qs(`opacity${i}`);
       const opacityValue = qs(`opacityValue${i}`);
       const preview = qs(`preview${i}`);
@@ -6102,8 +6170,41 @@ checkAuthAndSubscription();
           settings = await window.cc3Storage.setWeekdayColor(i, e.target.value);
           const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
           updatePreview(i, e.target.value, opacity);
+          // Update hex input
+          if (hexInput) {
+            hexInput.value = e.target.value.toUpperCase();
+          }
           await saveSettings();
         };
+
+        // Real-time feedback during color picking
+        colorInput.oninput = (e) => {
+          if (hexInput) {
+            hexInput.value = e.target.value.toUpperCase();
+          }
+        };
+      }
+
+      // Hex input synchronization
+      if (hexInput && colorInput) {
+        hexInput.oninput = async () => {
+          const hexValue = hexInput.value.trim();
+          const normalizedHex = hexValue.startsWith('#') ? hexValue : '#' + hexValue;
+
+          if (/^#[0-9A-Fa-f]{6}$/.test(normalizedHex)) {
+            colorInput.value = normalizedHex;
+            hexInput.style.borderColor = '#1a73e8';
+            // Update preview and save
+            settings = await window.cc3Storage.setWeekdayColor(i, normalizedHex);
+            const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
+            updatePreview(i, normalizedHex, opacity);
+            await saveSettings();
+          } else {
+            hexInput.style.borderColor = '#dc2626';
+          }
+        };
+
+        hexInput.onchange = hexInput.oninput;
       }
 
       if (opacityInput) {
@@ -6366,6 +6467,54 @@ checkAuthAndSubscription();
     });
   }
 
+  // Helper function to position day details modal within viewport
+  function positionDayDetailsInView(dayItem, details) {
+    // Reset to default positioning first to get accurate measurements
+    details.style.top = '100%';
+    details.style.bottom = 'auto';
+    details.style.left = '50%';
+    details.style.right = 'auto';
+    details.style.transform = 'translateX(-50%)';
+    details.style.marginTop = '4px';
+    details.style.marginBottom = '0';
+
+    // Force reflow to get accurate measurements
+    const detailsRect = details.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Check vertical overflow - position above if needed
+    if (detailsRect.bottom > viewportHeight) {
+      details.style.top = 'auto';
+      details.style.bottom = '100%';
+      details.style.marginTop = '0';
+      details.style.marginBottom = '4px';
+    }
+
+    // Check horizontal overflow - adjust left/right positioning
+    if (detailsRect.left < 0) {
+      // Overflowing left edge - align to left
+      details.style.left = '0';
+      details.style.transform = 'none';
+    } else if (detailsRect.right > viewportWidth) {
+      // Overflowing right edge - align to right
+      details.style.left = 'auto';
+      details.style.right = '0';
+      details.style.transform = 'none';
+    }
+  }
+
+  // Helper function to reset day details positioning
+  function resetDayDetailsPosition(details) {
+    details.style.top = '100%';
+    details.style.bottom = 'auto';
+    details.style.left = '50%';
+    details.style.right = 'auto';
+    details.style.transform = 'translateX(-50%)';
+    details.style.marginTop = '4px';
+    details.style.marginBottom = '0';
+  }
+
   function setupDayClickHandlers() {
     // Set up click handlers for day color items
     document.querySelectorAll('.day-color-item').forEach((dayItem, index) => {
@@ -6413,12 +6562,10 @@ checkAuthAndSubscription();
           details.classList.toggle('expanded');
           if (details.classList.contains('expanded')) {
             details.style.zIndex = '999999';
-            // Scroll the details panel into view
-            setTimeout(() => {
-              details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 50);
+            positionDayDetailsInView(dayItem, details);
           } else {
             details.style.zIndex = '';
+            resetDayDetailsPosition(details);
           }
         }
       };
@@ -6451,14 +6598,11 @@ checkAuthAndSubscription();
           if (details) {
             details.classList.toggle('expanded');
             if (details.classList.contains('expanded')) {
-              // Ensure this picker has maximum z-index
               details.style.zIndex = '2147483000';
-              // Scroll the details panel into view
-              setTimeout(() => {
-                details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }, 50);
+              positionDayDetailsInView(dayItem, details);
             } else {
               details.style.zIndex = '';
+              resetDayDetailsPosition(details);
             }
           }
         };
