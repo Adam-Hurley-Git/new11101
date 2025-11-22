@@ -6366,6 +6366,54 @@ checkAuthAndSubscription();
     });
   }
 
+  // Helper function to position day details modal within viewport
+  function positionDayDetailsInView(dayItem, details) {
+    // Reset to default positioning first to get accurate measurements
+    details.style.top = '100%';
+    details.style.bottom = 'auto';
+    details.style.left = '50%';
+    details.style.right = 'auto';
+    details.style.transform = 'translateX(-50%)';
+    details.style.marginTop = '4px';
+    details.style.marginBottom = '0';
+
+    // Force reflow to get accurate measurements
+    const detailsRect = details.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Check vertical overflow - position above if needed
+    if (detailsRect.bottom > viewportHeight) {
+      details.style.top = 'auto';
+      details.style.bottom = '100%';
+      details.style.marginTop = '0';
+      details.style.marginBottom = '4px';
+    }
+
+    // Check horizontal overflow - adjust left/right positioning
+    if (detailsRect.left < 0) {
+      // Overflowing left edge - align to left
+      details.style.left = '0';
+      details.style.transform = 'none';
+    } else if (detailsRect.right > viewportWidth) {
+      // Overflowing right edge - align to right
+      details.style.left = 'auto';
+      details.style.right = '0';
+      details.style.transform = 'none';
+    }
+  }
+
+  // Helper function to reset day details positioning
+  function resetDayDetailsPosition(details) {
+    details.style.top = '100%';
+    details.style.bottom = 'auto';
+    details.style.left = '50%';
+    details.style.right = 'auto';
+    details.style.transform = 'translateX(-50%)';
+    details.style.marginTop = '4px';
+    details.style.marginBottom = '0';
+  }
+
   function setupDayClickHandlers() {
     // Set up click handlers for day color items
     document.querySelectorAll('.day-color-item').forEach((dayItem, index) => {
@@ -6413,34 +6461,10 @@ checkAuthAndSubscription();
           details.classList.toggle('expanded');
           if (details.classList.contains('expanded')) {
             details.style.zIndex = '999999';
-            // Position modal to stay in viewport
-            setTimeout(() => {
-              const itemRect = dayItem.getBoundingClientRect();
-              const detailsRect = details.getBoundingClientRect();
-              const viewportHeight = window.innerHeight;
-
-              // Check if modal overflows bottom of viewport
-              if (detailsRect.bottom > viewportHeight) {
-                // Position above the item instead
-                details.style.top = 'auto';
-                details.style.bottom = '100%';
-                details.style.marginTop = '0';
-                details.style.marginBottom = '4px';
-              } else {
-                // Reset to default (below)
-                details.style.top = '100%';
-                details.style.bottom = 'auto';
-                details.style.marginTop = '4px';
-                details.style.marginBottom = '0';
-              }
-            }, 0);
+            positionDayDetailsInView(dayItem, details);
           } else {
             details.style.zIndex = '';
-            // Reset positioning
-            details.style.top = '100%';
-            details.style.bottom = 'auto';
-            details.style.marginTop = '4px';
-            details.style.marginBottom = '0';
+            resetDayDetailsPosition(details);
           }
         }
       };
@@ -6473,36 +6497,11 @@ checkAuthAndSubscription();
           if (details) {
             details.classList.toggle('expanded');
             if (details.classList.contains('expanded')) {
-              // Ensure this picker has maximum z-index
               details.style.zIndex = '2147483000';
-              // Position modal to stay in viewport
-              setTimeout(() => {
-                const itemRect = dayItem.getBoundingClientRect();
-                const detailsRect = details.getBoundingClientRect();
-                const viewportHeight = window.innerHeight;
-
-                // Check if modal overflows bottom of viewport
-                if (detailsRect.bottom > viewportHeight) {
-                  // Position above the item instead
-                  details.style.top = 'auto';
-                  details.style.bottom = '100%';
-                  details.style.marginTop = '0';
-                  details.style.marginBottom = '4px';
-                } else {
-                  // Reset to default (below)
-                  details.style.top = '100%';
-                  details.style.bottom = 'auto';
-                  details.style.marginTop = '4px';
-                  details.style.marginBottom = '0';
-                }
-              }, 0);
+              positionDayDetailsInView(dayItem, details);
             } else {
               details.style.zIndex = '';
-              // Reset positioning
-              details.style.top = '100%';
-              details.style.bottom = 'auto';
-              details.style.marginTop = '4px';
-              details.style.marginBottom = '0';
+              resetDayDetailsPosition(details);
             }
           }
         };
