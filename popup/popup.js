@@ -6413,12 +6413,34 @@ checkAuthAndSubscription();
           details.classList.toggle('expanded');
           if (details.classList.contains('expanded')) {
             details.style.zIndex = '999999';
-            // Scroll the details panel into view
+            // Position modal to stay in viewport
             setTimeout(() => {
-              details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 50);
+              const itemRect = dayItem.getBoundingClientRect();
+              const detailsRect = details.getBoundingClientRect();
+              const viewportHeight = window.innerHeight;
+
+              // Check if modal overflows bottom of viewport
+              if (detailsRect.bottom > viewportHeight) {
+                // Position above the item instead
+                details.style.top = 'auto';
+                details.style.bottom = '100%';
+                details.style.marginTop = '0';
+                details.style.marginBottom = '4px';
+              } else {
+                // Reset to default (below)
+                details.style.top = '100%';
+                details.style.bottom = 'auto';
+                details.style.marginTop = '4px';
+                details.style.marginBottom = '0';
+              }
+            }, 0);
           } else {
             details.style.zIndex = '';
+            // Reset positioning
+            details.style.top = '100%';
+            details.style.bottom = 'auto';
+            details.style.marginTop = '4px';
+            details.style.marginBottom = '0';
           }
         }
       };
@@ -6453,12 +6475,34 @@ checkAuthAndSubscription();
             if (details.classList.contains('expanded')) {
               // Ensure this picker has maximum z-index
               details.style.zIndex = '2147483000';
-              // Scroll the details panel into view
+              // Position modal to stay in viewport
               setTimeout(() => {
-                details.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }, 50);
+                const itemRect = dayItem.getBoundingClientRect();
+                const detailsRect = details.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+
+                // Check if modal overflows bottom of viewport
+                if (detailsRect.bottom > viewportHeight) {
+                  // Position above the item instead
+                  details.style.top = 'auto';
+                  details.style.bottom = '100%';
+                  details.style.marginTop = '0';
+                  details.style.marginBottom = '4px';
+                } else {
+                  // Reset to default (below)
+                  details.style.top = '100%';
+                  details.style.bottom = 'auto';
+                  details.style.marginTop = '4px';
+                  details.style.marginBottom = '0';
+                }
+              }, 0);
             } else {
               details.style.zIndex = '';
+              // Reset positioning
+              details.style.top = '100%';
+              details.style.bottom = 'auto';
+              details.style.marginTop = '4px';
+              details.style.marginBottom = '0';
             }
           }
         };
