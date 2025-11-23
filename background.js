@@ -717,14 +717,37 @@ async function restoreStateMachineState() {
       incrementalSyncCount = state.incrementalSyncCount || 0;
       lastUserActivity = state.lastUserActivity || Date.now();
 
-      // Restore tab IDs temporarily - will be validated when tabs send messages
-      // or on browser startup when we query actual tabs
-      if (state.activeTabIds?.length > 0) {
-        for (const tabId of state.activeTabIds) {
-          activeCalendarTabs.add(tabId);
+      // Validate and restore tab IDs - query actual tabs to avoid stale IDs
+      try {
+        const calendarTabs = await chrome.tabs.query({
+          url: 'https://calendar.google.com/*'
+        });
+
+        activeCalendarTabs.clear();
+        for (const tab of calendarTabs) {
+          if (tab.id) {
+            activeCalendarTabs.add(tab.id);
+          }
         }
-        pollingState = state.pollingState || 'SLEEP';
-        debugLog(`Service worker wake: restored ${activeCalendarTabs.size} tabs, state: ${pollingState}`);
+
+        // Restore polling state based on actual tabs
+        if (activeCalendarTabs.size > 0) {
+          const recentActivity = Date.now() - lastUserActivity < 5 * 60 * 1000;
+          pollingState = recentActivity ? 'ACTIVE' : 'IDLE';
+        } else {
+          pollingState = 'SLEEP';
+        }
+
+        debugLog(`Service worker wake: ${activeCalendarTabs.size} actual tabs, state: ${pollingState}`);
+      } catch (tabError) {
+        // Fallback to stored tab IDs if query fails
+        if (state.activeTabIds?.length > 0) {
+          for (const tabId of state.activeTabIds) {
+            activeCalendarTabs.add(tabId);
+          }
+          pollingState = state.pollingState || 'SLEEP';
+          debugLog(`Service worker wake (fallback): restored ${activeCalendarTabs.size} tabs, state: ${pollingState}`);
+        }
       }
     }
   } catch (error) {
