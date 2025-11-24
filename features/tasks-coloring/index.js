@@ -134,6 +134,7 @@ let popstateHandler = null;
 let repaintIntervalId = null;
 let storageChangeHandler = null;
 let messageHandler = null;
+let modalSettingsUnsubscribe = null;
 
 // PERFORMANCE: In-memory cache to avoid constant storage reads
 let taskToListMapCache = null;
@@ -190,6 +191,11 @@ function cleanupListeners() {
   if (messageHandler) {
     chrome.runtime.onMessage.removeListener(messageHandler);
     messageHandler = null;
+  }
+
+  if (modalSettingsUnsubscribe) {
+    modalSettingsUnsubscribe();
+    modalSettingsUnsubscribe = null;
   }
 
   // Reset initialization flag so feature can be re-initialized
@@ -1580,7 +1586,7 @@ function initTasksColoring() {
 
   // Listen for storage changes to update modal colors in real-time
   if (window.cc3Storage?.onSettingsChanged) {
-    window.cc3Storage.onSettingsChanged((newSettings) => {
+    modalSettingsUnsubscribe = window.cc3Storage.onSettingsChanged((newSettings) => {
       // Refresh any open modal color controls
       const openDialog = document.querySelector('[role="dialog"]');
       if (openDialog && openDialog.querySelector('.cf-task-color-inline-row')) {
