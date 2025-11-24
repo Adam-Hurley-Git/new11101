@@ -249,6 +249,20 @@
       // Store the current task ID on the modal element for tracking
       dialog.setAttribute('data-current-task-id', taskId);
 
+      // Initialize timeout tracking array for cleanup
+      if (!dialog._injectionTimeouts) {
+        dialog._injectionTimeouts = [];
+      }
+
+      // Cleanup function to cancel pending timeouts
+      const cleanupTimeouts = () => {
+        if (dialog._injectionTimeouts && dialog._injectionTimeouts.length > 0) {
+          console.log(`Canceling ${dialog._injectionTimeouts.length} pending injection timeouts`);
+          dialog._injectionTimeouts.forEach(id => clearTimeout(id));
+          dialog._injectionTimeouts = [];
+        }
+      };
+
       // Enhanced timing mechanism to handle different modal loading scenarios
       const injectWithRetry = (attempt = 0) => {
         console.log(`Injection attempt ${attempt + 1}`);
@@ -269,19 +283,28 @@
         if (window.cfTasksColoring?.injectTaskColorControls) {
           console.log('Tasks coloring UI available, injecting for task ID:', taskId);
           window.cfTasksColoring.injectTaskColorControls(dialog, taskId, () => window.cfTasksColoring?.repaint());
+          // Success - cancel remaining retries
+          cleanupTimeouts();
         } else if (attempt < 30) {
           console.warn(`Tasks coloring UI not available yet, retrying in ${50 + attempt * 10}ms...`);
-          setTimeout(() => injectWithRetry(attempt + 1), 50 + attempt * 10);
+          // Track this timeout for cleanup
+          const timeoutId = setTimeout(() => injectWithRetry(attempt + 1), 50 + attempt * 10);
+          dialog._injectionTimeouts.push(timeoutId);
         } else {
           console.warn('Tasks coloring UI not available after waiting');
+          // Max attempts reached - cleanup
+          cleanupTimeouts();
         }
       };
 
       // Start with immediate attempt, then retry with increasing delays
-      setTimeout(() => injectWithRetry(), 50);
+      // Track initial timeout
+      const initialTimeoutId = setTimeout(() => injectWithRetry(), 50);
+      dialog._injectionTimeouts.push(initialTimeoutId);
 
       // Add a secondary injection attempt after a longer delay to catch modals that load slowly
-      setTimeout(() => {
+      // Track secondary timeout
+      const secondaryTimeoutId = setTimeout(() => {
         const currentTaskId = dialog.getAttribute('data-current-task-id');
         const existingColorPicker = dialog.querySelector('.cf-task-color-inline-row');
 
@@ -309,6 +332,7 @@
           }
         }
       }, 300); // Reduced delay to 300ms for faster secondary attempt
+      dialog._injectionTimeouts.push(secondaryTimeoutId);
       return;
     }
 
@@ -330,6 +354,37 @@
             const dlg = isEventDialog(n) ? n : n.querySelector('[role="dialog"]');
             if (dlg) mountInto(dlg);
           }
+        }
+
+        // Handle modal removal - cancel pending timeouts
+        for (const n of m.removedNodes) {
+          if (!(n instanceof HTMLElement)) continue;
+
+          // Check if removed node is a dialog or contains dialogs
+          const dialogs = [];
+          if (isEventDialog(n)) {
+            dialogs.push(n);
+          } else {
+            const innerDialogs = n.querySelectorAll?.('[role="dialog"]');
+            if (innerDialogs) dialogs.push(...innerDialogs);
+          }
+
+          // Cancel timeouts for each removed dialog
+          dialogs.forEach(dlg => {
+            if (dlg._injectionTimeouts && dlg._injectionTimeouts.length > 0) {
+              console.log(`Modal closed - canceling ${dlg._injectionTimeouts.length} pending timeouts`);
+              dlg._injectionTimeouts.forEach(id => clearTimeout(id));
+              dlg._injectionTimeouts = [];
+            }
+
+            // Also clear other tracked timeouts
+            if (dlg._contentChangeTimeout) {
+              clearTimeout(dlg._contentChangeTimeout);
+            }
+            if (dlg._taskSwitchTimeout) {
+              clearTimeout(dlg._taskSwitchTimeout);
+            }
+          });
         }
 
         // Handle content changes within existing modals

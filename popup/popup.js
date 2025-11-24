@@ -10,6 +10,9 @@ import { CONFIG, debugLog } from '../config.production.js';
 let isAuthenticated = false;
 let hasActiveSubscription = false;
 
+// Storage listener reference for cleanup
+let storageChangeListener = null;
+
 // Check auth and subscription on popup open
 async function checkAuthAndSubscription() {
   debugLog('Checking auth and subscription status...');
@@ -7147,7 +7150,8 @@ checkAuthAndSubscription();
     setupColorPickerToggle();
 
     // Listen for storage changes
-    chrome.storage.onChanged.addListener((changes, area) => {
+    // Store listener reference for cleanup on popup close
+    storageChangeListener = (changes, area) => {
       if (area === 'sync' && changes.settings) {
         const oldSettings = changes.settings.oldValue || {};
         const newSettings = changes.settings.newValue || {};
@@ -7185,7 +7189,9 @@ checkAuthAndSubscription();
         updateInlineColorsGrid();
         updateTimeBlockingSettings();
       }
-    });
+    };
+
+    chrome.storage.onChanged.addListener(storageChangeListener);
   }
 
   if (document.readyState === 'loading') {
@@ -7193,6 +7199,15 @@ checkAuthAndSubscription();
   } else {
     init();
   }
+
+  // Cleanup when popup closes to prevent listener accumulation
+  window.addEventListener('unload', () => {
+    if (storageChangeListener) {
+      chrome.storage.onChanged.removeListener(storageChangeListener);
+      storageChangeListener = null;
+      debugLog('Popup closed - storage listener removed');
+    }
+  });
 
   // Quick Add palette switching - Now handled by the rewritten system above
 
