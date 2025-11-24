@@ -126,6 +126,15 @@ let taskElementReferences = new Map();
 // Initialization guard to prevent duplicate listeners/observers
 let initialized = false;
 
+// Store references to listeners/observers for cleanup
+let clickHandler = null;
+let gridObserver = null;
+let urlObserver = null;
+let popstateHandler = null;
+let repaintIntervalId = null;
+let storageChangeHandler = null;
+let messageHandler = null;
+
 // PERFORMANCE: In-memory cache to avoid constant storage reads
 let taskToListMapCache = null;
 let listColorsCache = null;
@@ -144,6 +153,47 @@ function cleanupStaleReferences() {
       taskElementReferences.delete(taskId);
     }
   }
+}
+
+// Clean up all listeners and observers when feature is disabled
+function cleanupListeners() {
+  if (clickHandler) {
+    document.removeEventListener('click', clickHandler, true);
+    clickHandler = null;
+  }
+
+  if (gridObserver) {
+    gridObserver.disconnect();
+    gridObserver = null;
+  }
+
+  if (urlObserver) {
+    urlObserver.disconnect();
+    urlObserver = null;
+  }
+
+  if (popstateHandler) {
+    window.removeEventListener('popstate', popstateHandler);
+    popstateHandler = null;
+  }
+
+  if (repaintIntervalId) {
+    clearInterval(repaintIntervalId);
+    repaintIntervalId = null;
+  }
+
+  if (storageChangeHandler) {
+    chrome.storage.onChanged.removeListener(storageChangeHandler);
+    storageChangeHandler = null;
+  }
+
+  if (messageHandler) {
+    chrome.runtime.onMessage.removeListener(messageHandler);
+    messageHandler = null;
+  }
+
+  // Reset initialization flag so feature can be re-initialized
+  initialized = false;
 }
 
 async function loadMap() {
@@ -1551,32 +1601,31 @@ function initTasksColoring() {
     });
   }
 
-  document.addEventListener(
-    'click',
-    (e) => {
-      const id = resolveTaskIdFromEventTarget(e.target);
-      if (id) {
-        lastClickedTaskId = id;
-        const taskElement = e.target.closest('[data-eventid^="tasks."]') || e.target;
-        if (taskElement && !taskElement.closest('[role="dialog"]')) {
-          taskElementReferences.set(id, taskElement);
-        } else {
-          const calendarTaskElement = findTaskElementOnCalendarGrid(id);
-          if (calendarTaskElement) {
-            taskElementReferences.set(id, calendarTaskElement);
-          }
+  // Store click handler reference for cleanup
+  clickHandler = (e) => {
+    const id = resolveTaskIdFromEventTarget(e.target);
+    if (id) {
+      lastClickedTaskId = id;
+      const taskElement = e.target.closest('[data-eventid^="tasks."]') || e.target;
+      if (taskElement && !taskElement.closest('[role="dialog"]')) {
+        taskElementReferences.set(id, taskElement);
+      } else {
+        const calendarTaskElement = findTaskElementOnCalendarGrid(id);
+        if (calendarTaskElement) {
+          taskElementReferences.set(id, calendarTaskElement);
         }
       }
-    },
-    true,
-  );
+    }
+  };
+  document.addEventListener('click', clickHandler, true);
 
   const grid = getGridRoot();
   let mutationTimeout;
   let isNavigating = false;
   let mutationCount = 0;
 
-  const mo = new MutationObserver((mutations) => {
+  // Store grid observer reference for cleanup
+  gridObserver = new MutationObserver((mutations) => {
     mutationCount++;
 
     // Detect navigation vs small updates by mutation count and types
@@ -1610,7 +1659,7 @@ function initTasksColoring() {
   });
 
   if (grid) {
-    mo.observe(grid, {
+    gridObserver.observe(grid, {
       childList: true,
       subtree: true,
     });
@@ -1619,7 +1668,7 @@ function initTasksColoring() {
 
   // Listen for URL changes (navigation events)
   let lastUrl = location.href;
-  const urlObserver = new MutationObserver(() => {
+  urlObserver = new MutationObserver(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
       // URL changed - likely navigation, trigger immediate repaint
@@ -1631,13 +1680,14 @@ function initTasksColoring() {
   urlObserver.observe(document, { subtree: true, childList: true });
 
   // Also listen for popstate events (back/forward navigation)
-  window.addEventListener('popstate', () => {
+  popstateHandler = () => {
     repaintSoon();
     setTimeout(repaintSoon, 100);
-  });
+  };
+  window.addEventListener('popstate', popstateHandler);
 
   // More frequent repaints to ensure colors appear
-  setInterval(repaintSoon, 3000);
+  repaintIntervalId = setInterval(repaintSoon, 3000);
 
   // Initial paint immediately and again after a short delay
   repaintSoon();
@@ -1645,7 +1695,7 @@ function initTasksColoring() {
   setTimeout(repaintSoon, 1500);
 
   // PERFORMANCE: Listen for storage changes to invalidate cache
-  chrome.storage.onChanged.addListener((changes, area) => {
+  storageChangeHandler = (changes, area) => {
     if (
       area === 'sync' &&
       (changes['cf.taskColors'] || changes['cf.taskListColors'] || changes['cf.taskListTextColors'])
@@ -1670,10 +1720,11 @@ function initTasksColoring() {
         repaintSoon(); // Repaint with new mappings
       }
     }
-  });
+  };
+  chrome.storage.onChanged.addListener(storageChangeHandler);
 
   // Listen for runtime messages from background (e.g., after sync)
-  chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  messageHandler = async (message, sender, sendResponse) => {
     if (message.type === 'TASK_LISTS_UPDATED') {
       // Clear all caches to force fresh data fetch
       invalidateColorCache();
@@ -1701,7 +1752,8 @@ function initTasksColoring() {
         isResetting = false;
       }, 2000);
     }
-  });
+  };
+  chrome.runtime.onMessage.addListener(messageHandler);
 
   window.cfTasksColoring = {
     getLastClickedTaskId: () => lastClickedTaskId,
@@ -1740,12 +1792,18 @@ const taskColoringFeature = {
     } else {
       clearAllTaskColors();
 
+      // Clean up all listeners and observers
+      cleanupListeners();
+
       // Also stop any scheduled repaints
       repaintQueued = false;
     }
   },
   teardown: function () {
     clearAllTaskColors();
+
+    // Clean up all listeners and observers
+    cleanupListeners();
   },
 };
 

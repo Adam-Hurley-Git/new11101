@@ -738,6 +738,9 @@ async function restoreStateMachineState() {
           pollingState = 'SLEEP';
         }
 
+        // Create polling alarm for the restored state
+        await transitionPollingState('SLEEP', pollingState);
+
         debugLog(`Service worker wake: ${activeCalendarTabs.size} actual tabs, state: ${pollingState}`);
       } catch (tabError) {
         // Fallback to stored tab IDs if query fails
@@ -746,12 +749,45 @@ async function restoreStateMachineState() {
             activeCalendarTabs.add(tabId);
           }
           pollingState = state.pollingState || 'SLEEP';
+
+          // Create polling alarm for the restored state
+          await transitionPollingState('SLEEP', pollingState);
+
           debugLog(`Service worker wake (fallback): restored ${activeCalendarTabs.size} tabs, state: ${pollingState}`);
         }
       }
     }
   } catch (error) {
     console.error('Failed to initialize state on wake:', error);
+
+    // Even if storage fails, try to detect actual calendar tabs
+    // so the state machine can start properly
+    try {
+      const calendarTabs = await chrome.tabs.query({
+        url: 'https://calendar.google.com/*'
+      });
+
+      activeCalendarTabs.clear();
+      for (const tab of calendarTabs) {
+        if (tab.id) {
+          activeCalendarTabs.add(tab.id);
+        }
+      }
+
+      // Set state based on actual tabs
+      if (activeCalendarTabs.size > 0) {
+        pollingState = 'ACTIVE';
+        lastUserActivity = Date.now();
+
+        // Create polling alarm for recovery state
+        await transitionPollingState('SLEEP', pollingState);
+
+        debugLog(`Service worker wake (recovery): found ${activeCalendarTabs.size} tabs, starting in ACTIVE state`);
+      }
+    } catch (tabError) {
+      console.error('Failed to query tabs during recovery:', tabError);
+      // Continue with SLEEP state as final fallback
+    }
   }
 })();
 
