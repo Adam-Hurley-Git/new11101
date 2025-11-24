@@ -1805,6 +1805,16 @@ const taskColoringFeature = {
       repaintQueued = false;
     }
   },
+  // Called by disableAllFeatures() when subscription is cancelled
+  disable: function () {
+    clearAllTaskColors();
+
+    // Clean up all listeners and observers
+    cleanupListeners();
+
+    // Stop any scheduled repaints
+    repaintQueued = false;
+  },
   teardown: function () {
     clearAllTaskColors();
 
