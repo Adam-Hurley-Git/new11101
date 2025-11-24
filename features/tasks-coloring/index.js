@@ -202,6 +202,10 @@ function cleanupListeners() {
   initialized = false;
 }
 
+// MUTEX LOCK: Prevents race conditions in concurrent storage operations
+// All writes are serialized through this promise chain to ensure atomic read-modify-write
+let storageWriteLock = Promise.resolve();
+
 async function loadMap() {
   const now = Date.now();
   if (cachedColorMap && now - colorMapLastLoaded < COLOR_MAP_CACHE_TIME) {
@@ -234,21 +238,46 @@ async function saveMap(map) {
 }
 
 async function setTaskColor(taskId, color) {
-  const map = await loadMap();
-  map[taskId] = color;
-  cachedColorMap = map; // Update cache immediately
-  colorMapLastLoaded = Date.now(); // Refresh cache timestamp
-  await saveMap(map);
-  return map;
+  // Queue this operation behind any pending operations to prevent race conditions
+  // This ensures atomic read-modify-write even with concurrent calls
+  const operation = storageWriteLock.then(async () => {
+    const map = await loadMap();
+    map[taskId] = color;
+    cachedColorMap = map; // Update cache immediately
+    colorMapLastLoaded = Date.now(); // Refresh cache timestamp
+    await saveMap(map);
+    return map;
+  }).catch(err => {
+    console.error('Error in setTaskColor:', err);
+    // Return cached map on error to maintain functionality
+    return cachedColorMap || {};
+  });
+
+  // Update lock to point to this operation for next caller to wait on
+  storageWriteLock = operation.catch(() => {}); // Catch here so next operation isn't blocked by errors
+
+  return operation;
 }
 
 async function clearTaskColor(taskId) {
-  const map = await loadMap();
-  delete map[taskId];
-  cachedColorMap = map; // Update cache immediately
-  colorMapLastLoaded = Date.now(); // Refresh cache timestamp
-  await saveMap(map);
-  return map;
+  // Queue this operation behind any pending operations to prevent race conditions
+  const operation = storageWriteLock.then(async () => {
+    const map = await loadMap();
+    delete map[taskId];
+    cachedColorMap = map; // Update cache immediately
+    colorMapLastLoaded = Date.now(); // Refresh cache timestamp
+    await saveMap(map);
+    return map;
+  }).catch(err => {
+    console.error('Error in clearTaskColor:', err);
+    // Return cached map on error to maintain functionality
+    return cachedColorMap || {};
+  });
+
+  // Update lock to point to this operation for next caller to wait on
+  storageWriteLock = operation.catch(() => {}); // Catch here so next operation isn't blocked by errors
+
+  return operation;
 }
 
 async function buildInlineTaskColorRow(initial) {
