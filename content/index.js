@@ -115,12 +115,22 @@
   // ========================================
 
   /**
+   * Safely send message to background - ignores errors when extension context
+   * is invalidated (e.g., extension updated/reloaded, service worker inactive)
+   */
+  function safeSendMessage(message) {
+    chrome.runtime.sendMessage(message).catch(() => {
+      // Silently ignore - extension context may be invalidated
+    });
+  }
+
+  /**
    * Initialize activity tracking to inform background state machine
    * Enables smart polling: 1-min active, 5-min idle, paused when closed
    */
   function initActivityTracking() {
     // Report active on page load
-    chrome.runtime.sendMessage({
+    safeSendMessage({
       type: 'CALENDAR_TAB_ACTIVE',
       timestamp: Date.now(),
     });
@@ -133,7 +143,7 @@
       const now = Date.now();
       // Throttle activity reports to avoid spamming background
       if (now - lastActivityTime > ACTIVITY_REPORT_INTERVAL) {
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           type: 'USER_ACTIVITY',
           timestamp: now,
         });
@@ -148,12 +158,12 @@
     // Track visibility changes (tab switching, minimizing)
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           type: 'CALENDAR_TAB_INACTIVE',
           timestamp: Date.now(),
         });
       } else {
-        chrome.runtime.sendMessage({
+        safeSendMessage({
           type: 'CALENDAR_TAB_ACTIVE',
           timestamp: Date.now(),
         });
