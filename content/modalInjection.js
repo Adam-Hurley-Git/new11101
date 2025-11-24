@@ -3,6 +3,10 @@
   let currentSettings = null;
   let lastInjectedModal = null;
 
+  // Store references for cleanup
+  let modalObserver = null;
+  let clickHandler = null;
+
   function isEventDialog(el) {
     // Google Calendar uses role="dialog" with various classes, search for known container
     return el.getAttribute && el.getAttribute('role') === 'dialog';
@@ -312,7 +316,12 @@
   }
 
   function observe() {
-    const mo = new MutationObserver((muts) => {
+    // Disconnect existing observer if any
+    if (modalObserver) {
+      modalObserver.disconnect();
+    }
+
+    modalObserver = new MutationObserver((muts) => {
       for (const m of muts) {
         // Handle new modal elements being added
         for (const n of m.addedNodes) {
@@ -339,7 +348,7 @@
         }
       }
     });
-    mo.observe(document.documentElement, { childList: true, subtree: true });
+    modalObserver.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   function init(settings) {
@@ -349,46 +358,58 @@
     observe();
 
     // Listen for task clicks while a modal is open to handle task switching
-    document.addEventListener(
-      'click',
-      (e) => {
-        const openDialog = findOpenDialog();
-        if (openDialog && isTaskDialog(openDialog)) {
-          // Check if this click is on a task element (not within the modal)
-          const taskElement = e.target.closest('[data-eventid^="tasks."]');
-          if (taskElement && !taskElement.closest('[role="dialog"]')) {
-            console.log('Task clicked while modal is open - potential task switch');
+    clickHandler = (e) => {
+      const openDialog = findOpenDialog();
+      if (openDialog && isTaskDialog(openDialog)) {
+        // Check if this click is on a task element (not within the modal)
+        const taskElement = e.target.closest('[data-eventid^="tasks."]');
+        if (taskElement && !taskElement.closest('[role="dialog"]')) {
+          console.log('Task clicked while modal is open - potential task switch');
 
-            // Clear existing timeout to avoid multiple re-injections
-            clearTimeout(openDialog._taskSwitchTimeout);
+          // Clear existing timeout to avoid multiple re-injections
+          clearTimeout(openDialog._taskSwitchTimeout);
 
-            // Multiple attempts with increasing delays to catch the content swap
-            openDialog._taskSwitchTimeout = setTimeout(() => {
-              const updatedDialog = findOpenDialog();
-              if (updatedDialog && isTaskDialog(updatedDialog)) {
-                console.log('Re-mounting into updated modal after task switch (attempt 1)');
-                mountInto(updatedDialog);
-              }
-            }, 100);
+          // Multiple attempts with increasing delays to catch the content swap
+          openDialog._taskSwitchTimeout = setTimeout(() => {
+            const updatedDialog = findOpenDialog();
+            if (updatedDialog && isTaskDialog(updatedDialog)) {
+              console.log('Re-mounting into updated modal after task switch (attempt 1)');
+              mountInto(updatedDialog);
+            }
+          }, 100);
 
-            // Second attempt with longer delay
-            setTimeout(() => {
-              const updatedDialog = findOpenDialog();
-              if (updatedDialog && isTaskDialog(updatedDialog)) {
-                console.log('Re-mounting into updated modal after task switch (attempt 2)');
-                mountInto(updatedDialog);
-              }
-            }, 300);
-          }
+          // Second attempt with longer delay
+          setTimeout(() => {
+            const updatedDialog = findOpenDialog();
+            if (updatedDialog && isTaskDialog(updatedDialog)) {
+              console.log('Re-mounting into updated modal after task switch (attempt 2)');
+              mountInto(updatedDialog);
+            }
+          }, 300);
         }
-      },
-      true,
-    );
+      }
+    };
+    document.addEventListener('click', clickHandler, true);
+  }
+
+  function disable() {
+    if (modalObserver) {
+      modalObserver.disconnect();
+      modalObserver = null;
+    }
+
+    if (clickHandler) {
+      document.removeEventListener('click', clickHandler, true);
+      clickHandler = null;
+    }
+
+    mounted = false;
   }
 
   window.cc3Features.register({
     id: 'modalInjection',
     init,
+    disable,
     onSettingsChanged: (s) => {
       currentSettings = s;
     },

@@ -11,6 +11,7 @@
       settings: null,
       observer: null,
       rendered: false,
+      messageHandler: null,
     },
 
     // Initialize the feature
@@ -30,6 +31,23 @@
 
       // Start observing DOM changes
       this.startObserver();
+
+      // Register message handler if not already registered
+      if (!this.state.messageHandler) {
+        this.state.messageHandler = (message, sender, sendResponse) => {
+          if (message.type === 'timeBlockingChanged') {
+            this.onSettingsChanged(message.settings, message.isColorOnlyChange);
+            sendResponse({ success: true });
+          } else if (message.type === 'timeBlockingColorChanged') {
+            // Real-time color updates
+            this.state.settings = message.settings;
+            this.initializeCore();
+            this.updateColors();
+            sendResponse({ success: true });
+          }
+        };
+        chrome.runtime.onMessage.addListener(this.state.messageHandler);
+      }
     },
 
     // Load required modules
@@ -230,25 +248,16 @@
         this.state.viewCheckInterval = null;
       }
 
+      if (this.state.messageHandler) {
+        chrome.runtime.onMessage.removeListener(this.state.messageHandler);
+        this.state.messageHandler = null;
+      }
+
       if (window.cc3TimeBlocking && window.cc3TimeBlocking.core) {
         window.cc3TimeBlocking.core.cleanup();
       }
     },
   };
-
-  // Listen for real-time updates from popup
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'timeBlockingChanged') {
-      feature.onSettingsChanged(message.settings, message.isColorOnlyChange);
-      sendResponse({ success: true });
-    } else if (message.type === 'timeBlockingColorChanged') {
-      // Real-time color updates
-      feature.state.settings = message.settings;
-      feature.initializeCore();
-      feature.updateColors();
-      sendResponse({ success: true });
-    }
-  });
 
   // Register with feature registry
   if (window.cc3Features) {
