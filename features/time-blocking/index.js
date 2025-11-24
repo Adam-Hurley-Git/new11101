@@ -18,21 +18,7 @@
     init: async function (settings) {
       this.state.settings = settings || {};
 
-      if (!this.state.settings.enabled) {
-        this.cleanup();
-        return;
-      }
-
-      // Load required modules
-      await this.loadModules();
-
-      // Initialize core functionality
-      this.initializeCore();
-
-      // Start observing DOM changes
-      this.startObserver();
-
-      // Register message handler if not already registered
+      // Register message handler first (needed even when disabled to receive enable messages)
       if (!this.state.messageHandler) {
         this.state.messageHandler = (message, sender, sendResponse) => {
           if (message.type === 'timeBlockingChanged') {
@@ -48,6 +34,24 @@
         };
         chrome.runtime.onMessage.addListener(this.state.messageHandler);
       }
+
+      if (!this.state.settings.enabled) {
+        // Don't call full cleanup() here - it would remove the message handler
+        // Just ensure any rendering artifacts are cleaned up
+        if (window.cc3TimeBlocking && window.cc3TimeBlocking.core) {
+          window.cc3TimeBlocking.core.cleanup();
+        }
+        return;
+      }
+
+      // Load required modules
+      await this.loadModules();
+
+      // Initialize core functionality
+      this.initializeCore();
+
+      // Start observing DOM changes
+      this.startObserver();
     },
 
     // Load required modules
