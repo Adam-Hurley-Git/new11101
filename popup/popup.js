@@ -5465,7 +5465,25 @@ checkAuthAndSubscription();
 
         // Update individual time block color
         blockId.colorInput.value = color;
-        blockId.preview.style.backgroundColor = color;
+
+        // FIX: Detect current style and apply appropriate styling to prevent color mixing
+        // When style is 'hashed', we need to update BOTH the SVG pattern color AND background
+        const colorDetails = document.getElementById(detailsId);
+        const activeStyleBtn = colorDetails?.querySelector('.style-btn[style*="rgb(26, 115, 232)"]');
+        const currentStyle = activeStyleBtn?.dataset.style || 'solid';
+
+        if (currentStyle === 'hashed') {
+          // Apply dashed pattern with new color
+          const encodedColor = encodeURIComponent(color);
+          const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
+          blockId.preview.style.background = hashedPattern;
+          blockId.preview.style.backgroundColor = 'white';
+        } else {
+          // Apply solid color
+          blockId.preview.style.background = '';
+          blockId.preview.style.backgroundColor = color;
+        }
+
         // Trigger the existing save functionality
         blockId.colorInput.dispatchEvent(new Event('change'));
       }
