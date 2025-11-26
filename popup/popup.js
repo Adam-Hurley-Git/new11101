@@ -5466,12 +5466,33 @@ checkAuthAndSubscription();
         // Update individual time block color
         blockId.colorInput.value = color;
 
-        // FIX: Detect current style and apply appropriate styling to prevent color mixing
-        // When style is 'hashed', we need to update BOTH the SVG pattern color AND background
-        const colorDetails = document.getElementById(detailsId);
-        const activeStyleBtn = colorDetails?.querySelector('.style-btn[style*="rgb(26, 115, 232)"]');
-        const currentStyle = activeStyleBtn?.dataset.style || 'solid';
+        // FIX: Get current style from block data by parsing the blockColorId from element ID
+        // Element IDs are like "timeBlockColor-mon-0" or "timeBlockColor-date-2025-11-20-0"
+        const blockColorId = blockId.colorInput.id.replace('timeBlockColor-', '');
+        let currentStyle = 'solid'; // default
 
+        // Parse blockColorId to get the actual block from settings
+        if (blockColorId.startsWith('date-')) {
+          // Date-specific block: "date-YYYY-MM-DD-index"
+          const parts = blockColorId.split('-');
+          const dateKey = `${parts[1]}-${parts[2]}-${parts[3]}`; // "YYYY-MM-DD"
+          const index = parseInt(parts[4]);
+          const dateBlocks = settings.timeBlocking?.dateSpecificSchedule?.[dateKey] || [];
+          if (dateBlocks[index]) {
+            currentStyle = dateBlocks[index].style || settings.timeBlocking?.shadingStyle || 'solid';
+          }
+        } else {
+          // Weekly block: "dayKey-index" like "mon-0"
+          const parts = blockColorId.split('-');
+          const dayKey = parts[0];
+          const index = parseInt(parts[1]);
+          const dayBlocks = settings.timeBlocking?.weeklySchedule?.[dayKey] || [];
+          if (dayBlocks[index]) {
+            currentStyle = dayBlocks[index].style || settings.timeBlocking?.shadingStyle || 'solid';
+          }
+        }
+
+        // Apply styling based on current style
         if (currentStyle === 'hashed') {
           // Apply dashed pattern with new color
           const encodedColor = encodeURIComponent(color);
