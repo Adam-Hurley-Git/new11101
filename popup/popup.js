@@ -5465,7 +5465,46 @@ checkAuthAndSubscription();
 
         // Update individual time block color
         blockId.colorInput.value = color;
-        blockId.preview.style.backgroundColor = color;
+
+        // FIX: Get current style from block data by parsing the blockColorId from element ID
+        // Element IDs are like "timeBlockColor-mon-0" or "timeBlockColor-date-2025-11-20-0"
+        const blockColorId = blockId.colorInput.id.replace('timeBlockColor-', '');
+        let currentStyle = 'solid'; // default
+
+        // Parse blockColorId to get the actual block from settings
+        if (blockColorId.startsWith('date-')) {
+          // Date-specific block: "date-YYYY-MM-DD-index"
+          const parts = blockColorId.split('-');
+          const dateKey = `${parts[1]}-${parts[2]}-${parts[3]}`; // "YYYY-MM-DD"
+          const index = parseInt(parts[4]);
+          const dateBlocks = settings.timeBlocking?.dateSpecificSchedule?.[dateKey] || [];
+          if (dateBlocks[index]) {
+            currentStyle = dateBlocks[index].style || settings.timeBlocking?.shadingStyle || 'solid';
+          }
+        } else {
+          // Weekly block: "dayKey-index" like "mon-0"
+          const parts = blockColorId.split('-');
+          const dayKey = parts[0];
+          const index = parseInt(parts[1]);
+          const dayBlocks = settings.timeBlocking?.weeklySchedule?.[dayKey] || [];
+          if (dayBlocks[index]) {
+            currentStyle = dayBlocks[index].style || settings.timeBlocking?.shadingStyle || 'solid';
+          }
+        }
+
+        // Apply styling based on current style
+        if (currentStyle === 'hashed') {
+          // Apply dashed pattern with new color
+          const encodedColor = encodeURIComponent(color);
+          const hashedPattern = `url("data:image/svg+xml;charset=utf8,%3Csvg%20width%3D%228%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M4%200h4L0%208V4l4-4zm4%204v4H4l4-4z%22%20fill%3D%22${encodedColor}%22%2F%3E%3C%2Fsvg%3E")`;
+          blockId.preview.style.background = hashedPattern;
+          blockId.preview.style.backgroundColor = 'white';
+        } else {
+          // Apply solid color
+          blockId.preview.style.background = '';
+          blockId.preview.style.backgroundColor = color;
+        }
+
         // Trigger the existing save functionality
         blockId.colorInput.dispatchEvent(new Event('change'));
       }
