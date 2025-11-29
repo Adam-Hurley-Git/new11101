@@ -1373,6 +1373,62 @@
       .day-color-preview:hover {
         border-color: #1a73e8;
       }
+
+      /* Clear button for day colors */
+      .day-clear-btn {
+        display: block;
+        width: 100%;
+        max-width: 60px;
+        margin-top: 4px;
+        padding: 2px 6px;
+        font-size: 9px;
+        font-weight: 500;
+        color: #5f6368;
+        background: #f8f9fa;
+        border: 1px solid #dadce0;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+
+      .day-clear-btn:hover:not(:disabled) {
+        background: #e8eaed;
+        border-color: #c6c9cc;
+        color: #202124;
+      }
+
+      .day-clear-btn:active:not(:disabled) {
+        background: #d2d4d6;
+        transform: scale(0.98);
+      }
+
+      .day-clear-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        color: #80868b;
+        background: #f8f9fa;
+        border-color: #e8eaed;
+      }
+
+      .clear-icon {
+        font-size: 11px;
+        font-weight: bold;
+        margin-right: 1px;
+      }
+
+      /* Visual state for cleared preview */
+      .day-color-preview.cleared {
+        background: repeating-linear-gradient(
+          45deg,
+          #f0f0f0,
+          #f0f0f0 5px,
+          #ffffff 5px,
+          #ffffff 10px
+        ) !important;
+        border: 1px dashed #dadce0 !important;
+      }
+
       .day-details {
         display: none;
         position: absolute;
@@ -3104,6 +3160,9 @@
                   <div class="day-color-item" data-day="0">
                     <div class="day-label">Sun</div>
                     <div class="day-color-preview" id="preview0" style="background-color: #ffd5d5"></div>
+                    <button class="day-clear-btn" id="clearBtn0" data-day="0" title="Reset to default (white)">
+                      <span class="clear-icon">×</span> Clear
+                    </button>
                     <div class="day-details" id="details0">
                       <div class="color-picker-tabs">
                         <button class="color-tab active" data-tab="vibrant" data-day="0">Vibrant</button>

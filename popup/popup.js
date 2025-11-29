@@ -5754,6 +5754,10 @@ checkAuthAndSubscription();
 
         // Update preview with 100% opacity
         updatePreview(dayIndex, color, 100);
+
+        // Update clear button state
+        updateClearButtonState(dayIndex, color);
+
         await saveSettings();
       }
     };
@@ -6376,6 +6380,8 @@ checkAuthAndSubscription();
           if (hexInput) {
             hexInput.value = e.target.value.toUpperCase();
           }
+          // Update clear button state
+          updateClearButtonState(i, e.target.value);
           await saveSettings();
         };
 
@@ -6403,6 +6409,8 @@ checkAuthAndSubscription();
             settings = await window.cc3Storage.setWeekdayColor(i, normalizedHex);
             const opacity = settings.weekdayOpacity?.[String(i)] || defaultOpacity[String(i)];
             updatePreview(i, normalizedHex, opacity);
+            // Update clear button state
+            updateClearButtonState(i, normalizedHex);
             await saveSettings();
           } else {
             hexInput.style.borderColor = '#dc2626';
@@ -6434,6 +6442,20 @@ checkAuthAndSubscription();
         opacityInput.onchange = saveOpacity;
         opacityInput.onmouseup = saveOpacity;
         opacityInput.ontouchend = saveOpacity;
+      }
+
+      // Clear button initialization
+      const clearBtn = qs(`clearBtn${i}`);
+      if (clearBtn) {
+        // Set initial state based on current color
+        const currentColor = settings.weekdayColors?.[String(i)] || defaultColors[String(i)];
+        updateClearButtonState(i, currentColor);
+
+        // Add click handler
+        clearBtn.onclick = async (e) => {
+          e.stopPropagation(); // Prevent day-color-item click
+          await handleClearDay(i);
+        };
       }
     }
 
@@ -6608,6 +6630,97 @@ checkAuthAndSubscription();
     );
     if (activeButton) {
       activeButton.classList.add('active');
+    }
+  }
+
+  /**
+   * Update clear button state based on current color
+   * @param {number} dayIndex - Day index (0-6)
+   * @param {string} color - Current color (hex)
+   */
+  function updateClearButtonState(dayIndex, color) {
+    const clearBtn = qs(`clearBtn${dayIndex}`);
+    const preview = qs(`preview${dayIndex}`);
+
+    if (!clearBtn || !preview) return;
+
+    // Check if color is white or close to white
+    const normalizedColor = color.toLowerCase().replace(/\s/g, '');
+    const isWhite =
+      normalizedColor === '#ffffff' || normalizedColor === '#fff' || normalizedColor === 'white' || normalizedColor === '#fff';
+
+    if (isWhite) {
+      // Disable button and show cleared state
+      clearBtn.disabled = true;
+      clearBtn.title = 'Already at default (white)';
+      preview.classList.add('cleared');
+    } else {
+      // Enable button
+      clearBtn.disabled = false;
+      clearBtn.title = 'Reset to default (white)';
+      preview.classList.remove('cleared');
+    }
+  }
+
+  /**
+   * Update all color-related UI elements for a day
+   * @param {number} dayIndex - Day index (0-6)
+   * @param {string} color - New color (hex)
+   */
+  function updateColorUI(dayIndex, color) {
+    // Update color input
+    const colorInput = qs(`color${dayIndex}`);
+    if (colorInput) {
+      colorInput.value = color;
+    }
+
+    // Update hex input
+    const hexInput = qs(`hex${dayIndex}`);
+    if (hexInput) {
+      hexInput.value = color.toUpperCase();
+    }
+
+    // Update color preview in picker
+    const colorPreview = qs(`colorPreview${dayIndex}`);
+    if (colorPreview) {
+      colorPreview.style.backgroundColor = color;
+    }
+  }
+
+  /**
+   * Handle clearing a day's color
+   * @param {number} dayIndex - Day index (0-6)
+   */
+  async function handleClearDay(dayIndex) {
+    const whiteColor = '#ffffff';
+    const defaultOpacity = 30;
+
+    console.log(`Clearing day ${dayIndex} to white`);
+
+    try {
+      // 1. Set color to white
+      settings = await window.cc3Storage.setWeekdayColor(dayIndex, whiteColor);
+
+      // 2. Reset opacity to default
+      settings = await window.cc3Storage.setWeekdayOpacity(dayIndex, defaultOpacity);
+
+      // 3. Update all UI elements
+      updateColorUI(dayIndex, whiteColor);
+      updateOpacityDisplay(dayIndex, defaultOpacity);
+      updatePreview(dayIndex, whiteColor, defaultOpacity);
+      updateClearButtonState(dayIndex, whiteColor);
+      updateSliderFill(dayIndex, defaultOpacity);
+      updateOpacityPresetButtons(dayIndex, defaultOpacity);
+
+      // 4. Save settings and notify calendar
+      await saveSettings();
+
+      // 5. Show feedback
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      showToast(`${dayNames[dayIndex]} color cleared to default`);
+    } catch (error) {
+      console.error('Error clearing day color:', error);
+      showToast('Failed to clear color', 'error');
     }
   }
 
