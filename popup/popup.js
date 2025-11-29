@@ -5758,9 +5758,9 @@ checkAuthAndSubscription();
         // Update clear button state
         updateClearButtonState(dayIndex, color);
 
-        // Update "Clear All" button state
+        // Update "Clear All" button state (async to read fresh storage)
         if (window.updateClearAllButtonState) {
-          window.updateClearAllButtonState();
+          await window.updateClearAllButtonState();
         }
 
         await saveSettings();
@@ -6468,9 +6468,12 @@ checkAuthAndSubscription();
     const clearAllDaysBtn = qs('clearAllDaysBtn');
     if (clearAllDaysBtn) {
       // Update button state based on whether all days are already white
-      const updateClearAllButtonState = () => {
+      const updateClearAllButtonState = async () => {
+        // Always read fresh from storage to avoid stale state
+        const currentSettings = await window.cc3Storage.getSettings();
+
         const allDaysAreWhite = [0, 1, 2, 3, 4, 5, 6].every(dayIndex => {
-          const color = (settings.weekdayColors?.[String(dayIndex)] || defaultColors[String(dayIndex)]).toLowerCase().replace(/\s/g, '');
+          const color = (currentSettings.weekdayColors?.[String(dayIndex)] || defaultColors[String(dayIndex)]).toLowerCase().replace(/\s/g, '');
           return color === '#ffffff' || color === '#fff' || color === 'white';
         });
 
@@ -6487,7 +6490,7 @@ checkAuthAndSubscription();
       clearAllDaysBtn.onclick = async (e) => {
         e.stopPropagation();
         await handleClearAllDays();
-        updateClearAllButtonState();
+        await updateClearAllButtonState(); // Now awaits the state update
       };
 
       // Store reference for updates
@@ -6752,7 +6755,7 @@ checkAuthAndSubscription();
 
       // 5. Update "Clear All" button state
       if (window.updateClearAllButtonState) {
-        window.updateClearAllButtonState();
+        await window.updateClearAllButtonState();
       }
 
       // 6. Show feedback
