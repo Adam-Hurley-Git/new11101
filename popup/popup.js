@@ -5758,6 +5758,11 @@ checkAuthAndSubscription();
         // Update clear button state
         updateClearButtonState(dayIndex, color);
 
+        // Update "Clear All" button state (async to read fresh storage)
+        if (window.updateClearAllButtonState) {
+          await window.updateClearAllButtonState();
+        }
+
         await saveSettings();
       }
     };
@@ -6459,6 +6464,47 @@ checkAuthAndSubscription();
       }
     }
 
+    // Clear All Days button
+    const clearAllDaysBtn = qs('clearAllDaysBtn');
+    if (clearAllDaysBtn) {
+      // Update button state based on whether all days are already white
+      const updateClearAllButtonState = async () => {
+        // Always read fresh from storage to avoid stale state
+        const currentSettings = await window.cc3Storage.getSettings();
+
+        const allDaysAreWhite = [0, 1, 2, 3, 4, 5, 6].every(dayIndex => {
+          const color = (currentSettings.weekdayColors?.[String(dayIndex)] || defaultColors[String(dayIndex)]).toLowerCase().replace(/\s/g, '');
+          return color === '#ffffff' || color === '#fff' || color === 'white';
+        });
+
+        clearAllDaysBtn.disabled = allDaysAreWhite;
+        clearAllDaysBtn.title = allDaysAreWhite
+          ? 'All days already at default (white)'
+          : 'Reset all days to default (white)';
+      };
+
+      // Initial state
+      updateClearAllButtonState();
+
+      // Click handler
+      clearAllDaysBtn.onclick = async (e) => {
+        e.stopPropagation();
+
+        // Optimistic UI update - disable immediately for instant visual feedback
+        clearAllDaysBtn.disabled = true;
+        clearAllDaysBtn.title = 'Clearing all days...';
+
+        // Execute clear operation
+        await handleClearAllDays();
+
+        // Confirm final state (will stay disabled since all days are now white)
+        await updateClearAllButtonState();
+      };
+
+      // Store reference for updates
+      window.updateClearAllButtonState = updateClearAllButtonState;
+    }
+
     // Week start selector
     const weekStartSelect = qs('weekStart');
     if (weekStartSelect) {
@@ -6715,12 +6761,55 @@ checkAuthAndSubscription();
       // 4. Save settings and notify calendar
       await saveSettings();
 
-      // 5. Show feedback
+      // 5. Update "Clear All" button state
+      if (window.updateClearAllButtonState) {
+        await window.updateClearAllButtonState();
+      }
+
+      // 6. Show feedback
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       showToast(`${dayNames[dayIndex]} color cleared to default`);
     } catch (error) {
       console.error('Error clearing day color:', error);
       showToast('Failed to clear color', 'error');
+    }
+  }
+
+  /**
+   * Handle clearing all days' colors
+   */
+  async function handleClearAllDays() {
+    const whiteColor = '#ffffff';
+    const defaultOpacity = 30;
+
+    console.log('Clearing all days to white');
+
+    try {
+      // Clear all 7 days
+      for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        // 1. Set color to white
+        settings = await window.cc3Storage.setWeekdayColor(dayIndex, whiteColor);
+
+        // 2. Reset opacity to default
+        settings = await window.cc3Storage.setWeekdayOpacity(dayIndex, defaultOpacity);
+
+        // 3. Update UI elements for this day
+        updateColorUI(dayIndex, whiteColor);
+        updateOpacityDisplay(dayIndex, defaultOpacity);
+        updatePreview(dayIndex, whiteColor, defaultOpacity);
+        updateClearButtonState(dayIndex, whiteColor);
+        updateSliderFill(dayIndex, defaultOpacity);
+        updateOpacityPresetButtons(dayIndex, defaultOpacity);
+      }
+
+      // 4. Save settings and notify calendar
+      await saveSettings();
+
+      // 5. Show feedback
+      showToast('All day colors cleared to default');
+    } catch (error) {
+      console.error('Error clearing all day colors:', error);
+      showToast('Failed to clear all colors', 'error');
     }
   }
 
