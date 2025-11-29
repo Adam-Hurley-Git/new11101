@@ -1417,6 +1417,45 @@
         margin-right: 1px;
       }
 
+      /* Clear All Days button */
+      .clear-all-days-btn {
+        padding: 8px 16px;
+        background: #f1f3f4;
+        color: #5f6368;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .clear-all-days-btn:hover:not(:disabled) {
+        background: #e8eaed;
+        border-color: #c1c3c5;
+        color: #202124;
+      }
+
+      .clear-all-days-btn:active:not(:disabled) {
+        background: #dadce0;
+        border-color: #5f6368;
+        transform: scale(0.97);
+      }
+
+      .clear-all-days-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .clear-all-days-btn .clear-icon {
+        font-size: 18px;
+        line-height: 1;
+      }
+
       /* Visual state for cleared preview */
       .day-color-preview.cleared {
         background: repeating-linear-gradient(
@@ -3732,6 +3771,18 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Clear All Button -->
+                <div style="margin-top: 12px; text-align: center;">
+                  <button
+                    id="clearAllDaysBtn"
+                    class="clear-all-days-btn"
+                    title="Reset all days to default (white)"
+                  >
+                    <span class="clear-icon">×</span> Clear All Days
+                  </button>
+                </div>
+
                 <div style="margin-top: 8px; font-size: 11px; color: #666; text-align: center">
                   Colors will match the actual day order in your calendar
                 </div>
