@@ -6489,8 +6489,16 @@ checkAuthAndSubscription();
       // Click handler
       clearAllDaysBtn.onclick = async (e) => {
         e.stopPropagation();
+
+        // Optimistic UI update - disable immediately for instant visual feedback
+        clearAllDaysBtn.disabled = true;
+        clearAllDaysBtn.title = 'Clearing all days...';
+
+        // Execute clear operation
         await handleClearAllDays();
-        await updateClearAllButtonState(); // Now awaits the state update
+
+        // Confirm final state (will stay disabled since all days are now white)
+        await updateClearAllButtonState();
       };
 
       // Store reference for updates
