@@ -3,6 +3,7 @@
   "name": "ColorKit for Google Calendar",
   "version": "0.0.3",
   "description": "Transform Google Calendar with custom day colors, task colors, and time blocks.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAweGAAs9qIGh1t1psscgg2xXgLYYiJXzLMi9oIONt2i/Wec9Br6ecacX+59MBZ+4BrhoPrO6CeFhHWkMqqeO+R+5lkZw0tPWViqshAk3zPgCdVcbdxal9A9JCSrCwyAiqQ0cQpEBBbumdePjbGNvLl1si1zhsU1SXQDN/NxzxcUwjN67cKkjpHIBZbqjJMrGAWT8tP0HUb2sgzMw0Hefp6J5k5EsEDEeK1MPdKZJl47W9gh248aI2j1bKWTkZ4pAKlvqICv0Sb3WrNlR3aYX6lGrokivvpFqb+LI5/sLiBlRp2VSprrVMegwIDHm9N+wW3tMnEHyXEUTEk4O8BlMhhQIDAQAB",
   "icons": {
     "16": "images/icon-16.png",
     "48": "images/icon-48.png",
