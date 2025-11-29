@@ -695,10 +695,6 @@
 
   // === LOCKED DOM MONITORING ===
   let domObserver = null;
-  let urlObserver = null;
-  let dayViewStyleMonitor = null;
-  let dayViewPeriodicReapply = null;
-  let currentUrl = '';
   let currentSettings = null;
   let pendingTimeouts = new Set(); // Track all pending timeouts
 
@@ -747,14 +743,6 @@
         lastViewKey = currentViewKey;
         viewChanged = true;
         shouldReapply = true;
-
-        // Set up day view style monitor if switching to day view
-        if (currentViewKey === 'day') {
-          setTimeout(() => {
-            console.log('Setting up day view style monitor after view change');
-            setupDayViewStyleMonitor(settings);
-          }, 500);
-        }
       }
 
       // Check for relevant mutations
@@ -809,164 +797,6 @@
     });
   }
 
-  function setupURLObserver(settings) {
-    if (!settings || !settings.enabled) return;
-
-    // Clean up existing observer
-    if (urlObserver) {
-      clearInterval(urlObserver);
-      urlObserver = null;
-    }
-
-    console.log('Setting up URL observer for navigation detection');
-    currentUrl = window.location.href;
-
-    // Check for URL changes every 500ms
-    urlObserver = setInterval(() => {
-      const newUrl = window.location.href;
-      if (newUrl !== currentUrl) {
-        console.log('URL change detected:', currentUrl, '->', newUrl);
-        currentUrl = newUrl;
-
-        // Wait for new view to render, then reapply colors if still enabled
-        createTrackedTimeout(() => {
-          if (currentSettings && currentSettings.enabled) {
-            console.log('Reapplying colors after navigation');
-            applyDayColoring(currentSettings);
-          } else {
-            console.log('Navigation detected but day coloring is disabled, skipping');
-          }
-        }, 200);
-      }
-    }, 500);
-  }
-
-  function setupDayViewStyleMonitor(settings) {
-    if (!settings || !settings.enabled) return;
-
-    const currentView = detectCurrentView();
-    if (currentView !== 'day') return;
-
-    // Clean up existing monitor
-    if (dayViewStyleMonitor) {
-      dayViewStyleMonitor.disconnect();
-      dayViewStyleMonitor = null;
-    }
-
-    console.log('Setting up aggressive day view style monitor');
-
-    // Monitor for style attribute changes on key elements - Google Calendar overrides our colors
-    dayViewStyleMonitor = new MutationObserver((mutations) => {
-      let needsReapply = false;
-
-      for (const mutation of mutations) {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-          const target = mutation.target;
-          const style = target.style.backgroundColor;
-
-          // If background color was changed and it's not our color, re-apply immediately
-          // ONLY monitor QIYAPb elements for precise targeting
-          if (
-            style &&
-            !style.includes('var(--cc3-day-color)') &&
-            (target.matches('.QIYAPb') || target.closest('.QIYAPb'))
-          ) {
-            console.log(
-              'Day view style override detected on QIYAPb element:',
-              target.className,
-              'reapplying immediately',
-            );
-            needsReapply = true;
-            break;
-          }
-        }
-
-        // Check for new QIYAPb elements being added in day view
-        if (mutation.type === 'childList') {
-          for (const node of mutation.addedNodes) {
-            if (
-              node.nodeType === 1 && // Element node
-              (node.matches?.('.QIYAPb') || node.querySelector?.('.QIYAPb'))
-            ) {
-              console.log('New QIYAPb element added in day view, reapplying');
-              needsReapply = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (needsReapply) {
-        // Check if still enabled before reapplying
-        if (currentSettings && currentSettings.enabled) {
-          // Immediate re-application
-          applyDayColoring(currentSettings);
-          // Also apply direct styling as backup
-          createTrackedTimeout(() => {
-            if (currentSettings && currentSettings.enabled) {
-              applyDayViewDirectStyling(currentSettings);
-            }
-          }, 50);
-          // Also schedule for a bit later in case of multiple rapid changes
-          createTrackedTimeout(() => {
-            if (currentSettings && currentSettings.enabled) {
-              applyDayColoring(currentSettings);
-            }
-          }, 100);
-        }
-      }
-    });
-
-    // Monitor the main content area and all its descendants for day view
-    const mainElement = document.querySelector('[role="main"]');
-    if (mainElement) {
-      dayViewStyleMonitor.observe(mainElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class'],
-      });
-      console.log('Day view style monitor active on main element');
-    }
-
-    // Also monitor body for viewkey changes
-    dayViewStyleMonitor.observe(document.body, {
-      attributes: true,
-      attributeFilter: ['data-viewkey'],
-    });
-
-    // Monitor the entire document for QIYAPb elements specifically
-    dayViewStyleMonitor.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style'],
-    });
-
-    // Set up periodic re-application as final fallback for day view
-    if (dayViewPeriodicReapply) {
-      clearInterval(dayViewPeriodicReapply);
-    }
-
-    dayViewPeriodicReapply = setInterval(() => {
-      // Always check current settings to see if feature is still enabled
-      if (currentSettings && currentSettings.enabled && detectCurrentView() === 'day') {
-        console.log('Day view periodic color reapplication');
-        applyDayColoring(currentSettings);
-        // Also apply direct styling as backup
-        createTrackedTimeout(() => {
-          if (currentSettings && currentSettings.enabled) {
-            applyDayViewDirectStyling(currentSettings);
-          }
-        }, 100);
-      } else {
-        // Stop periodic reapplication if disabled or no longer in day view
-        clearInterval(dayViewPeriodicReapply);
-        dayViewPeriodicReapply = null;
-        console.log('Periodic reapply stopped - disabled or not day view');
-      }
-    }, 2000); // Every 2 seconds
-  }
 
   function waitForCalendarReady() {
     return new Promise((resolve) => {
@@ -1041,10 +871,8 @@
         // Apply colors immediately
         applyDayColoring(settings);
 
-        // Set up observers for dynamic updates
+        // Set up DOM observer for dynamic updates
         setupDOMObserver(settings);
-        setupURLObserver(settings);
-        setupDayViewStyleMonitor(settings);
 
         // Apply colors again after a short delay to ensure they stick
         createTrackedTimeout(() => {
@@ -1083,40 +911,23 @@
       currentSettings = settings;
 
       if (settings && settings.enabled) {
-        console.log('🟢 ENABLING day coloring with enhanced monitoring');
+        console.log('🟢 ENABLING day coloring');
 
-        // Set up or update observers
+        // Set up DOM observer
         setupDOMObserver(settings);
-        setupURLObserver(settings);
-        setupDayViewStyleMonitor(settings);
 
         // Apply colors immediately
         applyDayColoring(settings);
 
         console.log('✅ Day coloring enabled and applied');
       } else {
-        console.log('🔴 DISABLING day coloring - cleaning up all observers and styles');
+        console.log('🔴 DISABLING day coloring - cleaning up observer and styles');
 
-        // Clean up observers when disabled
+        // Clean up DOM observer when disabled
         if (domObserver) {
           domObserver.disconnect();
           domObserver = null;
           console.log('✅ DOM observer cleaned up');
-        }
-        if (urlObserver) {
-          clearInterval(urlObserver);
-          urlObserver = null;
-          console.log('✅ URL observer cleaned up');
-        }
-        if (dayViewStyleMonitor) {
-          dayViewStyleMonitor.disconnect();
-          dayViewStyleMonitor = null;
-          console.log('✅ Day view style monitor cleaned up');
-        }
-        if (dayViewPeriodicReapply) {
-          clearInterval(dayViewPeriodicReapply);
-          dayViewPeriodicReapply = null;
-          console.log('✅ Periodic reapply timer cleaned up');
         }
 
         // Clear all pending timeouts
@@ -1143,22 +954,10 @@
     teardown: () => {
       console.log('Day coloring feature teardown');
 
-      // Clean up observers
+      // Clean up DOM observer
       if (domObserver) {
         domObserver.disconnect();
         domObserver = null;
-      }
-      if (urlObserver) {
-        clearInterval(urlObserver);
-        urlObserver = null;
-      }
-      if (dayViewStyleMonitor) {
-        dayViewStyleMonitor.disconnect();
-        dayViewStyleMonitor = null;
-      }
-      if (dayViewPeriodicReapply) {
-        clearInterval(dayViewPeriodicReapply);
-        dayViewPeriodicReapply = null;
       }
 
       // Clean up month painter if it was used
