@@ -5483,30 +5483,92 @@ checkAuthAndSubscription();
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
-			padding: 16px;
+			padding: 20px 12px;
 			text-align: center;
 			color: #5f6368;
 			font-size: 12px;
 			line-height: 1.5;
-			min-height: 80px;
+			min-height: 100px;
+			width: 100%;
 		`;
 
     const icon = document.createElement('div');
     icon.textContent = '🎨';
     icon.style.cssText = `
 			font-size: 28px;
-			margin-bottom: 6px;
+			margin-bottom: 8px;
 			opacity: 0.5;
 		`;
 
     const text = document.createElement('div');
+    text.style.cssText = `
+			width: 100%;
+			max-width: 200px;
+		`;
     text.innerHTML = `
-			<div style="font-weight: 500; margin-bottom: 4px;">No custom colors yet</div>
-			<div style="font-size: 11px; color: #80868b;">
-				Set up custom colors in the<br>Color Lab to see them here
+			<div style="font-weight: 500; margin-bottom: 6px; color: #202124;">No custom colors yet</div>
+			<div style="font-size: 11px; color: #80868b; margin-bottom: 12px;">
+				Set up custom colors in the Color Lab to see them here
 			</div>
 		`;
 
+    const button = document.createElement('button');
+    button.textContent = 'Go to Color Lab';
+    button.style.cssText = `
+			padding: 8px 16px;
+			background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+			color: #ffffff;
+			border: none;
+			border-radius: 6px;
+			font-size: 12px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			box-shadow: 0 2px 4px rgba(251, 146, 60, 0.3);
+		`;
+
+    button.addEventListener('mouseover', () => {
+      button.style.transform = 'translateY(-1px)';
+      button.style.boxShadow = '0 4px 8px rgba(251, 146, 60, 0.4)';
+    });
+
+    button.addEventListener('mouseout', () => {
+      button.style.transform = 'translateY(0)';
+      button.style.boxShadow = '0 2px 4px rgba(251, 146, 60, 0.3)';
+    });
+
+    button.addEventListener('click', () => {
+      // Switch to Preferences tab
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabButtons.forEach((btn) => btn.classList.remove('active'));
+      tabContents.forEach((content) => content.classList.remove('active'));
+
+      const preferencesButton = document.querySelector('[data-tab="preferences"]');
+      const preferencesContent = document.getElementById('preferencesContent');
+
+      if (preferencesButton) preferencesButton.classList.add('active');
+      if (preferencesContent) preferencesContent.classList.add('active');
+
+      // Expand Color Lab section
+      setTimeout(() => {
+        const colorLabHeader = document.getElementById('colorLabHeader');
+        if (colorLabHeader && !colorLabHeader.classList.contains('expanded')) {
+          colorLabHeader.classList.add('expanded');
+        }
+
+        // Scroll to Color Lab section
+        setTimeout(() => {
+          const colorLabSection = document.querySelector('.section.color-lab');
+          if (colorLabSection) {
+            colorLabSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }, 100);
+    });
+
+    text.appendChild(button);
     emptyMessage.appendChild(icon);
     emptyMessage.appendChild(text);
     return emptyMessage;
