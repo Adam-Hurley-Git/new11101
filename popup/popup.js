@@ -6001,17 +6001,9 @@ checkAuthAndSubscription();
             settings = await window.cc3Storage.getSettings();
             await initTaskListColoring();
 
-            // Reload calendar tabs on first OAuth grant so features become visible
-            if (!wasOAuthGranted) {
-              try {
-                const tabs = await chrome.tabs.query({ url: '*://calendar.google.com/*' });
-                for (const tab of tabs) {
-                  chrome.tabs.reload(tab.id);
-                }
-              } catch (e) {
-                // Tab reload failed, user can refresh manually
-              }
-            }
+            // Note: No page reload needed anymore!
+            // The content script's global message handler will receive TASK_LISTS_UPDATED
+            // and dynamically initialize the feature. Colors will work immediately.
           } else {
             // Show specific error messages based on error type
             if (response?.error === 'USER_DENIED') {

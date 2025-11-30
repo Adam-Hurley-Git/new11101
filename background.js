@@ -800,14 +800,14 @@ async function handleOAuthRequest() {
     if (token) {
       debugLog('OAuth granted successfully');
 
-      // Update settings to reflect OAuth granted
+      // Update settings to reflect OAuth granted and auto-enable feature
       const { settings } = await chrome.storage.sync.get('settings');
       await chrome.storage.sync.set({
         settings: {
           ...(settings || {}),
           taskListColoring: {
             ...(settings?.taskListColoring || {}),
-            enabled: settings?.taskListColoring?.enabled || false,
+            enabled: true, // Auto-enable when OAuth granted for better UX
             oauthGranted: true,
           },
         },
