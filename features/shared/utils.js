@@ -600,17 +600,17 @@
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'cf-custom-colors-empty-state';
             emptyMessage.style.cssText = `
+							grid-column: 1 / -1;
 							display: flex;
 							flex-direction: column;
 							align-items: center;
 							justify-content: center;
-							padding: 28px 20px;
+							padding: 20px 12px;
 							text-align: center;
 							color: #5f6368;
 							font-size: 12px;
 							line-height: 1.5;
-							height: 100%;
-							min-height: 130px;
+							min-height: 100px;
 							width: 100%;
 							box-sizing: border-box;
 						`;
@@ -618,20 +618,19 @@
             const icon = document.createElement('div');
             icon.textContent = '🎨';
             icon.style.cssText = `
-							font-size: 36px;
-							margin-bottom: 12px;
+							font-size: 32px;
+							margin-bottom: 10px;
 							opacity: 0.5;
 						`;
 
             const text = document.createElement('div');
             text.style.cssText = `
-							width: 92%;
-							max-width: 280px;
+							width: 100%;
 							margin: 0 auto;
 						`;
             text.innerHTML = `
-							<div style="font-weight: 600; margin-bottom: 10px; color: #202124; font-size: 14px;">No custom colors yet</div>
-							<div style="font-size: 12px; color: #5f6368; line-height: 1.7;">
+							<div style="font-weight: 600; margin-bottom: 8px; color: #202124; font-size: 13px;">No custom colors yet</div>
+							<div style="font-size: 11px; color: #5f6368; line-height: 1.6;">
 								Open the extension popup and go to<br>Preferences → Color Lab to add custom colors
 							</div>
 						`;
