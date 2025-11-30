@@ -591,10 +591,14 @@ checkAuthAndSubscription();
 
             if (customPalette && colorInput && preview) {
               customPalette.innerHTML = '';
-              const blockRef = { colorInput, preview };
-              customColors.forEach((color) => {
-                customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
-              });
+              if (customColors.length === 0) {
+                customPalette.appendChild(createCustomColorsEmptyState());
+              } else {
+                const blockRef = { colorInput, preview };
+                customColors.forEach((color) => {
+                  customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
+                });
+              }
             }
           }
         });
@@ -632,10 +636,14 @@ checkAuthAndSubscription();
 
           if (customPalette && colorInput && preview) {
             customPalette.innerHTML = '';
-            const blockRef = { colorInput, preview };
-            customColors.forEach((color) => {
-              customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
-            });
+            if (customColors.length === 0) {
+              customPalette.appendChild(createCustomColorsEmptyState());
+            } else {
+              const blockRef = { colorInput, preview };
+              customColors.forEach((color) => {
+                customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
+              });
+            }
           }
         }
       });
@@ -848,10 +856,14 @@ checkAuthAndSubscription();
 
           if (customPalette && colorInput && preview) {
             customPalette.innerHTML = '';
-            const blockRef = { colorInput, preview };
-            customColors.forEach((color) => {
-              customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
-            });
+            if (customColors.length === 0) {
+              customPalette.appendChild(createCustomColorsEmptyState());
+            } else {
+              const blockRef = { colorInput, preview };
+              customColors.forEach((color) => {
+                customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
+              });
+            }
           }
         }
       });
@@ -963,19 +975,23 @@ checkAuthAndSubscription();
               const customPalette = qs(`timeBlockCustomPalette-${blockId}`);
               if (customPalette) {
                 customPalette.innerHTML = '';
-                customColors.forEach((color) => {
-                  customPalette.appendChild(
-                    createTimeBlockColorSwatch(
-                      color,
-                      {
-                        colorInput: qs(`timeBlockColor-${blockId}`),
-                        preview: qs(`timeBlockPreview-${blockId}`),
-                      },
-                      customPalette,
-                      true,
-                    ),
-                  );
-                });
+                if (customColors.length === 0) {
+                  customPalette.appendChild(createCustomColorsEmptyState());
+                } else {
+                  customColors.forEach((color) => {
+                    customPalette.appendChild(
+                      createTimeBlockColorSwatch(
+                        color,
+                        {
+                          colorInput: qs(`timeBlockColor-${blockId}`),
+                          preview: qs(`timeBlockPreview-${blockId}`),
+                        },
+                        customPalette,
+                        true,
+                      ),
+                    );
+                  });
+                }
               }
             }
           });
@@ -1030,19 +1046,23 @@ checkAuthAndSubscription();
               const customPalette = qs(`timeBlockCustomPalette-${blockId}`);
               if (customPalette) {
                 customPalette.innerHTML = '';
-                customColors.forEach((color) => {
-                  customPalette.appendChild(
-                    createTimeBlockColorSwatch(
-                      color,
-                      {
-                        colorInput: qs(`timeBlockColor-${blockId}`),
-                        preview: qs(`timeBlockPreview-${blockId}`),
-                      },
-                      customPalette,
-                      true,
-                    ),
-                  );
-                });
+                if (customColors.length === 0) {
+                  customPalette.appendChild(createCustomColorsEmptyState());
+                } else {
+                  customColors.forEach((color) => {
+                    customPalette.appendChild(
+                      createTimeBlockColorSwatch(
+                        color,
+                        {
+                          colorInput: qs(`timeBlockColor-${blockId}`),
+                          preview: qs(`timeBlockPreview-${blockId}`),
+                        },
+                        customPalette,
+                        true,
+                      ),
+                    );
+                  });
+                }
               }
             }
           });
@@ -1072,30 +1092,35 @@ checkAuthAndSubscription();
         const selectedColor = selectedSwatch?.dataset.color;
 
         customPalette.innerHTML = '';
-        customColors.forEach((color) => {
-          const swatch = document.createElement('div');
-          swatch.className = 'color-swatch custom-color-swatch';
-          swatch.style.backgroundColor = color;
-          swatch.title = color;
-          swatch.dataset.color = color;
 
-          // Restore selection if this was the selected color
-          if (color === selectedColor) {
-            swatch.classList.add('selected');
-          }
+        if (customColors.length === 0) {
+          customPalette.appendChild(createCustomColorsEmptyState());
+        } else {
+          customColors.forEach((color) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch custom-color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.title = color;
+            swatch.dataset.color = color;
 
-          swatch.onclick = (e) => {
-            e.stopPropagation();
-            // Find the color input for this picker and update it
-            const colorInput = qs(`${prefix}Color-${listId}`);
-            if (colorInput) {
-              colorInput.value = color;
-              colorInput.dispatchEvent(new Event('change'));
+            // Restore selection if this was the selected color
+            if (color === selectedColor) {
+              swatch.classList.add('selected');
             }
-          };
 
-          customPalette.appendChild(swatch);
-        });
+            swatch.onclick = (e) => {
+              e.stopPropagation();
+              // Find the color input for this picker and update it
+              const colorInput = qs(`${prefix}Color-${listId}`);
+              if (colorInput) {
+                colorInput.value = color;
+                colorInput.dispatchEvent(new Event('change'));
+              }
+            };
+
+            customPalette.appendChild(swatch);
+          });
+        }
       });
 
       // Also refresh completed task custom palettes
@@ -1108,30 +1133,35 @@ checkAuthAndSubscription();
         const selectedColor = selectedSwatch?.dataset.color;
 
         customPalette.innerHTML = '';
-        customColors.forEach((color) => {
-          const swatch = document.createElement('div');
-          swatch.className = 'color-swatch custom-color-swatch';
-          swatch.style.backgroundColor = color;
-          swatch.title = color;
-          swatch.dataset.color = color;
 
-          // Restore selection if this was the selected color
-          if (color === selectedColor) {
-            swatch.classList.add('selected');
-          }
+        if (customColors.length === 0) {
+          customPalette.appendChild(createCustomColorsEmptyState());
+        } else {
+          customColors.forEach((color) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch custom-color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.title = color;
+            swatch.dataset.color = color;
 
-          swatch.onclick = (e) => {
-            e.stopPropagation();
-            // Find the color input for this picker and update it
-            const colorInput = qs(`${prefix}Color-${listId}`);
-            if (colorInput) {
-              colorInput.value = color;
-              colorInput.dispatchEvent(new Event('change'));
+            // Restore selection if this was the selected color
+            if (color === selectedColor) {
+              swatch.classList.add('selected');
             }
-          };
 
-          customPalette.appendChild(swatch);
-        });
+            swatch.onclick = (e) => {
+              e.stopPropagation();
+              // Find the color input for this picker and update it
+              const colorInput = qs(`${prefix}Color-${listId}`);
+              if (colorInput) {
+                colorInput.value = color;
+                colorInput.dispatchEvent(new Event('change'));
+              }
+            };
+
+            customPalette.appendChild(swatch);
+          });
+        }
       });
     });
   }
@@ -2584,9 +2614,13 @@ checkAuthAndSubscription();
     const customPalette = qs(`${prefix}CustomPalette-${listId}`);
     if (customPalette) {
       customPalette.innerHTML = '';
-      customColors.forEach((color) => {
-        customPalette.appendChild(createTaskListColorSwatch(color, listRef, customPalette, true));
-      });
+      if (customColors.length === 0) {
+        customPalette.appendChild(createCustomColorsEmptyState());
+      } else {
+        customColors.forEach((color) => {
+          customPalette.appendChild(createTaskListColorSwatch(color, listRef, customPalette, true));
+        });
+      }
     }
   }
 
@@ -5293,9 +5327,15 @@ checkAuthAndSubscription();
     if (!palette) return;
 
     palette.innerHTML = '';
-    customColors.forEach((color) => {
-      palette.appendChild(createTaskColorSwatch(color, taskIndex, palette, true));
-    });
+
+    // Show empty state message if no custom colors
+    if (customColors.length === 0) {
+      palette.appendChild(createCustomColorsEmptyState());
+    } else {
+      customColors.forEach((color) => {
+        palette.appendChild(createTaskColorSwatch(color, taskIndex, palette, true));
+      });
+    }
   }
 
   // Create task color swatch with click handler
@@ -5423,9 +5463,53 @@ checkAuthAndSubscription();
     if (!palette) return;
 
     palette.innerHTML = '';
-    customColors.forEach((color) => {
-      palette.appendChild(createTimeBlockColorSwatch(color, 'global', palette, true));
-    });
+
+    // Show empty state message if no custom colors
+    if (customColors.length === 0) {
+      palette.appendChild(createCustomColorsEmptyState());
+    } else {
+      customColors.forEach((color) => {
+        palette.appendChild(createTimeBlockColorSwatch(color, 'global', palette, true));
+      });
+    }
+  }
+
+  // Helper function to create empty state message for custom color palettes
+  function createCustomColorsEmptyState() {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'custom-colors-empty-state';
+    emptyMessage.style.cssText = `
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: 16px;
+			text-align: center;
+			color: #5f6368;
+			font-size: 12px;
+			line-height: 1.5;
+			min-height: 80px;
+		`;
+
+    const icon = document.createElement('div');
+    icon.textContent = '🎨';
+    icon.style.cssText = `
+			font-size: 28px;
+			margin-bottom: 6px;
+			opacity: 0.5;
+		`;
+
+    const text = document.createElement('div');
+    text.innerHTML = `
+			<div style="font-weight: 500; margin-bottom: 4px;">No custom colors yet</div>
+			<div style="font-size: 11px; color: #80868b;">
+				Set up custom colors in the<br>Color Lab to see them here
+			</div>
+		`;
+
+    emptyMessage.appendChild(icon);
+    emptyMessage.appendChild(text);
+    return emptyMessage;
   }
 
   // Create time block color swatch with click handler
@@ -5681,9 +5765,13 @@ checkAuthAndSubscription();
     const customPalette = qs(`timeBlockCustomPalette-${blockColorId}`);
     if (customPalette) {
       customPalette.innerHTML = '';
-      customColors.forEach((color) => {
-        customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
-      });
+      if (customColors.length === 0) {
+        customPalette.appendChild(createCustomColorsEmptyState());
+      } else {
+        customColors.forEach((color) => {
+          customPalette.appendChild(createTimeBlockColorSwatch(color, blockRef, customPalette, true));
+        });
+      }
     }
   }
 
@@ -5811,9 +5899,15 @@ checkAuthAndSubscription();
     if (!palette) return;
 
     palette.innerHTML = '';
-    customColors.forEach((color) => {
-      palette.appendChild(createColorSwatch(color, dayIndex, palette, true));
-    });
+
+    // Show empty state message if no custom colors
+    if (customColors.length === 0) {
+      palette.appendChild(createCustomColorsEmptyState());
+    } else {
+      customColors.forEach((color) => {
+        palette.appendChild(createColorSwatch(color, dayIndex, palette, true));
+      });
+    }
   }
 
   function updateColors() {

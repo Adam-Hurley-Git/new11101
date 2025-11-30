@@ -595,11 +595,50 @@
           // Clear existing custom colors in grid
           grid.innerHTML = '';
 
-          // Add each custom color as a swatch
-          customColors.forEach((color) => {
-            const customSwatch = createCustomColorSwatch(color, grid);
-            grid.appendChild(customSwatch);
-          });
+          // Show empty state message if no custom colors
+          if (customColors.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'cf-custom-colors-empty-state';
+            emptyMessage.style.cssText = `
+							display: flex;
+							flex-direction: column;
+							align-items: center;
+							justify-content: center;
+							padding: 20px;
+							text-align: center;
+							color: #5f6368;
+							font-size: 12px;
+							line-height: 1.5;
+							height: 100%;
+							min-height: 100px;
+						`;
+
+            const icon = document.createElement('div');
+            icon.textContent = '🎨';
+            icon.style.cssText = `
+							font-size: 32px;
+							margin-bottom: 8px;
+							opacity: 0.5;
+						`;
+
+            const text = document.createElement('div');
+            text.innerHTML = `
+							<div style="font-weight: 500; margin-bottom: 4px;">No custom colors yet</div>
+							<div style="font-size: 11px; color: #80868b;">
+								Set up custom colors in the<br>Color Lab to see them here
+							</div>
+						`;
+
+            emptyMessage.appendChild(icon);
+            emptyMessage.appendChild(text);
+            grid.appendChild(emptyMessage);
+          } else {
+            // Add each custom color as a swatch
+            customColors.forEach((color) => {
+              const customSwatch = createCustomColorSwatch(color, grid);
+              grid.appendChild(customSwatch);
+            });
+          }
         }
       } catch (error) {
         console.warn('Could not load custom colors from extension storage:', error);
