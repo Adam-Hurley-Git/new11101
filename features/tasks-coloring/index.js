@@ -133,7 +133,6 @@ let urlObserver = null;
 let popstateHandler = null;
 let repaintIntervalId = null;
 let storageChangeHandler = null;
-let messageHandler = null;
 let modalSettingsUnsubscribe = null;
 
 // PERFORMANCE: In-memory cache to avoid constant storage reads
@@ -147,6 +146,76 @@ const CACHE_LIFETIME = 30000; // 30 seconds
 let cachedColorMap = null;
 let colorMapLastLoaded = 0;
 const COLOR_MAP_CACHE_TIME = 1000; // Cache for 1 second
+
+// ========================================
+// GLOBAL MESSAGE HANDLER (Always Active)
+// ========================================
+// This handler is registered globally and remains active even when the feature is disabled.
+// This allows dynamic initialization when OAuth is granted after page load.
+// Pattern matches time-blocking feature (features/time-blocking/index.js:22-36)
+let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => {
+  // Handle TASK_LISTS_UPDATED (sent after OAuth grant or sync)
+  if (message.type === 'TASK_LISTS_UPDATED') {
+    console.log('[Task Coloring] Received TASK_LISTS_UPDATED');
+
+    try {
+      const settings = await window.cc3Storage.getSettings();
+      const taskListColoring = settings?.taskListColoring;
+
+      // Dynamic initialization: If OAuth granted but feature not yet initialized
+      if (taskListColoring?.oauthGranted && !initialized) {
+        console.log('[Task Coloring] OAuth granted - dynamically initializing feature');
+        initTasksColoring();
+      }
+
+      // If already initialized, just refresh caches and repaint
+      if (initialized) {
+        invalidateColorCache();
+        taskElementReferences.clear();
+        // Force multiple aggressive repaints to catch all tasks
+        repaintSoon(true); // Immediate
+        setTimeout(() => repaintSoon(true), 100);
+        setTimeout(() => repaintSoon(true), 500);
+        setTimeout(() => repaintSoon(true), 1000);
+      }
+    } catch (error) {
+      console.error('[Task Coloring] Error handling TASK_LISTS_UPDATED:', error);
+    }
+  }
+
+  // Handle RESET_LIST_COLORS
+  if (message.type === 'RESET_LIST_COLORS') {
+    // Only handle if initialized
+    if (initialized) {
+      // Set flag to prevent storage listener from triggering repaint
+      isResetting = true;
+
+      // Unpaint all tasks from the specified list
+      const { listId } = message;
+      if (listId) {
+        await unpaintTasksFromList(listId);
+        console.log(`[ColorKit] Reset colors for list: ${listId}`);
+      }
+
+      // Reset flag after a delay (page will reload anyway)
+      setTimeout(() => {
+        isResetting = false;
+      }, 2000);
+    }
+  }
+
+  // Handle REPAINT_TASKS (for real-time updates)
+  if (message.type === 'REPAINT_TASKS') {
+    if (initialized) {
+      invalidateColorCache();
+      repaintSoon(true);
+    }
+  }
+};
+
+// Register the global message handler immediately (always listening)
+chrome.runtime.onMessage.addListener(globalTaskColoringMessageHandler);
+console.log('[Task Coloring] Global message handler registered');
 
 function cleanupStaleReferences() {
   for (const [taskId, element] of taskElementReferences.entries()) {
@@ -188,10 +257,8 @@ function cleanupListeners() {
     storageChangeHandler = null;
   }
 
-  if (messageHandler) {
-    chrome.runtime.onMessage.removeListener(messageHandler);
-    messageHandler = null;
-  }
+  // Note: We no longer remove the message handler here because it's now global
+  // and should remain active even when the feature is disabled (for dynamic initialization)
 
   if (modalSettingsUnsubscribe) {
     modalSettingsUnsubscribe();
@@ -1758,37 +1825,8 @@ function initTasksColoring() {
   };
   chrome.storage.onChanged.addListener(storageChangeHandler);
 
-  // Listen for runtime messages from background (e.g., after sync)
-  messageHandler = async (message, sender, sendResponse) => {
-    if (message.type === 'TASK_LISTS_UPDATED') {
-      // Clear all caches to force fresh data fetch
-      invalidateColorCache();
-      taskElementReferences.clear();
-      // Force multiple aggressive repaints to catch all tasks
-      repaintSoon(true); // Immediate
-      setTimeout(() => repaintSoon(true), 100);
-      setTimeout(() => repaintSoon(true), 500);
-      setTimeout(() => repaintSoon(true), 1000);
-    }
-
-    if (message.type === 'RESET_LIST_COLORS') {
-      // Set flag to prevent storage listener from triggering repaint
-      isResetting = true;
-
-      // Unpaint all tasks from the specified list
-      const { listId } = message;
-      if (listId) {
-        await unpaintTasksFromList(listId);
-        console.log(`[ColorKit] Reset colors for list: ${listId}`);
-      }
-
-      // Reset flag after a delay (page will reload anyway)
-      setTimeout(() => {
-        isResetting = false;
-      }, 2000);
-    }
-  };
-  chrome.runtime.onMessage.addListener(messageHandler);
+  // Note: Message handler is now registered globally (outside this function)
+  // See globalTaskColoringMessageHandler below
 
   window.cfTasksColoring = {
     getLastClickedTaskId: () => lastClickedTaskId,
