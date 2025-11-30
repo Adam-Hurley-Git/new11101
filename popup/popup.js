@@ -5483,31 +5483,33 @@ checkAuthAndSubscription();
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
-			padding: 20px 12px;
+			padding: 24px 16px;
 			text-align: center;
 			color: #5f6368;
 			font-size: 12px;
 			line-height: 1.5;
 			min-height: 100px;
 			width: 100%;
+			box-sizing: border-box;
 		`;
 
     const icon = document.createElement('div');
     icon.textContent = '🎨';
     icon.style.cssText = `
-			font-size: 28px;
-			margin-bottom: 8px;
+			font-size: 32px;
+			margin-bottom: 10px;
 			opacity: 0.5;
 		`;
 
     const text = document.createElement('div');
     text.style.cssText = `
-			width: 100%;
-			max-width: 200px;
+			width: 90%;
+			max-width: 260px;
+			margin: 0 auto;
 		`;
     text.innerHTML = `
-			<div style="font-weight: 500; margin-bottom: 6px; color: #202124;">No custom colors yet</div>
-			<div style="font-size: 11px; color: #80868b; margin-bottom: 12px;">
+			<div style="font-weight: 600; margin-bottom: 8px; color: #202124; font-size: 13px;">No custom colors yet</div>
+			<div style="font-size: 12px; color: #5f6368; margin-bottom: 16px; line-height: 1.6;">
 				Set up custom colors in the Color Lab to see them here
 			</div>
 		`;
@@ -5515,16 +5517,18 @@ checkAuthAndSubscription();
     const button = document.createElement('button');
     button.textContent = 'Go to Color Lab';
     button.style.cssText = `
-			padding: 8px 16px;
+			padding: 10px 24px;
 			background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
 			color: #ffffff;
 			border: none;
 			border-radius: 6px;
-			font-size: 12px;
+			font-size: 13px;
 			font-weight: 600;
 			cursor: pointer;
 			transition: all 0.2s ease;
 			box-shadow: 0 2px 4px rgba(251, 146, 60, 0.3);
+			width: 80%;
+			max-width: 200px;
 		`;
 
     button.addEventListener('mouseover', () => {
