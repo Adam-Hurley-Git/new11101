@@ -605,12 +605,12 @@
 							flex-direction: column;
 							align-items: center;
 							justify-content: center;
-							padding: 20px 12px;
+							padding: 12px 12px;
 							text-align: center;
 							color: #5f6368;
 							font-size: 12px;
 							line-height: 1.5;
-							min-height: 100px;
+							min-height: 80px;
 							width: 100%;
 							box-sizing: border-box;
 						`;
@@ -618,8 +618,8 @@
             const icon = document.createElement('div');
             icon.textContent = '🎨';
             icon.style.cssText = `
-							font-size: 32px;
-							margin-bottom: 10px;
+							font-size: 26px;
+							margin-bottom: 6px;
 							opacity: 0.5;
 						`;
 
@@ -629,8 +629,8 @@
 							margin: 0 auto;
 						`;
             text.innerHTML = `
-							<div style="font-weight: 600; margin-bottom: 8px; color: #202124; font-size: 13px;">No custom colors yet</div>
-							<div style="font-size: 11px; color: #5f6368; line-height: 1.6;">
+							<div style="font-weight: 600; margin-bottom: 5px; color: #202124; font-size: 12px;">No custom colors yet</div>
+							<div style="font-size: 10px; color: #5f6368; line-height: 1.5;">
 								Open the extension popup and go to<br>Preferences → Color Lab to add custom colors
 							</div>
 						`;
