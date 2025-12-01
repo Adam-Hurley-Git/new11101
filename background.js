@@ -261,6 +261,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       return true;
 
+    case 'CLEAR_OAUTH_TOKEN':
+      // Clear OAuth token (called during reset)
+      GoogleTasksAPI.clearAuthToken()
+        .then(() => {
+          debugLog('OAuth token cleared successfully');
+          sendResponse({ success: true });
+        })
+        .catch((error) => {
+          console.error('Failed to clear OAuth token:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      return true;
+
+    case 'SETTINGS_RESET_COMPLETE':
+      // Handle complete reset - clear background caches
+      debugLog('Settings reset complete - clearing background caches');
+
+      // Reset polling state machine
+      pollingState = 'SLEEP';
+      activeCalendarTabs.clear();
+      lastUserActivity = Date.now();
+
+      // Clear state machine from storage
+      chrome.storage.local.remove('cf.stateMachine', () => {
+        debugLog('State machine reset');
+      });
+
+      // Clear any in-memory task list caches
+      // Note: The actual storage was already cleared by performCompleteReset()
+      // This just ensures background variables are reset
+
+      sendResponse({ success: true });
+      return true;
+
+    case 'RESET_LIST_COLORS':
+      // Handle individual list color reset (from popup UI)
+      // This is for the "Reset Pending" and "Reset Completed" buttons
+      handleResetListColors(message.listId, message.clearPending, message.clearCompleted).then(sendResponse);
+      return true;
+
     default:
       sendResponse({ error: 'Unknown message type' });
   }

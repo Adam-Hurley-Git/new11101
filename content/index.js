@@ -259,6 +259,33 @@
           disableAllFeatures();
         }
       });
+    } else if (message.type === 'SETTINGS_RESET') {
+      // Complete reset detected - clean up and reload page
+      console.log('[ColorKit] Settings reset detected - cleaning up and reloading page...');
+
+      // Clear any cached data in features
+      if (window.cc3Features) {
+        const features = window.cc3Features.features;
+        for (const [id, feature] of features) {
+          if (typeof feature.cleanup === 'function') {
+            try {
+              feature.cleanup();
+            } catch (error) {
+              console.warn(`[ColorKit] Cleanup failed for feature ${id}:`, error);
+            }
+          }
+        }
+      }
+
+      // Send acknowledgment
+      sendResponse({ received: true });
+
+      // Reload page after short delay to allow cleanup
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+
+      return true;
     }
     return true;
   });

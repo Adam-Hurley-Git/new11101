@@ -6796,52 +6796,172 @@ checkAuthAndSubscription();
       };
     });
 
-    // Reset button
+    // Reset button - Complete reset with dual confirmation
     qs('resetBtn').onclick = async () => {
-      if (
-        confirm(
-          '⚠️ WARNING: This will reset ALL extension settings to their default values.\n\nThis includes:\n• All day colors and opacity settings\n• All task coloring settings and custom task colors\n• All time blocking schedules and colors\n• Week start preferences\n\nThis action cannot be undone. Are you sure you want to continue?',
-        )
-      ) {
-        // Reset to completely default settings (including disabling features)
-        settings = await window.cc3Storage.setSettings(window.cc3Storage.defaultSettings);
+      // Get current data for confirmation message
+      let taskColorCount = 0;
+      let listColorCount = 0;
+      let timeBlockCount = 0;
 
-        // Clear all custom task colors stored separately
-        await new Promise((resolve) => {
-          chrome.storage.sync.remove('cf.taskColors', resolve);
-        });
+      try {
+        const syncData = await chrome.storage.sync.get(['cf.taskColors', 'cf.taskListColors']);
+        taskColorCount = Object.keys(syncData['cf.taskColors'] || {}).length;
+        listColorCount = Object.keys(syncData['cf.taskListColors'] || {}).length;
 
-        // Clear custom day colors
+        const schedules = settings?.timeBlocking?.weeklySchedule || {};
+        timeBlockCount = Object.values(schedules).reduce((sum, blocks) => sum + blocks.length, 0);
+      } catch (error) {
+        console.warn('Failed to get counts:', error);
+      }
+
+      // First confirmation - detailed warning
+      const confirm1 = confirm(
+        `⚠️ WARNING: Complete Reset
+
+This will PERMANENTLY delete:
+• All day colors and opacity settings
+• All manual task colors (${taskColorCount} task${taskColorCount !== 1 ? 's' : ''})
+• All task list default colors (${listColorCount} list${listColorCount !== 1 ? 's' : ''})
+• All task list text colors
+• All time blocking schedules (${timeBlockCount} block${timeBlockCount !== 1 ? 's' : ''})
+• Google Tasks OAuth authorization
+
+This will PRESERVE:
+• Your subscription status
+• Push notification settings
+
+This action CANNOT be undone.
+
+Do you want to continue?`,
+      );
+
+      if (!confirm1) {
+        return;
+      }
+
+      // Second confirmation - type to confirm
+      const confirm2 = prompt('Type "RESET" in ALL CAPS to confirm permanent deletion:', '');
+
+      if (confirm2 !== 'RESET') {
+        alert('Reset cancelled - nothing was changed.');
+        return;
+      }
+
+      // Disable button during reset
+      const btn = qs('resetBtn');
+      const originalText = btn.textContent;
+      const originalStyle = btn.style.background;
+      btn.disabled = true;
+      btn.textContent = 'Resetting...';
+      btn.style.cursor = 'not-allowed';
+      btn.style.opacity = '0.6';
+
+      try {
+        // Perform complete reset via storage helper
+        const resetResult = await window.cc3Storage.performCompleteReset();
+
+        if (!resetResult.success) {
+          // Critical failure
+          alert(
+            `❌ Reset Failed
+
+Completed steps:
+• OAuth: ${resetResult.results.oauth}
+• Sync storage: ${resetResult.results.syncStorage}
+• Settings: ${resetResult.results.settings}
+• Local storage: ${resetResult.results.localStorage}
+
+Error: ${resetResult.error}
+
+Some settings may have been reset.
+Please close and reopen the extension.
+
+If issues persist, reinstall the extension.`,
+          );
+
+          // Re-enable button
+          btn.disabled = false;
+          btn.textContent = originalText;
+          btn.style.background = originalStyle;
+          btn.style.cursor = 'pointer';
+          btn.style.opacity = '1';
+          return;
+        }
+
+        // Success! Now update UI
+        settings = await window.cc3Storage.getSettings();
         customColors = [];
         await saveCustomColors();
 
-        // Update all UI components
-        updateToggle();
-        updateTaskFeaturesToggle();
-        updateTaskColoringToggle();
-        updateTimeBlockingToggle();
-        updateColors();
-        updateInlineColorsGrid();
-        updateTimeBlockingSettings();
+        // Notify content scripts
+        try {
+          const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
+          for (const tab of tabs) {
+            chrome.tabs.sendMessage(tab.id, { type: 'SETTINGS_RESET' }).catch(() => {
+              // Tab might be closed, ignore
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to notify content scripts:', error);
+        }
 
-        // Notify all content scripts of the reset
-        await saveSettings();
+        // Notify background service worker
+        try {
+          await chrome.runtime.sendMessage({ type: 'SETTINGS_RESET_COMPLETE' });
+        } catch (error) {
+          console.warn('Failed to notify background:', error);
+        }
 
-        // Visual feedback
-        const btn = qs('resetBtn');
-        const originalText = btn.textContent;
-        const originalStyle = btn.style.background;
-        btn.textContent = 'Reset Complete!';
+        // Visual feedback - green success state
+        btn.textContent = '✓ Reset Complete!';
         btn.style.background = '#059669';
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.style.background = originalStyle;
-        }, 2000);
+        btn.style.borderColor = '#059669';
+        btn.disabled = true; // Keep disabled
+        btn.style.cursor = 'default';
+        btn.style.opacity = '1';
 
-        // Show refresh message
+        // Show detailed success message
+        const successMessage = `✅ Reset Complete!
+
+Successfully reset:
+✓ Day coloring settings
+✓ Task coloring settings (${taskColorCount} task${taskColorCount !== 1 ? 's' : ''} cleared)
+✓ Task list colors (${listColorCount} list${listColorCount !== 1 ? 's' : ''} cleared)
+✓ Time blocking schedules (${timeBlockCount} block${timeBlockCount !== 1 ? 's' : ''} cleared)
+✓ Google Tasks authorization
+
+Preserved:
+✓ Your subscription status
+✓ Push notification settings
+
+The popup will reload to show fresh settings.
+Would you like to refresh all Google Calendar tabs?`;
+
         setTimeout(() => {
-          alert('✅ Reset complete!\n\nPlease refresh your Google Calendar page to see the changes take effect.');
+          const shouldRefreshTabs = confirm(successMessage);
+
+          if (shouldRefreshTabs) {
+            // Auto-refresh calendar tabs
+            chrome.tabs.query({ url: 'https://calendar.google.com/*' }).then((tabs) => {
+              tabs.forEach((tab) => {
+                chrome.tabs.reload(tab.id);
+              });
+            });
+          }
+
+          // Reload the popup to show fresh UI with default settings
+          window.location.reload();
         }, 100);
+      } catch (error) {
+        console.error('Reset error:', error);
+        alert(`❌ Reset failed: ${error.message}\n\nPlease try again or contact support.`);
+
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.background = originalStyle;
+        btn.style.cursor = 'pointer';
+        btn.style.opacity = '1';
       }
     };
   }
