@@ -6893,16 +6893,6 @@ If issues persist, reinstall the extension.`,
         customColors = [];
         await saveCustomColors();
 
-        // Update all UI components
-        updateToggle();
-        updateTaskFeaturesToggle();
-        updateTaskColoringToggle();
-        updateTaskListColoringToggle();
-        updateTimeBlockingToggle();
-        updateColors();
-        updateInlineColorsGrid();
-        updateTimeBlockingSettings();
-
         // Notify content scripts
         try {
           const tabs = await chrome.tabs.query({ url: 'https://calendar.google.com/*' });
@@ -6926,16 +6916,9 @@ If issues persist, reinstall the extension.`,
         btn.textContent = '✓ Reset Complete!';
         btn.style.background = '#059669';
         btn.style.borderColor = '#059669';
-        btn.disabled = false;
-        btn.style.cursor = 'pointer';
+        btn.disabled = true; // Keep disabled
+        btn.style.cursor = 'default';
         btn.style.opacity = '1';
-
-        // Revert button after 3 seconds
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.style.background = originalStyle;
-          btn.style.borderColor = '#dc2626';
-        }, 3000);
 
         // Show detailed success message
         const successMessage = `✅ Reset Complete!
@@ -6951,10 +6934,13 @@ Preserved:
 ✓ Your subscription status
 ✓ Push notification settings
 
-Would you like to refresh all Google Calendar tabs now?`;
+The popup will reload to show fresh settings.
+Would you like to refresh all Google Calendar tabs?`;
 
         setTimeout(() => {
-          if (confirm(successMessage)) {
+          const shouldRefreshTabs = confirm(successMessage);
+
+          if (shouldRefreshTabs) {
             // Auto-refresh calendar tabs
             chrome.tabs.query({ url: 'https://calendar.google.com/*' }).then((tabs) => {
               tabs.forEach((tab) => {
@@ -6962,6 +6948,9 @@ Would you like to refresh all Google Calendar tabs now?`;
               });
             });
           }
+
+          // Reload the popup to show fresh UI with default settings
+          window.location.reload();
         }, 100);
       } catch (error) {
         console.error('Reset error:', error);
