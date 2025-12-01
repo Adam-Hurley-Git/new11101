@@ -595,11 +595,56 @@
           // Clear existing custom colors in grid
           grid.innerHTML = '';
 
-          // Add each custom color as a swatch
-          customColors.forEach((color) => {
-            const customSwatch = createCustomColorSwatch(color, grid);
-            grid.appendChild(customSwatch);
-          });
+          // Show empty state message if no custom colors
+          if (customColors.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'cf-custom-colors-empty-state';
+            emptyMessage.style.cssText = `
+							grid-column: 1 / -1;
+							display: flex;
+							flex-direction: column;
+							align-items: center;
+							justify-content: center;
+							padding: 12px 12px;
+							text-align: center;
+							color: #5f6368;
+							font-size: 12px;
+							line-height: 1.5;
+							min-height: 80px;
+							width: 100%;
+							box-sizing: border-box;
+						`;
+
+            const icon = document.createElement('div');
+            icon.textContent = '🎨';
+            icon.style.cssText = `
+							font-size: 26px;
+							margin-bottom: 6px;
+							opacity: 0.5;
+						`;
+
+            const text = document.createElement('div');
+            text.style.cssText = `
+							width: 100%;
+							margin: 0 auto;
+						`;
+            text.innerHTML = `
+							<div style="font-weight: 600; margin-bottom: 5px; color: #202124; font-size: 12px;">No custom colors yet</div>
+							<div style="font-size: 10px; color: #5f6368; line-height: 1.5;">
+								Open the extension popup and go to<br>Preferences → Color Lab to add custom colors
+							</div>
+						`;
+
+            emptyMessage.appendChild(icon);
+            emptyMessage.appendChild(text);
+            grid.appendChild(emptyMessage);
+          } else {
+            // Add each custom color as a swatch
+            customColors.forEach((color) => {
+              const customSwatch = createCustomColorSwatch(color, grid);
+              grid.appendChild(customSwatch);
+            });
+          }
         }
       } catch (error) {
         console.warn('Could not load custom colors from extension storage:', error);
