@@ -5104,6 +5104,53 @@ checkAuthAndSubscription();
 				padding: 8px 0;
 			`;
 
+      // Show empty state for custom colors when no colors are set
+      if (paletteId === 'custom' && colors.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'custom-colors-empty-state';
+        emptyMessage.style.cssText = `
+          grid-column: 1 / -1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 8px 12px;
+          text-align: center;
+          color: #5f6368;
+          font-size: 12px;
+          line-height: 1.5;
+          min-height: 90px;
+          width: 100%;
+          box-sizing: border-box;
+        `;
+
+        const icon = document.createElement('div');
+        icon.textContent = '🎨';
+        icon.style.cssText = `
+          font-size: 28px;
+          margin-bottom: 6px;
+          opacity: 0.5;
+        `;
+
+        const text = document.createElement('div');
+        text.style.cssText = `
+          width: 100%;
+          margin: 0 auto;
+        `;
+        text.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 6px; color: #202124; font-size: 13px;">No custom colors yet</div>
+          <div style="font-size: 11px; color: #5f6368; line-height: 1.5;">
+            Set up custom colors in the Color Lab to see them here
+          </div>
+        `;
+
+        emptyMessage.appendChild(icon);
+        emptyMessage.appendChild(text);
+        panel.appendChild(emptyMessage);
+
+        return panel;
+      }
+
       colors.forEach((color) => {
         const swatch = document.createElement('div');
         swatch.className = 'cc3-color-swatch';
