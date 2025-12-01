@@ -41,6 +41,16 @@ This document provides comprehensive context about the ColorKit Chrome extension
    - Closes modal after clearing
    - Files: `popup/popup.html`, `popup/popup.js`
 
+6. **✅ Complete Reset Feature** - Comprehensive reset with zero-breakage guarantees
+   - Dual confirmation (confirm dialog + type "RESET" to confirm)
+   - Shows counts of affected items before reset
+   - Clears all user settings and customizations
+   - **Preserves subscription status** (critical - never loses paid access)
+   - Revokes Google OAuth token
+   - Detailed success/failure reporting
+   - Auto-refresh calendar tabs option
+   - Files: `lib/storage.js`, `popup/popup.js`, `content/index.js`, `background.js`
+
 ### Technical Improvements
 
 - **Smart Storage Listener**: Detects if only `completedStyling` changed to avoid DOM rebuilds
@@ -284,6 +294,15 @@ async function clearDateSpecificBlocks(dateKey)
 
 // Utilities
 function ymdFromDate(date)                           // Format date as YYYY-MM-DD
+
+// Complete Reset
+async function performCompleteReset()                // Complete reset with safety guarantees
+  // Returns: { success: boolean, results: object, error?: string }
+  // Clears: cf.taskColors, cf.taskListColors, cf.taskListTextColors, customDayColors
+  // Clears: cf.taskToListMap, cf.taskListsMeta, cf.stateMachine
+  // Resets: settings to defaultSettings
+  // Revokes: Google OAuth token
+  // Preserves: subscriptionStatus, subscriptionActive, pushSubscription
 ```
 
 **Storage Keys**:
@@ -1116,6 +1135,13 @@ chrome.runtime.sendMessage({ type: 'CHECK_OAUTH_STATUS' });
 
 // Get task lists metadata
 chrome.runtime.sendMessage({ type: 'GET_TASK_LISTS_META' });
+
+// Complete reset (from popup)
+chrome.runtime.sendMessage({ type: 'CLEAR_OAUTH_TOKEN' });  // Revoke OAuth token
+chrome.runtime.sendMessage({ type: 'SETTINGS_RESET_COMPLETE' });  // Notify background of reset
+
+// Settings reset (popup → content)
+chrome.tabs.sendMessage(tabId, { type: 'SETTINGS_RESET' });  // Trigger page reload
 
 // From web app
 chrome.runtime.sendMessage({ type: 'AUTH_SUCCESS' });
