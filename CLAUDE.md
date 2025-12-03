@@ -82,6 +82,81 @@ This document provides comprehensive context about the ColorKit Chrome extension
 
 ---
 
+## ⚠️ Known Issues & Active Investigations
+
+### 🔍 Task Mapping Investigation (December 2025)
+
+**Status**: 🔬 Investigation Phase
+**Issue**: Google has rewritten the Calendar UI, potentially breaking task-to-DOM mapping
+**Impact**: Task coloring may not work if Google changed how tasks are rendered
+
+#### What Changed:
+- Google completely rewrote the Calendar UI (reported December 2025)
+- Old selectors (`data-eventid="tasks.{taskId}"`) may no longer work
+- Need to verify and potentially update the DOM mapping approach
+
+#### Investigation Tools:
+
+We've created diagnostic tools to investigate the new Calendar structure:
+
+1. **Quick Inspector** (`/diagnostics/quick-task-inspector.js`)
+   - Fast 5-phase diagnostic
+   - Copy/paste into console on calendar.google.com
+   - Run: `quickInspect()`
+   - Get immediate status report
+
+2. **Full Explorer** (`/diagnostics/task-mapping-explorer.js`)
+   - Comprehensive 6-phase analysis
+   - Deep dive into all possible identifiers
+   - Interactive element inspection
+   - Run: `await exploreTaskMapping()`
+
+3. **Investigation Guide** (`/docs/TASK_MAPPING_INVESTIGATION.md`)
+   - Complete documentation
+   - How to use the tools
+   - Interpretation of results
+   - Implementation scenarios (A-D) based on findings
+
+#### Current Task Mapping Approach:
+
+**API → DOM Correlation**:
+```javascript
+// From Google Tasks API (what we have):
+{
+  "id": "base64-encoded-id",          // Decoded → taskId
+  "title": "Task name",
+  "due": "2025-12-10T00:00:00.000Z",
+  "webViewLink": "https://tasks.google.com/embed/list/{listId}/task/{fragmentId}"
+}
+
+// In Calendar DOM (what we search for):
+<div data-eventid="tasks.{taskId}">  // ← This may have changed!
+  <button class="GTG3wb">...</button>
+</div>
+```
+
+**Legacy Selectors** (`features/tasks-coloring/index.js:59-67`):
+- `[data-eventid="tasks.{taskId}"]` - Primary selector
+- `[data-eventid="tasks_{taskId}"]` - Alternative format
+- `[data-taskid]` - Direct task ID attribute
+- `.GTG3wb` - Task button class
+
+**Potential New Approaches**:
+1. **webViewLink-based** - Extract fragment ID from API, search DOM for matching URL
+2. **Attribute-based** - Find new stable `data-*` attributes
+3. **Heuristic** - Match by title + date + position (last resort)
+
+#### Next Steps:
+
+1. **Run quick-task-inspector.js** on calendar.google.com
+2. **Report findings** - Which selectors still work?
+3. **Implement solution** based on investigation results (see guide for scenarios)
+4. **Update this document** with findings and implemented solution
+
+See `/docs/TASK_MAPPING_INVESTIGATION.md` for complete details.
+
+---
+
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
