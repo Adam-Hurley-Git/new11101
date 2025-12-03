@@ -2,6 +2,7 @@
 import { CONFIG, debugLog } from './config.production.js';
 import { forceRefreshSubscription, validateSubscription } from './lib/subscription-validator.js';
 import * as GoogleTasksAPI from './lib/google-tasks-api.js';
+import * as GoogleCalendarAPI from './lib/google-calendar-api.js';
 
 // Service Worker Installation
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -225,6 +226,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case 'NEW_TASK_DETECTED':
       handleNewTaskDetected(message.taskId).then(sendResponse);
+      return true;
+
+    case 'RESOLVE_CALENDAR_EVENT':
+      // NEW: Resolve calendar event ID to task API ID (for new Google Calendar UI)
+      handleResolveCalendarEvent(message.calendarEventId).then(sendResponse);
       return true;
 
     case 'GET_LIST_DEFAULT_COLOR':
@@ -1024,6 +1030,71 @@ async function getTaskListsMeta() {
 }
 
 // Handle new task detected (instant coloring)
+/**
+ * Resolve calendar event ID to task API ID (NEW UI support)
+ * @param {string} calendarEventId - Calendar event ID from ttb_ decoded string
+ * @returns {Promise<Object>} { success, taskApiId?, taskFragment?, error? }
+ */
+async function handleResolveCalendarEvent(calendarEventId) {
+  debugLog(`Resolving calendar event: ${calendarEventId}`);
+
+  if (!calendarEventId) {
+    return { success: false, error: 'No calendar event ID provided' };
+  }
+
+  try {
+    // Check if already in storage cache
+    const cached = await chrome.storage.local.get('cf.calendarEventMapping');
+    const mapping = cached['cf.calendarEventMapping'] || {};
+
+    if (mapping[calendarEventId]) {
+      debugLog(`Calendar event ${calendarEventId} found in cache`);
+      return {
+        success: true,
+        taskApiId: mapping[calendarEventId].taskApiId,
+        taskFragment: mapping[calendarEventId].taskFragment,
+      };
+    }
+
+    // Not in cache - fetch from Calendar API
+    debugLog(`Calendar event ${calendarEventId} not in cache, fetching from API`);
+    const taskApiId = await GoogleCalendarAPI.calendarEventIdToTaskId(calendarEventId);
+
+    if (!taskApiId) {
+      debugLog(`Failed to resolve calendar event ${calendarEventId}`);
+      return {
+        success: false,
+        error: 'Could not resolve calendar event to task ID',
+      };
+    }
+
+    // Extract task fragment for metadata
+    const taskFragment = GoogleCalendarAPI.taskApiIdToFragment(taskApiId);
+
+    // Store in cache
+    mapping[calendarEventId] = {
+      taskApiId,
+      taskFragment,
+      lastVerified: new Date().toISOString(),
+    };
+
+    await chrome.storage.local.set({ 'cf.calendarEventMapping': mapping });
+    debugLog(`Cached mapping: ${calendarEventId} → ${taskApiId}`);
+
+    return {
+      success: true,
+      taskApiId,
+      taskFragment,
+    };
+  } catch (error) {
+    console.error('Error resolving calendar event:', error);
+    return {
+      success: false,
+      error: error.message || 'Unknown error',
+    };
+  }
+}
+
 async function handleNewTaskDetected(taskId) {
   try {
     // Quick lookup from cache first
