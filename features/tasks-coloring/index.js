@@ -2077,6 +2077,7 @@ function initTasksColoring() {
 
   window.cfTasksColoring = {
     getLastClickedTaskId: () => lastClickedTaskId,
+    getResolvedTaskId: getResolvedTaskId, // Needed by modalInjection.js for NEW UI (ttb_) support
     repaint: repaintSoon,
     initTasksColoring: initTasksColoring,
     injectTaskColorControls: injectTaskColorControls,
