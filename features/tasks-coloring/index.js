@@ -18,23 +18,31 @@ function getTaskIdFromChip(el) {
 
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
+    console.log('[TaskColoring] OLD UI detected:', ev);
     return ev.slice(6);
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
   if (ev && ev.startsWith('ttb_')) {
+    console.log('[TaskColoring] NEW UI (ttb_) detected:', ev.substring(0, 40) + '...');
     // Decode ttb_ to get calendar event ID
     const calendarEventId = decodeCalendarEventIdFromTtb(ev);
+    console.log('[TaskColoring] Decoded Calendar Event ID:', calendarEventId);
     if (calendarEventId) {
       // Return Promise that resolves to task API ID
+      console.log('[TaskColoring] Calling resolveCalendarEventToTaskId()...');
       return resolveCalendarEventToTaskId(calendarEventId);
     }
+    console.warn('[TaskColoring] Failed to decode ttb_');
     return null;
   }
 
   // Fallback: data-taskid attribute
   const taskId = el.getAttribute('data-taskid');
-  if (taskId) return taskId;
+  if (taskId) {
+    console.log('[TaskColoring] Using data-taskid fallback:', taskId);
+    return taskId;
+  }
 
   // Search parent elements
   let current = el;
@@ -43,24 +51,31 @@ function getTaskIdFromChip(el) {
 
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
+      console.log('[TaskColoring] OLD UI in parent:', parentEv);
       return parentEv.slice(6);
     }
 
     // NEW UI in parent
     if (parentEv && parentEv.startsWith('ttb_')) {
+      console.log('[TaskColoring] NEW UI in parent:', parentEv.substring(0, 40) + '...');
       const calendarEventId = decodeCalendarEventIdFromTtb(parentEv);
       if (calendarEventId) {
+        console.log('[TaskColoring] Calling resolveCalendarEventToTaskId() from parent...');
         return resolveCalendarEventToTaskId(calendarEventId);
       }
     }
 
     // data-taskid in parent
     const parentTaskId = current.getAttribute?.('data-taskid');
-    if (parentTaskId) return parentTaskId;
+    if (parentTaskId) {
+      console.log('[TaskColoring] Using parent data-taskid fallback:', parentTaskId);
+      return parentTaskId;
+    }
 
     current = current.parentNode;
   }
 
+  console.log('[TaskColoring] No task ID found for element');
   return null;
 }
 
@@ -255,15 +270,21 @@ async function refreshCalendarMappingCache() {
  */
 async function resolveCalendarEventToTaskId(calendarEventId) {
   if (!calendarEventId) {
+    console.warn('[TaskColoring] resolveCalendarEventToTaskId called with empty ID');
     return null;
   }
+
+  console.log('[TaskColoring] resolveCalendarEventToTaskId called for:', calendarEventId);
 
   try {
     // Check cache first
     const cache = await refreshCalendarMappingCache();
     if (cache[calendarEventId]) {
+      console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskApiId);
       return cache[calendarEventId].taskApiId;
     }
+
+    console.log('[TaskColoring] ⚠️ NOT in cache, sending message to background...');
 
     // Cache miss - need to fetch from Calendar API
     // Send message to background script to handle API call
@@ -274,7 +295,20 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
           calendarEventId: calendarEventId,
         },
         (response) => {
-          if (response && response.success && response.taskApiId) {
+          if (chrome.runtime.lastError) {
+            console.error('[TaskColoring] ❌ Chrome runtime error:', chrome.runtime.lastError.message);
+            resolve(null);
+            return;
+          }
+
+          if (!response) {
+            console.error('[TaskColoring] ❌ No response from background script');
+            resolve(null);
+            return;
+          }
+
+          if (response.success && response.taskApiId) {
+            console.log('[TaskColoring] ✅ Background resolved:', response.taskApiId);
             // Update cache
             if (calendarEventMappingCache) {
               calendarEventMappingCache[calendarEventId] = {
@@ -285,13 +319,14 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
             }
             resolve(response.taskApiId);
           } else {
+            console.error('[TaskColoring] ❌ Background resolution failed:', response.error);
             resolve(null);
           }
         },
       );
     });
   } catch (error) {
-    console.error('[TaskColoring] Failed to resolve calendar event to task ID:', error);
+    console.error('[TaskColoring] ❌ Exception in resolveCalendarEventToTaskId:', error);
     return null;
   }
 }
