@@ -1928,11 +1928,24 @@ function initTasksColoring() {
     }
   });
 
-  if (grid) {
+  // CRITICAL FIX: Validate that grid is actually a DOM Node before observing
+  if (grid && grid instanceof Node) {
     gridObserver.observe(grid, {
       childList: true,
       subtree: true,
     });
+  } else {
+    console.warn('[Task Coloring] Grid element not ready, will observe document.body after delay');
+    // Fallback: wait for DOM to be fully ready, then try again
+    setTimeout(() => {
+      const fallbackGrid = document.querySelector('[role="grid"]') || document.body;
+      if (fallbackGrid && fallbackGrid instanceof Node) {
+        gridObserver.observe(fallbackGrid, {
+          childList: true,
+          subtree: true,
+        });
+      }
+    }, 1000);
   }
 
 
