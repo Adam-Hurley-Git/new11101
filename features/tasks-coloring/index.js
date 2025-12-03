@@ -1,32 +1,84 @@
 // features/tasks-coloring/index.js
 
 function isTasksChip(el) {
-  return !!el && el.nodeType === 1 && el.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"]');
+  return !!el && el.nodeType === 1 && el.matches?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"]');
 }
 
+/**
+ * Get task ID from a DOM element (supports both old and new UI)
+ * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
+ * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
+ * @param {HTMLElement} el - DOM element
+ * @returns {string|Promise<string>|null} Task ID (may be Promise for new UI)
+ */
 function getTaskIdFromChip(el) {
   if (!el || !el.getAttribute) return null;
 
   const ev = el.getAttribute('data-eventid');
+
+  // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     return ev.slice(6);
   }
 
+  // NEW UI: ttb_ prefix (requires calendar event mapping)
+  if (ev && ev.startsWith('ttb_')) {
+    // Decode ttb_ to get calendar event ID
+    const calendarEventId = decodeCalendarEventIdFromTtb(ev);
+    if (calendarEventId) {
+      // Return Promise that resolves to task API ID
+      return resolveCalendarEventToTaskId(calendarEventId);
+    }
+    return null;
+  }
+
+  // Fallback: data-taskid attribute
   const taskId = el.getAttribute('data-taskid');
   if (taskId) return taskId;
 
+  // Search parent elements
   let current = el;
   while (current && current !== document.body) {
     const parentEv = current.getAttribute?.('data-eventid');
+
+    // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       return parentEv.slice(6);
     }
+
+    // NEW UI in parent
+    if (parentEv && parentEv.startsWith('ttb_')) {
+      const calendarEventId = decodeCalendarEventIdFromTtb(parentEv);
+      if (calendarEventId) {
+        return resolveCalendarEventToTaskId(calendarEventId);
+      }
+    }
+
+    // data-taskid in parent
     const parentTaskId = current.getAttribute?.('data-taskid');
     if (parentTaskId) return parentTaskId;
+
     current = current.parentNode;
   }
 
   return null;
+}
+
+/**
+ * Helper to ensure we always get a resolved task ID (handles both sync and async)
+ * @param {HTMLElement} el - DOM element
+ * @returns {Promise<string|null>} Task ID
+ */
+async function getResolvedTaskId(el) {
+  const result = getTaskIdFromChip(el);
+
+  // If result is a Promise, await it
+  if (result && typeof result.then === 'function') {
+    return await result;
+  }
+
+  // Otherwise return directly
+  return result;
 }
 
 function getPaintTarget(chip) {
@@ -89,7 +141,7 @@ function findTaskByContent(taskName, taskDate) {
     }
   }
 
-  const calendarTasks = document.querySelectorAll('[data-eventid^="tasks."]');
+  const calendarTasks = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"]');
   for (const task of calendarTasks) {
     const taskText = task.textContent?.toLowerCase() || '';
     if (taskText.includes(taskName.toLowerCase())) {
@@ -100,19 +152,19 @@ function findTaskByContent(taskName, taskDate) {
   return null;
 }
 
-function resolveTaskIdFromEventTarget(t) {
-  let taskId = getTaskIdFromChip(t);
+async function resolveTaskIdFromEventTarget(t) {
+  let taskId = await getResolvedTaskId(t);
   if (taskId) return taskId;
 
-  const chip = t?.closest?.('[data-eventid^="tasks."]');
+  const chip = t?.closest?.('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"]');
   if (chip) {
-    taskId = getTaskIdFromChip(chip);
+    taskId = await getResolvedTaskId(chip);
     if (taskId) return taskId;
   }
 
   let current = t?.parentNode;
   while (current && current !== document.body) {
-    taskId = getTaskIdFromChip(current);
+    taskId = await getResolvedTaskId(current);
     if (taskId) return taskId;
     current = current.parentNode;
   }
@@ -146,6 +198,111 @@ const CACHE_LIFETIME = 30000; // 30 seconds
 let cachedColorMap = null;
 let colorMapLastLoaded = 0;
 const COLOR_MAP_CACHE_TIME = 1000; // Cache for 1 second
+
+// CALENDAR EVENT MAPPING CACHE (NEW UI - ttb_ prefix)
+let calendarEventMappingCache = null; // In-memory cache: calendarEventId → taskApiId
+let calendarMappingLastUpdated = 0;
+const CALENDAR_MAPPING_CACHE_LIFETIME = 30000; // 30 seconds
+
+/**
+ * Decode ttb_ prefixed data-eventid to calendar event ID
+ * @param {string} ttbString - String like "ttb_MTVxbWhvcjNjN3Y3ZjYwcnAwdGVxMGxhazMgYWRhbS5odXJsZXkucHJpdmF0ZUBt"
+ * @returns {string|null} Calendar event ID or null
+ */
+function decodeCalendarEventIdFromTtb(ttbString) {
+  if (!ttbString || !ttbString.startsWith('ttb_')) {
+    return null;
+  }
+
+  try {
+    const base64Part = ttbString.slice(4); // Remove "ttb_" prefix
+    const decoded = atob(base64Part); // Decode base64
+    const parts = decoded.split(' '); // Split on space
+    return parts[0] || null; // Return calendar event ID
+  } catch (error) {
+    console.error('[TaskColoring] Failed to decode ttb_ string:', ttbString, error);
+    return null;
+  }
+}
+
+/**
+ * Refresh calendar event mapping cache from storage
+ * @returns {Promise<Object>} Calendar event mapping cache
+ */
+async function refreshCalendarMappingCache() {
+  const now = Date.now();
+
+  // Return cached data if still fresh
+  if (calendarEventMappingCache && now - calendarMappingLastUpdated < CALENDAR_MAPPING_CACHE_LIFETIME) {
+    return calendarEventMappingCache;
+  }
+
+  // Fetch from storage
+  return new Promise((resolve) => {
+    chrome.storage.local.get('cf.calendarEventMapping', (result) => {
+      calendarEventMappingCache = result['cf.calendarEventMapping'] || {};
+      calendarMappingLastUpdated = now;
+      resolve(calendarEventMappingCache);
+    });
+  });
+}
+
+/**
+ * Resolve calendar event ID to task API ID
+ * Uses cache first, falls back to Calendar API if needed
+ * @param {string} calendarEventId - Calendar event ID
+ * @returns {Promise<string|null>} Task API ID or null
+ */
+async function resolveCalendarEventToTaskId(calendarEventId) {
+  if (!calendarEventId) {
+    return null;
+  }
+
+  try {
+    // Check cache first
+    const cache = await refreshCalendarMappingCache();
+    if (cache[calendarEventId]) {
+      return cache[calendarEventId].taskApiId;
+    }
+
+    // Cache miss - need to fetch from Calendar API
+    // Send message to background script to handle API call
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage(
+        {
+          type: 'RESOLVE_CALENDAR_EVENT',
+          calendarEventId: calendarEventId,
+        },
+        (response) => {
+          if (response && response.success && response.taskApiId) {
+            // Update cache
+            if (calendarEventMappingCache) {
+              calendarEventMappingCache[calendarEventId] = {
+                taskApiId: response.taskApiId,
+                taskFragment: response.taskFragment,
+                lastVerified: new Date().toISOString(),
+              };
+            }
+            resolve(response.taskApiId);
+          } else {
+            resolve(null);
+          }
+        },
+      );
+    });
+  } catch (error) {
+    console.error('[TaskColoring] Failed to resolve calendar event to task ID:', error);
+    return null;
+  }
+}
+
+/**
+ * Invalidate calendar mapping cache (called on storage changes)
+ */
+function invalidateCalendarMappingCache() {
+  calendarMappingLastUpdated = 0;
+  calendarEventMappingCache = null;
+}
 
 // ========================================
 // GLOBAL MESSAGE HANDLER (Always Active)
@@ -522,6 +679,8 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
   const combinedSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
   const allTaskElements = document.querySelectorAll(combinedSelector);
 
+  // Note: For ttb_ elements, we'll need to resolve them via mapping in getTaskIdFromChip()
+
   const manualReferenceMap = manualOverrideMap;
 
   const modalElement = document.querySelector('[role="dialog"]');
@@ -570,7 +729,7 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
   if (existingColorPicker) return;
 
   // Require actual task elements with real task IDs for injection
-  const hasExistingTaskElements = dialogEl.querySelector('[data-eventid^="tasks."], [data-taskid]');
+  const hasExistingTaskElements = dialogEl.querySelector('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"], [data-taskid]');
 
   // Only inject if we have evidence this is an existing task modal
   if (!hasExistingTaskElements) {
@@ -702,7 +861,7 @@ let isResetting = false; // Flag to prevent repaint during reset
  */
 function captureGoogleTaskColors() {
   // Find all task elements
-  const allTasks = document.querySelectorAll(`[data-eventid^="tasks."], [data-eventid^="tasks_"]`);
+  const allTasks = document.querySelectorAll(`[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"]`);
 
   let capturedCount = 0;
 
@@ -732,7 +891,8 @@ function captureGoogleTaskColors() {
 
     // DEBUG: Check if this is a completed task
     const isCompleted = isTaskElementCompleted(taskEl);
-    const taskId = getTaskIdFromChip(taskEl);
+    // Note: For logging, we use getTaskIdFromChip directly (may return Promise for ttb_)
+    const taskIdOrPromise = getTaskIdFromChip(taskEl);
 
     // Save background color
     if (googleBg && googleBg !== 'rgba(0, 0, 0, 0)' && googleBg !== 'transparent') {
@@ -741,9 +901,15 @@ function captureGoogleTaskColors() {
       target.dataset.cfGoogleBgWasCompleted = isCompleted ? 'true' : 'false';
       capturedCount++;
 
-      // DEBUG: Log what we captured
+      // DEBUG: Log what we captured (resolve taskId if it's a Promise)
       if (typeof console !== 'undefined') {
-        console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskId, googleBg);
+        if (taskIdOrPromise && typeof taskIdOrPromise.then === 'function') {
+          taskIdOrPromise.then(taskId => {
+            console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskId, googleBg);
+          });
+        } else {
+          console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskIdOrPromise, googleBg);
+        }
       }
     }
     // Save border color
@@ -1170,6 +1336,8 @@ function invalidateColorCache() {
   listTextColorsCache = null;
   completedStylingCache = null;
   manualColorsCache = null;
+  // Also invalidate calendar mapping cache (NEW UI)
+  invalidateCalendarMappingCache();
 }
 
 /**
@@ -1502,7 +1670,7 @@ async function doRepaint(bypassThrottling = false) {
   }
 
   // Second: Search for ALL tasks on the page (including new ones after navigation)
-  const calendarTasks = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-taskid]');
+  const calendarTasks = document.querySelectorAll('[data-eventid^="tasks."], [data-eventid^="tasks_"], [data-eventid^="ttb_"], [data-taskid]');
 
   let skippedModalCount = 0;
   let processedCount = 0;
@@ -1518,7 +1686,7 @@ async function doRepaint(bypassThrottling = false) {
       continue;
     }
 
-    const id = getTaskIdFromChip(chip);
+    const id = await getResolvedTaskId(chip);
 
     if (id) {
       // Check for any color (manual or list default)

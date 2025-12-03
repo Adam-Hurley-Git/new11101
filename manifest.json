@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ColorKit for Google Calendar",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Transform Google Calendar with custom day colors, task colors, and time blocks.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAweGAAs9qIGh1t1psscgg2xXgLYYiJXzLMi9oIONt2i/Wec9Br6ecacX+59MBZ+4BrhoPrO6CeFhHWkMqqeO+R+5lkZw0tPWViqshAk3zPgCdVcbdxal9A9JCSrCwyAiqQ0cQpEBBbumdePjbGNvLl1si1zhsU1SXQDN/NxzxcUwjN67cKkjpHIBZbqjJMrGAWT8tP0HUb2sgzMw0Hefp6J5k5EsEDEeK1MPdKZJl47W9gh248aI2j1bKWTkZ4pAKlvqICv0Sb3WrNlR3aYX6lGrokivvpFqb+LI5/sLiBlRp2VSprrVMegwIDHm9N+wW3tMnEHyXEUTEk4O8BlMhhQIDAQAB",
   "icons": {
@@ -27,7 +27,10 @@
   "options_page": "options/options.html",
   "oauth2": {
     "client_id": "373311643778-3m6quqgtu8jcsn1ncq6t2ubjeiit3f6n.apps.googleusercontent.com",
-    "scopes": ["https://www.googleapis.com/auth/tasks.readonly"]
+    "scopes": [
+      "https://www.googleapis.com/auth/tasks.readonly",
+      "https://www.googleapis.com/auth/calendar.readonly"
+    ]
   },
   "content_scripts": [
     {
