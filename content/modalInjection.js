@@ -46,7 +46,8 @@
 
     // For task color UI to appear, we need an EXISTING task (not create new)
     // Check for existing task data attributes (most reliable indicator)
-    const hasExistingTaskElements = dialog.querySelector('[data-eventid^="tasks."], [data-taskid]');
+    // Support both OLD UI (tasks.) and NEW UI (ttb_)
+    const hasExistingTaskElements = dialog.querySelector('[data-eventid^="tasks."], [data-eventid^="ttb_"], [data-taskid]');
 
     // Check if we have a captured task ID from a recent click on an existing task
     const taskId = window.cfTasksColoring?.getLastClickedTaskId?.();
@@ -145,7 +146,7 @@
     return isEditModal;
   }
 
-  function mountInto(dialog) {
+  async function mountInto(dialog) {
     console.log('=== MODAL DETECTED ===');
     console.log('Modal element:', dialog);
     console.log('Modal classes:', dialog.className);
@@ -170,16 +171,42 @@
       let taskId = null;
 
       // First, try to find task ID directly from current modal content (most reliable)
-      const modalTaskElement = dialog.querySelector('[data-eventid^="tasks."]');
+      // Support both OLD UI (tasks.) and NEW UI (ttb_)
+      const modalTaskElement = dialog.querySelector('[data-eventid^="tasks."], [data-eventid^="ttb_"]');
       if (modalTaskElement) {
-        taskId = modalTaskElement.getAttribute('data-eventid')?.slice(6);
-        console.log('Found fresh task ID from current modal content:', taskId);
+        const eventId = modalTaskElement.getAttribute('data-eventid');
+        if (eventId) {
+          // OLD UI: tasks. format - direct extraction
+          if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
+            taskId = eventId.slice(6);
+            console.log('[ModalInjection] Found OLD UI task ID from modal content:', taskId);
+          }
+          // NEW UI: ttb_ format - need to resolve via getResolvedTaskId
+          else if (eventId.startsWith('ttb_')) {
+            console.log('[ModalInjection] Found NEW UI (ttb_) in modal, resolving...');
+            if (window.cfTasksColoring?.getResolvedTaskId) {
+              taskId = await window.cfTasksColoring.getResolvedTaskId(modalTaskElement);
+              console.log('[ModalInjection] Resolved NEW UI task ID:', taskId);
+            } else {
+              console.warn('[ModalInjection] getResolvedTaskId not available yet');
+            }
+          }
+        }
       }
 
       // Fallback to last clicked task ID if no task found in modal
       if (!taskId) {
-        taskId = window.cfTasksColoring?.getLastClickedTaskId?.();
-        console.log('Using task ID from getLastClickedTaskId:', taskId);
+        const clickedTaskId = window.cfTasksColoring?.getLastClickedTaskId?.();
+        console.log('[ModalInjection] Using task ID from getLastClickedTaskId:', clickedTaskId);
+
+        // If it's a Promise (NEW UI), await it
+        if (clickedTaskId && typeof clickedTaskId.then === 'function') {
+          console.log('[ModalInjection] Task ID is Promise, awaiting...');
+          taskId = await clickedTaskId;
+          console.log('[ModalInjection] Resolved Promise task ID:', taskId);
+        } else {
+          taskId = clickedTaskId;
+        }
       }
 
       // If we have an existing color picker but the task ID has changed, remove the old one
@@ -195,32 +222,47 @@
       }
 
       if (!taskId) {
-        console.log('No task ID found, performing comprehensive search...');
+        console.log('[ModalInjection] No task ID found, performing comprehensive search...');
 
         // More comprehensive search for task elements and IDs
-        const taskSelectors = ['[data-eventid^="tasks."]', '[data-eventid^="tasks_"]', '[data-taskid]'];
+        // Include both OLD UI (tasks.) and NEW UI (ttb_) selectors
+        const taskSelectors = ['[data-eventid^="tasks."]', '[data-eventid^="tasks_"]', '[data-eventid^="ttb_"]', '[data-taskid]'];
 
         for (const selector of taskSelectors) {
           const taskElement = dialog.querySelector(selector);
           if (taskElement) {
-            console.log('Task element found with selector:', selector);
+            console.log('[ModalInjection] Task element found with selector:', selector);
             const eventId = taskElement.getAttribute('data-eventid');
             const taskIdAttr = taskElement.getAttribute('data-taskid');
 
+            // OLD UI: tasks. or tasks_ prefix
             if (eventId && (eventId.startsWith('tasks.') || eventId.startsWith('tasks_'))) {
               taskId = eventId.slice(6);
-              console.log('Found task ID from event ID:', taskId);
+              console.log('[ModalInjection] Found OLD UI task ID from event ID:', taskId);
               break;
-            } else if (taskIdAttr) {
+            }
+            // NEW UI: ttb_ prefix
+            else if (eventId && eventId.startsWith('ttb_')) {
+              console.log('[ModalInjection] Found NEW UI (ttb_) task in comprehensive search, resolving...');
+              if (window.cfTasksColoring?.getResolvedTaskId) {
+                taskId = await window.cfTasksColoring.getResolvedTaskId(taskElement);
+                console.log('[ModalInjection] Resolved NEW UI task ID:', taskId);
+                if (taskId) break;
+              } else {
+                console.warn('[ModalInjection] getResolvedTaskId not available');
+              }
+            }
+            // Direct task ID attribute
+            else if (taskIdAttr) {
               taskId = taskIdAttr;
-              console.log('Found task ID from task ID attribute:', taskId);
+              console.log('[ModalInjection] Found task ID from task ID attribute:', taskId);
               break;
             }
           }
         }
 
         if (!taskId) {
-          console.warn('No real task ID found in comprehensive search');
+          console.warn('[ModalInjection] No real task ID found in comprehensive search');
           return; // Don't inject for non-task dialogs
         }
       }
@@ -417,9 +459,10 @@
       const openDialog = findOpenDialog();
       if (openDialog && isTaskDialog(openDialog)) {
         // Check if this click is on a task element (not within the modal)
-        const taskElement = e.target.closest('[data-eventid^="tasks."]');
+        // Support both OLD UI (tasks.) and NEW UI (ttb_)
+        const taskElement = e.target.closest('[data-eventid^="tasks."], [data-eventid^="ttb_"]');
         if (taskElement && !taskElement.closest('[role="dialog"]')) {
-          console.log('Task clicked while modal is open - potential task switch');
+          console.log('[ModalInjection] Task clicked while modal is open - potential task switch');
 
           // Clear existing timeout to avoid multiple re-injections
           clearTimeout(openDialog._taskSwitchTimeout);
