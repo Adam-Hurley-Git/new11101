@@ -815,10 +815,10 @@ If format mismatch:
 - Task is painted immediately
 - Color persists
 
-**List Default Coloring**: ⏳ **NOT WORKING**
-- Need to debug why default colors aren't applied
-- Resolution chain works (confirmed)
-- Likely issue in color lookup or mapping
+**List Default Coloring**: ✅ **FIXED** (December 3, 2025)
+- Root cause: Task ID format mismatch (base64 vs decoded)
+- Solution: Dual-format lookup in `getColorForTask()`
+- See: `LIST_DEFAULT_COLORING_FIX_COMPLETE.md` for full details
 
 **Key Learnings**:
 1. NEW UI returns Promises, OLD UI returns strings
