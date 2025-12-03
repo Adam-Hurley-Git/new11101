@@ -1426,13 +1426,71 @@ async function isTaskInCache(taskId) {
 async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const cache = await refreshColorCache();
   const manualColors = manualColorsMap || cache.manualColors;
-  const listId = cache.taskToListMap[taskId];
+
+  // CRITICAL FIX: Support both base64 and decoded task ID formats
+  // cf.taskToListMap stores DECODED IDs (from buildTaskToListMapping)
+  // but ttb_ resolution returns BASE64 IDs (from resolveCalendarEventToTaskId)
+  // Try both formats to ensure compatibility with OLD UI and NEW UI (ttb_)
+  let listId = cache.taskToListMap[taskId];
+
+  // If not found and taskId looks like base64, try decoded format
+  if (!listId && taskId) {
+    try {
+      const decoded = atob(taskId);
+      if (decoded !== taskId) {
+        listId = cache.taskToListMap[decoded];
+        if (listId) {
+          console.log('[TaskColoring] Found list via decoded ID:', { taskId, decoded, listId });
+        }
+      }
+    } catch (e) {
+      // Not base64 encoded, ignore
+    }
+  }
+
+  // If not found and taskId looks decoded, try base64 format
+  if (!listId && taskId) {
+    try {
+      const encoded = btoa(taskId);
+      if (encoded !== taskId) {
+        listId = cache.taskToListMap[encoded];
+        if (listId) {
+          console.log('[TaskColoring] Found list via encoded ID:', { taskId, encoded, listId });
+        }
+      }
+    } catch (e) {
+      // Not encodable, ignore
+    }
+  }
+
   const isCompleted = options.isCompleted === true;
   const overrideTextColor = options.overrideTextColor;
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
-  const manualColor = manualColors?.[taskId];
+  // CRITICAL FIX: Also support dual-format lookup for manual colors
+  let manualColor = manualColors?.[taskId];
+
+  // If not found and taskId is base64, try decoded
+  if (!manualColor && taskId && manualColors) {
+    try {
+      const decoded = atob(taskId);
+      if (decoded !== taskId) {
+        manualColor = manualColors[decoded];
+      }
+    } catch (e) {}
+  }
+
+  // If not found and taskId is decoded, try base64
+  if (!manualColor && taskId && manualColors) {
+    try {
+      const encoded = btoa(taskId);
+      if (encoded !== taskId) {
+        manualColor = manualColors[encoded];
+      }
+    } catch (e) {}
+  }
+
   if (manualColor) {
     // Manual background color: always preserve it, even when completed
     // Don't let list's completed styling mode override manual colors
