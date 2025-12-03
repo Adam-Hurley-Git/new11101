@@ -84,40 +84,61 @@ This document provides comprehensive context about the ColorKit Chrome extension
 
 ## ⚠️ Known Issues & Active Investigations
 
-### 🔍 Task Mapping Investigation (December 2025)
+### ✅ Task Mapping Investigation - RESOLVED (December 2025)
 
-**Status**: 🔬 Investigation Phase
-**Issue**: Google has rewritten the Calendar UI, potentially breaking task-to-DOM mapping
-**Impact**: Task coloring may not work if Google changed how tasks are rendered
+**Status**: ✅ **CONFIRMED WORKING** - No changes needed
+**Investigation Date**: December 3, 2025
+**Tested Environment**: Google Calendar (calendar.google.com) with 8 tasks (4 pending, 4 completed)
 
-#### What Changed:
-- Google completely rewrote the Calendar UI (reported December 2025)
-- Old selectors (`data-eventid="tasks.{taskId}"`) may no longer work
-- Need to verify and potentially update the DOM mapping approach
+#### Investigation Summary:
 
-#### Investigation Tools:
+Despite reports of Google rewriting the Calendar UI, **comprehensive testing confirms that legacy selectors still work**:
 
-We've created diagnostic tools to investigate the new Calendar structure:
+**Test Results** (December 3, 2025):
+- ✅ `data-eventid` selectors: **56 elements found**
+- ✅ `.GTG3wb` button class: **92 elements found**
+- ✅ Task IDs extractable: Sample IDs confirmed (`gtCquemlQRditn7O`, etc.)
+- ❌ `tasks.google.com` URLs: Not present (not needed)
+- ❌ WebViewLink in DOM: Not used by Calendar
 
-1. **Quick Inspector** (`/diagnostics/quick-task-inspector.js`)
-   - Fast 5-phase diagnostic
+**Conclusion**: Current implementation is correct. No code changes required.
+
+#### What Was Tested:
+- Google Calendar UI (new version, December 2025)
+- Week view with 8 tasks visible (4 pending + 4 completed)
+- Both `data-eventid="tasks."` and `data-eventid="tasks_"` formats present
+- All task coloring selectors functioning correctly
+
+#### Diagnostic Tools (For Future Monitoring):
+
+If Google updates the Calendar UI again, these tools can quickly verify selector health:
+
+1. **Quick Inspector** (`/diagnostics/quick-task-inspector.js`) - 5-second health check
    - Copy/paste into console on calendar.google.com
    - Run: `quickInspect()`
-   - Get immediate status report
+   - Immediately shows which selectors work
 
-2. **Full Explorer** (`/diagnostics/task-mapping-explorer.js`)
-   - Comprehensive 6-phase analysis
-   - Deep dive into all possible identifiers
-   - Interactive element inspection
+2. **Full Explorer** (`/diagnostics/task-mapping-explorer.js`) - Deep analysis
    - Run: `await exploreTaskMapping()`
+   - Comprehensive 6-phase investigation
+   - Exports results as JSON
 
-3. **Investigation Guide** (`/docs/TASK_MAPPING_INVESTIGATION.md`)
-   - Complete documentation
-   - How to use the tools
-   - Interpretation of results
-   - Implementation scenarios (A-D) based on findings
+3. **Usage Guide** (`/diagnostics/USAGE.md`)
+   - Complete step-by-step instructions
+   - Troubleshooting section
+   - How to interpret results
 
-#### Current Task Mapping Approach:
+4. **Implementation Guide** (`/docs/TASK_MAPPING_INVESTIGATION.md`)
+   - Scenarios A-D for different findings
+   - Code examples for each approach
+   - Complete refactoring guide if needed
+
+5. **Optional Monitoring** (`/diagnostics/monitoring-code-optional.js`)
+   - Auto-detect selector breakage
+   - Log warnings if Google changes DOM
+   - Can be integrated into content script
+
+#### Current Task Mapping Approach (✅ Confirmed Working):
 
 **API → DOM Correlation**:
 ```javascript
@@ -130,30 +151,35 @@ We've created diagnostic tools to investigate the new Calendar structure:
 }
 
 // In Calendar DOM (what we search for):
-<div data-eventid="tasks.{taskId}">  // ← This may have changed!
+<div data-eventid="tasks.{taskId}">  // ✅ Still works as of Dec 2025!
   <button class="GTG3wb">...</button>
 </div>
 ```
 
-**Legacy Selectors** (`features/tasks-coloring/index.js:59-67`):
-- `[data-eventid="tasks.{taskId}"]` - Primary selector
-- `[data-eventid="tasks_{taskId}"]` - Alternative format
-- `[data-taskid]` - Direct task ID attribute
-- `.GTG3wb` - Task button class
+**Working Selectors** (`features/tasks-coloring/index.js:59-67`):
+- ✅ `[data-eventid="tasks.{taskId}"]` - Primary selector (56 elements found)
+- ✅ `[data-eventid="tasks_{taskId}"]` - Alternative format (also present)
+- ✅ `[data-taskid]` - Direct task ID attribute (1 element found)
+- ✅ `.GTG3wb` - Task button class (92 elements found)
 
-**Potential New Approaches**:
-1. **webViewLink-based** - Extract fragment ID from API, search DOM for matching URL
-2. **Attribute-based** - Find new stable `data-*` attributes
-3. **Heuristic** - Match by title + date + position (last resort)
+**Additional Discovered Attributes** (December 2025 testing):
+- `data-eventchip=""` - Present on 92 task elements
+- Various event-specific `data-eventid` patterns
+- Classes: `ChfiMc`, `rFUW1c`, `LLspoc`, `Hrn1mc`, `MmaWIb` (styling)
 
-#### Next Steps:
+**Not Used** (for reference):
+- ❌ `webViewLink` URLs - Not embedded in Calendar DOM
+- ❌ `tasks.google.com` iframe sources - Not present
+- ❌ Content-based matching - Not needed (selectors work)
 
-1. **Run quick-task-inspector.js** on calendar.google.com
-2. **Report findings** - Which selectors still work?
-3. **Implement solution** based on investigation results (see guide for scenarios)
-4. **Update this document** with findings and implemented solution
+#### Future Monitoring:
 
-See `/docs/TASK_MAPPING_INVESTIGATION.md` for complete details.
+If Google updates the Calendar UI in the future:
+
+1. **Run diagnostics**: `diagnostics/quick-task-inspector.js` in console
+2. **Check results**: If selectors show `0 elements`, investigation needed
+3. **Refer to guide**: `/docs/TASK_MAPPING_INVESTIGATION.md` has scenarios A-D
+4. **Optional monitoring**: Add code from `/diagnostics/monitoring-code-optional.js`
 
 ---
 

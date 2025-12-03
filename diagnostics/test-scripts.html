@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Diagnostic Scripts</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        .section {
+            background: #252526;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border: 1px solid #3e3e42;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #1e3a1e;
+            border: 1px solid #4ec9b0;
+            color: #4ec9b0;
+        }
+        .status.error {
+            background: #3a1e1e;
+            border: 1px solid #f48771;
+            color: #f48771;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #3e3e42;
+        }
+        code {
+            color: #ce9178;
+        }
+        /* Mock task elements for testing */
+        .mock-task {
+            background: #2d2d30;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 3px solid #007acc;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Diagnostic Scripts Test Page</h1>
+
+    <div class="section">
+        <h2>1. Quick Task Inspector</h2>
+        <p>Tests the quick-task-inspector.js script</p>
+        <button onclick="testQuickInspector()">Load & Test Quick Inspector</button>
+        <div id="quickInspectorStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Task Mapping Explorer</h2>
+        <p>Tests the task-mapping-explorer.js script</p>
+        <button onclick="testMappingExplorer()">Load & Test Mapping Explorer</button>
+        <div id="mappingExplorerStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Mock Task Elements</h2>
+        <p>Simulated task elements for testing selectors</p>
+        <div class="mock-task" data-eventid="tasks.test123">
+            <button class="GTG3wb">Test Task 1</button>
+        </div>
+        <div class="mock-task" data-eventid="tasks_test456">
+            <button class="GTG3wb">Test Task 2</button>
+        </div>
+        <div class="mock-task" data-taskid="test789">
+            <button>Test Task 3</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Console Output</h2>
+        <p>Open DevTools Console (F12) to see detailed output</p>
+        <button onclick="console.clear()">Clear Console</button>
+    </div>
+
+    <script>
+        function showStatus(elementId, success, message) {
+            const el = document.getElementById(elementId);
+            el.className = `status ${success ? 'success' : 'error'}`;
+            el.innerHTML = `${success ? '✅' : '❌'} ${message}`;
+        }
+
+        async function testQuickInspector() {
+            const statusEl = 'quickInspectorStatus';
+            showStatus(statusEl, true, 'Loading script...');
+
+            try {
+                // Load the script
+                const response = await fetch('quick-task-inspector.js');
+                const scriptCode = await response.text();
+
+                // Execute the script
+                eval(scriptCode);
+
+                // Check if functions are available
+                if (typeof window.quickInspect !== 'function') {
+                    throw new Error('quickInspect function not found');
+                }
+                if (typeof window.clickToInspect !== 'function') {
+                    throw new Error('clickToInspect function not found');
+                }
+
+                showStatus(statusEl, true, 'Script loaded successfully! Functions available: quickInspect(), clickToInspect()');
+
+                // Run the quick inspect
+                console.log('🧪 RUNNING QUICK INSPECTOR TEST...\n');
+                const results = await window.quickInspect();
+
+                console.log('\n📊 TEST RESULTS:', results);
+
+                // Verify results structure
+                if (!results.legacy || !results.urls || !results.iframes || !results.attributes) {
+                    throw new Error('Unexpected results structure');
+                }
+
+                const foundElements = results.legacy.byEventId.length + results.legacy.byTaskId.length + results.legacy.byClass.length;
+
+                showStatus(statusEl, true,
+                    `✅ Test passed! Found ${foundElements} mock task elements. Check console for detailed output.`
+                );
+
+            } catch (error) {
+                showStatus(statusEl, false, `Error: ${error.message}`);
+                console.error('Quick Inspector Test Error:', error);
+            }
+        }
+
+        async function testMappingExplorer() {
+            const statusEl = 'mappingExplorerStatus';
+            showStatus(statusEl, true, 'Loading script...');
+
+            try {
+                // Load the script
+                const response = await fetch('task-mapping-explorer.js');
+                const scriptCode = await response.text();
+
+                // Execute the script
+                eval(scriptCode);
+
+                // Check if functions are available
+                if (typeof window.exploreTaskMapping !== 'function') {
+                    throw new Error('exploreTaskMapping function not found');
+                }
+                if (typeof window.inspectTaskOnClick !== 'function') {
+                    throw new Error('inspectTaskOnClick function not found');
+                }
+                if (typeof window.exportTaskMappingResults !== 'function') {
+                    throw new Error('exportTaskMappingResults function not found');
+                }
+
+                showStatus(statusEl, true, 'Script loaded successfully! Functions available: exploreTaskMapping(), inspectTaskOnClick(), exportTaskMappingResults()');
+
+                // Run the explorer
+                console.log('🧪 RUNNING TASK MAPPING EXPLORER TEST...\n');
+                const results = await window.exploreTaskMapping({ verbose: true });
+
+                console.log('\n📊 TEST RESULTS:', results);
+
+                // Verify results structure
+                if (!results.summary || !results.findings || !results.timestamp) {
+                    throw new Error('Unexpected results structure');
+                }
+
+                const methodsFound = results.summary.identificationMethods.length;
+
+                showStatus(statusEl, true,
+                    `✅ Test passed! Found ${methodsFound} identification methods. Check console for detailed output.`
+                );
+
+            } catch (error) {
+                showStatus(statusEl, false, `Error: ${error.message}`);
+                console.error('Mapping Explorer Test Error:', error);
+            }
+        }
+
+        // Add info on load
+        console.log(`
+╔════════════════════════════════════════════════════════════════════════════╗
+║                     DIAGNOSTIC SCRIPTS TEST PAGE                           ║
+║                                                                            ║
+║  This page tests both diagnostic scripts in a controlled environment.     ║
+║                                                                            ║
+║  Click the buttons above to load and test each script.                    ║
+║                                                                            ║
+║  Mock task elements are provided below for testing selectors.             ║
+╚════════════════════════════════════════════════════════════════════════════╝
+        `);
+    </script>
+</body>
+</html>

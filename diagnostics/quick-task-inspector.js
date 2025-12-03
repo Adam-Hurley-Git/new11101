@@ -5,7 +5,7 @@
 //   quickInspect()
 // ============================================================================
 
-(async function quickInspect() {
+async function quickInspect() {
   console.clear();
   console.log('🔍 QUICK TASK INSPECTOR\n' + '='.repeat(60));
 
@@ -149,77 +149,87 @@
   console.log('  • Run: await exploreTaskMapping()');
   console.log('='.repeat(60) + '\n');
 
-  // Make interactive inspector available
-  window.clickToInspect = function () {
-    console.log('\n👆 Click on any task to inspect it...\n');
-    const handler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const el = e.target;
-      console.clear();
-      console.log('🎯 INSPECTING CLICKED ELEMENT\n' + '='.repeat(60));
-      console.log(`Tag:     ${el.tagName}`);
-      console.log(`Class:   ${el.className || '(none)'}`);
-      console.log(`ID:      ${el.id || '(none)'}`);
-      console.log(`Text:    ${el.textContent?.substring(0, 100) || '(none)'}`);
-
-      console.log('\nAll attributes:');
-      if (el.attributes && el.attributes.length > 0) {
-        for (const attr of el.attributes) {
-          console.log(`  ${attr.name} = "${attr.value}"`);
-        }
-      } else {
-        console.log('  (no attributes)');
-      }
-
-      console.log('\nParent hierarchy:');
-      let current = el.parentElement;
-      let depth = 1;
-      while (current && depth <= 5) {
-        const id = current.id ? `#${current.id}` : '';
-        const classes = current.className ? `.${current.className.split(' ')[0]}` : '';
-        console.log(`  ${'  '.repeat(depth - 1)}↑ <${current.tagName.toLowerCase()}${id}${classes}>`);
-
-        // Show interesting attributes on parents
-        if (current.attributes) {
-          for (const attr of current.attributes) {
-            const name = attr.name.toLowerCase();
-            const value = attr.value;
-            if (
-              name.includes('task') ||
-              name.includes('event') ||
-              value.includes('task') ||
-              value.includes('tasks.google.com')
-            ) {
-              console.log(`  ${'  '.repeat(depth)}  ⚡ ${name}="${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"`);
-            }
-          }
-        }
-
-        current = current.parentElement;
-        depth++;
-      }
-
-      console.log('\n' + '='.repeat(60));
-      console.log('Run clickToInspect() again to inspect another element');
-      console.log('='.repeat(60) + '\n');
-
-      document.removeEventListener('click', handler, true);
-    };
-
-    document.addEventListener('click', handler, true);
-  };
-
   return {
     legacy,
     urls,
     iframes: taskIframes,
     attributes: taskAttrs,
   };
-})();
+}
 
-// Export as window function
+// Interactive inspector function
+function clickToInspect() {
+  console.log('\n👆 Click on any task to inspect it...\n');
+  const handler = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const el = e.target;
+    console.clear();
+    console.log('🎯 INSPECTING CLICKED ELEMENT\n' + '='.repeat(60));
+    console.log(`Tag:     ${el.tagName}`);
+    console.log(`Class:   ${el.className || '(none)'}`);
+    console.log(`ID:      ${el.id || '(none)'}`);
+    console.log(`Text:    ${el.textContent?.substring(0, 100) || '(none)'}`);
+
+    console.log('\nAll attributes:');
+    if (el.attributes && el.attributes.length > 0) {
+      for (const attr of el.attributes) {
+        console.log(`  ${attr.name} = "${attr.value}"`);
+      }
+    } else {
+      console.log('  (no attributes)');
+    }
+
+    console.log('\nParent hierarchy:');
+    let current = el.parentElement;
+    let depth = 1;
+    while (current && depth <= 5) {
+      const id = current.id ? `#${current.id}` : '';
+      const classes = current.className ? `.${current.className.split(' ')[0]}` : '';
+      console.log(`  ${'  '.repeat(depth - 1)}↑ <${current.tagName.toLowerCase()}${id}${classes}>`);
+
+      // Show interesting attributes on parents
+      if (current.attributes) {
+        for (const attr of current.attributes) {
+          const name = attr.name.toLowerCase();
+          const value = attr.value;
+          if (
+            name.includes('task') ||
+            name.includes('event') ||
+            value.includes('task') ||
+            value.includes('tasks.google.com')
+          ) {
+            console.log(`  ${'  '.repeat(depth)}  ⚡ ${name}="${value.substring(0, 50)}${value.length > 50 ? '...' : ''}"`);
+          }
+        }
+      }
+
+      current = current.parentElement;
+      depth++;
+    }
+
+    console.log('\n' + '='.repeat(60));
+    console.log('Run clickToInspect() again to inspect another element');
+    console.log('='.repeat(60) + '\n');
+
+    document.removeEventListener('click', handler, true);
+  };
+
+  document.addEventListener('click', handler, true);
+}
+
+// Export functions to window
 window.quickInspect = quickInspect;
+window.clickToInspect = clickToInspect;
 
-console.log('✅ Quick inspector loaded! Run: quickInspect()');
+// Show welcome message
+console.log(`
+╔════════════════════════════════════════════════════════════════════════════╗
+║                        QUICK TASK INSPECTOR LOADED                         ║
+║                                                                            ║
+║  Run: quickInspect()                                                      ║
+║                                                                            ║
+║  Interactive: clickToInspect() - then click on a task                    ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`);
