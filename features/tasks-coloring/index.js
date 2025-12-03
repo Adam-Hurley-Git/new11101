@@ -18,23 +18,31 @@ function getTaskIdFromChip(el) {
 
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
+    console.log('[TaskColoring] OLD UI detected:', ev);
     return ev.slice(6);
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
   if (ev && ev.startsWith('ttb_')) {
+    console.log('[TaskColoring] NEW UI (ttb_) detected:', ev.substring(0, 40) + '...');
     // Decode ttb_ to get calendar event ID
     const calendarEventId = decodeCalendarEventIdFromTtb(ev);
+    console.log('[TaskColoring] Decoded Calendar Event ID:', calendarEventId);
     if (calendarEventId) {
       // Return Promise that resolves to task API ID
+      console.log('[TaskColoring] Calling resolveCalendarEventToTaskId()...');
       return resolveCalendarEventToTaskId(calendarEventId);
     }
+    console.warn('[TaskColoring] Failed to decode ttb_');
     return null;
   }
 
   // Fallback: data-taskid attribute
   const taskId = el.getAttribute('data-taskid');
-  if (taskId) return taskId;
+  if (taskId) {
+    console.log('[TaskColoring] Using data-taskid fallback:', taskId);
+    return taskId;
+  }
 
   // Search parent elements
   let current = el;
@@ -43,24 +51,31 @@ function getTaskIdFromChip(el) {
 
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
+      console.log('[TaskColoring] OLD UI in parent:', parentEv);
       return parentEv.slice(6);
     }
 
     // NEW UI in parent
     if (parentEv && parentEv.startsWith('ttb_')) {
+      console.log('[TaskColoring] NEW UI in parent:', parentEv.substring(0, 40) + '...');
       const calendarEventId = decodeCalendarEventIdFromTtb(parentEv);
       if (calendarEventId) {
+        console.log('[TaskColoring] Calling resolveCalendarEventToTaskId() from parent...');
         return resolveCalendarEventToTaskId(calendarEventId);
       }
     }
 
     // data-taskid in parent
     const parentTaskId = current.getAttribute?.('data-taskid');
-    if (parentTaskId) return parentTaskId;
+    if (parentTaskId) {
+      console.log('[TaskColoring] Using parent data-taskid fallback:', parentTaskId);
+      return parentTaskId;
+    }
 
     current = current.parentNode;
   }
 
+  console.log('[TaskColoring] No task ID found for element');
   return null;
 }
 
@@ -108,13 +123,27 @@ function getGridRoot() {
   return document.querySelector('[role="grid"]') || document.body;
 }
 
-function findTaskElementOnCalendarGrid(taskId) {
-  const taskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
-  for (const el of taskElements) {
+async function findTaskElementOnCalendarGrid(taskId) {
+  // OLD UI: Search by direct task ID
+  const oldUiElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
+  for (const el of oldUiElements) {
     if (!el.closest('[role="dialog"]')) {
       return el;
     }
   }
+
+  // NEW UI: Search all ttb_ elements and resolve them
+  const newUiElements = document.querySelectorAll('[data-eventid^="ttb_"]');
+  for (const ttbElement of newUiElements) {
+    if (ttbElement.closest('[role="dialog"]')) {
+      continue; // Skip modal elements
+    }
+    const resolvedId = await getResolvedTaskId(ttbElement);
+    if (resolvedId === taskId) {
+      return ttbElement;
+    }
+  }
+
   return null;
 }
 
@@ -255,15 +284,21 @@ async function refreshCalendarMappingCache() {
  */
 async function resolveCalendarEventToTaskId(calendarEventId) {
   if (!calendarEventId) {
+    console.warn('[TaskColoring] resolveCalendarEventToTaskId called with empty ID');
     return null;
   }
+
+  console.log('[TaskColoring] resolveCalendarEventToTaskId called for:', calendarEventId);
 
   try {
     // Check cache first
     const cache = await refreshCalendarMappingCache();
     if (cache[calendarEventId]) {
+      console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskApiId);
       return cache[calendarEventId].taskApiId;
     }
+
+    console.log('[TaskColoring] ⚠️ NOT in cache, sending message to background...');
 
     // Cache miss - need to fetch from Calendar API
     // Send message to background script to handle API call
@@ -274,7 +309,20 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
           calendarEventId: calendarEventId,
         },
         (response) => {
-          if (response && response.success && response.taskApiId) {
+          if (chrome.runtime.lastError) {
+            console.error('[TaskColoring] ❌ Chrome runtime error:', chrome.runtime.lastError.message);
+            resolve(null);
+            return;
+          }
+
+          if (!response) {
+            console.error('[TaskColoring] ❌ No response from background script');
+            resolve(null);
+            return;
+          }
+
+          if (response.success && response.taskApiId) {
+            console.log('[TaskColoring] ✅ Background resolved:', response.taskApiId);
             // Update cache
             if (calendarEventMappingCache) {
               calendarEventMappingCache[calendarEventId] = {
@@ -285,13 +333,14 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
             }
             resolve(response.taskApiId);
           } else {
+            console.error('[TaskColoring] ❌ Background resolution failed:', response.error);
             resolve(null);
           }
         },
       );
     });
   } catch (error) {
-    console.error('[TaskColoring] Failed to resolve calendar event to task ID:', error);
+    console.error('[TaskColoring] ❌ Exception in resolveCalendarEventToTaskId:', error);
     return null;
   }
 }
@@ -676,10 +725,25 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
   const manualOverrideMap = colorOverride ? { [taskId]: colorOverride } : null;
 
-  const combinedSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
-  const allTaskElements = document.querySelectorAll(combinedSelector);
+  // OLD UI: Search by direct task ID
+  const oldUiSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
+  const oldUiElements = document.querySelectorAll(oldUiSelector);
 
-  // Note: For ttb_ elements, we'll need to resolve them via mapping in getTaskIdFromChip()
+  // NEW UI: Search all ttb_ elements and resolve them
+  const newUiElements = document.querySelectorAll('[data-eventid^="ttb_"]');
+
+  // Combine both OLD and NEW UI elements
+  const allTaskElements = [...oldUiElements];
+
+  // Resolve NEW UI elements and check if they match the taskId
+  for (const ttbElement of newUiElements) {
+    const resolvedId = await getResolvedTaskId(ttbElement);
+    if (resolvedId === taskId) {
+      allTaskElements.push(ttbElement);
+    }
+  }
+
+  console.log('[TaskColoring] paintTaskImmediately: Found', allTaskElements.length, 'elements for task', taskId);
 
   const manualReferenceMap = manualOverrideMap;
 
@@ -1872,15 +1936,17 @@ function initTasksColoring() {
   }
 
   // Store click handler reference for cleanup
-  clickHandler = (e) => {
-    const id = resolveTaskIdFromEventTarget(e.target);
+  clickHandler = async (e) => {
+    // CRITICAL: Must await for NEW UI (ttb_) tasks, which return Promises
+    const id = await resolveTaskIdFromEventTarget(e.target);
     if (id) {
       lastClickedTaskId = id;
-      const taskElement = e.target.closest('[data-eventid^="tasks."]') || e.target;
+      // Support both OLD UI (tasks.) and NEW UI (ttb_) selectors
+      const taskElement = e.target.closest('[data-eventid^="tasks."], [data-eventid^="ttb_"]') || e.target;
       if (taskElement && !taskElement.closest('[role="dialog"]')) {
         taskElementReferences.set(id, taskElement);
       } else {
-        const calendarTaskElement = findTaskElementOnCalendarGrid(id);
+        const calendarTaskElement = await findTaskElementOnCalendarGrid(id);
         if (calendarTaskElement) {
           taskElementReferences.set(id, calendarTaskElement);
         }
@@ -1928,11 +1994,24 @@ function initTasksColoring() {
     }
   });
 
-  if (grid) {
+  // CRITICAL FIX: Validate that grid is actually a DOM Node before observing
+  if (grid && grid instanceof Node) {
     gridObserver.observe(grid, {
       childList: true,
       subtree: true,
     });
+  } else {
+    console.warn('[Task Coloring] Grid element not ready, will observe document.body after delay');
+    // Fallback: wait for DOM to be fully ready, then try again
+    setTimeout(() => {
+      const fallbackGrid = document.querySelector('[role="grid"]') || document.body;
+      if (fallbackGrid && fallbackGrid instanceof Node) {
+        gridObserver.observe(fallbackGrid, {
+          childList: true,
+          subtree: true,
+        });
+      }
+    }, 1000);
   }
 
 
@@ -1998,6 +2077,7 @@ function initTasksColoring() {
 
   window.cfTasksColoring = {
     getLastClickedTaskId: () => lastClickedTaskId,
+    getResolvedTaskId: getResolvedTaskId, // Needed by modalInjection.js for NEW UI (ttb_) support
     repaint: repaintSoon,
     initTasksColoring: initTasksColoring,
     injectTaskColorControls: injectTaskColorControls,
