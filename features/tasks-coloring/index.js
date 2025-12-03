@@ -123,13 +123,27 @@ function getGridRoot() {
   return document.querySelector('[role="grid"]') || document.body;
 }
 
-function findTaskElementOnCalendarGrid(taskId) {
-  const taskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
-  for (const el of taskElements) {
+async function findTaskElementOnCalendarGrid(taskId) {
+  // OLD UI: Search by direct task ID
+  const oldUiElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
+  for (const el of oldUiElements) {
     if (!el.closest('[role="dialog"]')) {
       return el;
     }
   }
+
+  // NEW UI: Search all ttb_ elements and resolve them
+  const newUiElements = document.querySelectorAll('[data-eventid^="ttb_"]');
+  for (const ttbElement of newUiElements) {
+    if (ttbElement.closest('[role="dialog"]')) {
+      continue; // Skip modal elements
+    }
+    const resolvedId = await getResolvedTaskId(ttbElement);
+    if (resolvedId === taskId) {
+      return ttbElement;
+    }
+  }
+
   return null;
 }
 
@@ -711,10 +725,25 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
   const manualOverrideMap = colorOverride ? { [taskId]: colorOverride } : null;
 
-  const combinedSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
-  const allTaskElements = document.querySelectorAll(combinedSelector);
+  // OLD UI: Search by direct task ID
+  const oldUiSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
+  const oldUiElements = document.querySelectorAll(oldUiSelector);
 
-  // Note: For ttb_ elements, we'll need to resolve them via mapping in getTaskIdFromChip()
+  // NEW UI: Search all ttb_ elements and resolve them
+  const newUiElements = document.querySelectorAll('[data-eventid^="ttb_"]');
+
+  // Combine both OLD and NEW UI elements
+  const allTaskElements = [...oldUiElements];
+
+  // Resolve NEW UI elements and check if they match the taskId
+  for (const ttbElement of newUiElements) {
+    const resolvedId = await getResolvedTaskId(ttbElement);
+    if (resolvedId === taskId) {
+      allTaskElements.push(ttbElement);
+    }
+  }
+
+  console.log('[TaskColoring] paintTaskImmediately: Found', allTaskElements.length, 'elements for task', taskId);
 
   const manualReferenceMap = manualOverrideMap;
 
@@ -1907,15 +1936,17 @@ function initTasksColoring() {
   }
 
   // Store click handler reference for cleanup
-  clickHandler = (e) => {
-    const id = resolveTaskIdFromEventTarget(e.target);
+  clickHandler = async (e) => {
+    // CRITICAL: Must await for NEW UI (ttb_) tasks, which return Promises
+    const id = await resolveTaskIdFromEventTarget(e.target);
     if (id) {
       lastClickedTaskId = id;
-      const taskElement = e.target.closest('[data-eventid^="tasks."]') || e.target;
+      // Support both OLD UI (tasks.) and NEW UI (ttb_) selectors
+      const taskElement = e.target.closest('[data-eventid^="tasks."], [data-eventid^="ttb_"]') || e.target;
       if (taskElement && !taskElement.closest('[role="dialog"]')) {
         taskElementReferences.set(id, taskElement);
       } else {
-        const calendarTaskElement = findTaskElementOnCalendarGrid(id);
+        const calendarTaskElement = await findTaskElementOnCalendarGrid(id);
         if (calendarTaskElement) {
           taskElementReferences.set(id, calendarTaskElement);
         }
