@@ -294,8 +294,8 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
     // Check cache first
     const cache = await refreshCalendarMappingCache();
     if (cache[calendarEventId]) {
-      console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskApiId);
-      return cache[calendarEventId].taskApiId;
+      console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskFragment);
+      return cache[calendarEventId].taskFragment; // Return decoded fragment (matches OLD UI format)
     }
 
     console.log('[TaskColoring] ⚠️ NOT in cache, sending message to background...');
@@ -321,17 +321,17 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
             return;
           }
 
-          if (response.success && response.taskApiId) {
-            console.log('[TaskColoring] ✅ Background resolved:', response.taskApiId);
-            // Update cache
+          if (response.success && response.taskFragment) {
+            console.log('[TaskColoring] ✅ Background resolved:', response.taskFragment);
+            // Update cache (use taskFragment as primary - it's the decoded format compatible with OLD UI)
             if (calendarEventMappingCache) {
               calendarEventMappingCache[calendarEventId] = {
-                taskApiId: response.taskApiId,
+                taskApiId: response.taskFragment, // Store decoded fragment for consistency
                 taskFragment: response.taskFragment,
                 lastVerified: new Date().toISOString(),
               };
             }
-            resolve(response.taskApiId);
+            resolve(response.taskFragment); // Return decoded fragment (matches OLD UI format)
           } else {
             console.error('[TaskColoring] ❌ Background resolution failed:', response.error);
             resolve(null);
