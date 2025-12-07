@@ -926,10 +926,20 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
 
     // Check if "Apply to all instances" is checked
     if (checkbox.checked) {
-      // Find task element to extract fingerprint
-      const taskElement = document.querySelector(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
+      // Find task element to extract fingerprint - CRITICAL: Exclude modal elements!
+      // Modal elements don't have .XuJrye text needed for fingerprint extraction
+      const allTaskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
+      let taskElement = null;
+      for (const el of allTaskElements) {
+        // Skip if in modal - we need the calendar grid element for fingerprint
+        if (!el.closest('[role="dialog"]')) {
+          taskElement = el;
+          break;
+        }
+      }
+
       if (!taskElement) {
-        console.warn('[TaskColoring] Could not find task element to extract fingerprint, falling back to single instance coloring');
+        console.warn('[TaskColoring] Could not find task element on calendar grid to extract fingerprint, falling back to single instance coloring');
         await setTaskColor(taskId, selectedColor);
       } else {
         const fingerprint = extractTaskFingerprint(taskElement);
@@ -976,9 +986,23 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
 
     // Check if "Apply to all instances" is checked
     if (checkbox.checked) {
-      // Find task element to extract fingerprint
-      const taskElement = document.querySelector(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
-      if (taskElement) {
+      // Find task element to extract fingerprint - CRITICAL: Exclude modal elements!
+      // Modal elements don't have .XuJrye text needed for fingerprint extraction
+      const allTaskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
+      let taskElement = null;
+      for (const el of allTaskElements) {
+        // Skip if in modal - we need the calendar grid element for fingerprint
+        if (!el.closest('[role="dialog"]')) {
+          taskElement = el;
+          break;
+        }
+      }
+
+      if (!taskElement) {
+        console.warn('[TaskColoring] Could not find task element on calendar grid for clearing...');
+        // Fallback: Just clear the single-instance color
+        await clearTaskColor(taskId);
+      } else {
         const fingerprint = extractTaskFingerprint(taskElement);
         if (fingerprint.fingerprint) {
           console.log('[TaskColoring] Clearing color for ALL instances with fingerprint:', fingerprint.fingerprint);
