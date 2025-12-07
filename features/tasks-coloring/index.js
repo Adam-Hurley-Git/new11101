@@ -953,14 +953,21 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     // CRITICAL FIX: Invalidate cache immediately to force fresh data
     invalidateColorCache();
 
-    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // CRITICAL FIX: Wait a moment for storage write to complete
+    await new Promise(resolve => setTimeout(resolve, 150));
 
-    // Now paint with the color override to ensure this instance gets colored
-    await paintTaskImmediately(taskId, selectedColor);
+    if (checkbox.checked) {
+      // For recurring colors: Storage listener will handle the repaint
+      // Don't schedule additional repaints that might read stale cache
+      // Just trigger one immediate full repaint to ensure everything updates
+      repaintSoon(true);
+    } else {
+      // For single-instance colors: Paint immediately with override
+      await paintTaskImmediately(taskId, selectedColor);
 
-    // Trigger one final repaint to catch any stragglers
-    setTimeout(() => repaintSoon(true), 150);
+      // Trigger one final repaint to catch any stragglers
+      setTimeout(() => repaintSoon(true), 100);
+    }
   });
 
   clearBtn.addEventListener('click', async (e) => {
@@ -994,14 +1001,20 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     // CRITICAL FIX: Invalidate cache immediately to force fresh data
     invalidateColorCache();
 
-    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // CRITICAL FIX: Wait a moment for storage write to complete
+    await new Promise(resolve => setTimeout(resolve, 150));
 
-    // Now paint with null to clear colors from this instance
-    await paintTaskImmediately(taskId, null);
+    if (checkbox.checked) {
+      // For recurring colors: Storage listener will handle the repaint
+      // Don't schedule additional repaints that might read stale cache
+      repaintSoon(true);
+    } else {
+      // For single-instance colors: Paint immediately with null to clear
+      await paintTaskImmediately(taskId, null);
 
-    // Trigger one final repaint to catch any stragglers
-    setTimeout(() => repaintSoon(true), 150);
+      // Trigger one final repaint to catch any stragglers
+      setTimeout(() => repaintSoon(true), 100);
+    }
   });
 
   // Create checkbox for "Apply to all instances" (recurring tasks)
