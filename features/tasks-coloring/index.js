@@ -5,6 +5,36 @@ function isTasksChip(el) {
 }
 
 /**
+ * Extract base task ID from data-eventid attribute
+ * Handles both regular and recurring task formats:
+ * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ * @param {string} eventId - data-eventid attribute value
+ * @returns {string|null} Base task ID
+ */
+function extractBaseTaskId(eventId) {
+  if (!eventId) return null;
+
+  // Remove tasks. or tasks_ prefix (6 characters)
+  if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
+    let taskId = eventId.slice(6);
+
+    // Check for recurring task format: {number}_{baseTaskId}
+    // Example: 9_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+    const recurringMatch = taskId.match(/^\d+_(.+)$/);
+    if (recurringMatch) {
+      console.log('[TaskColoring] Recurring task detected, stripping instance prefix:', taskId, '→', recurringMatch[1]);
+      return recurringMatch[1]; // Return base task ID without instance number
+    }
+
+    return taskId;
+  }
+
+  return null;
+}
+
+/**
  * Get task ID from a DOM element (supports both old and new UI)
  * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
  * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
@@ -19,7 +49,7 @@ function getTaskIdFromChip(el) {
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     console.log('[TaskColoring] OLD UI detected:', ev);
-    return ev.slice(6);
+    return extractBaseTaskId(ev);
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
@@ -52,7 +82,7 @@ function getTaskIdFromChip(el) {
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       console.log('[TaskColoring] OLD UI in parent:', parentEv);
-      return parentEv.slice(6);
+      return extractBaseTaskId(parentEv);
     }
 
     // NEW UI in parent
@@ -124,8 +154,13 @@ function getGridRoot() {
 }
 
 async function findTaskElementOnCalendarGrid(taskId) {
-  // OLD UI: Search by direct task ID
-  const oldUiElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
+  // OLD UI: Search by direct task ID (includes recurring instances)
+  // Matches: tasks.{taskId}, tasks_{taskId}, and tasks_{instanceNum}_{taskId} (recurring)
+  const oldUiElements = document.querySelectorAll(
+    `[data-eventid="tasks.${taskId}"], ` +
+    `[data-eventid="tasks_${taskId}"], ` +
+    `[data-eventid^="tasks_"][data-eventid$="${taskId}"]`
+  );
   for (const el of oldUiElements) {
     if (!el.closest('[role="dialog"]')) {
       return el;
@@ -725,8 +760,12 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
   const manualOverrideMap = colorOverride ? { [taskId]: colorOverride } : null;
 
-  // OLD UI: Search by direct task ID
-  const oldUiSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
+  // OLD UI: Search by direct task ID (includes recurring instances)
+  const oldUiSelector =
+    `[data-eventid="tasks.${taskId}"], ` +
+    `[data-eventid="tasks_${taskId}"], ` +
+    `[data-eventid^="tasks_"][data-eventid$="${taskId}"], ` +
+    `[data-taskid="${taskId}"]`;
   const oldUiElements = document.querySelectorAll(oldUiSelector);
 
   // NEW UI: Search all ttb_ elements and resolve them
@@ -1880,7 +1919,10 @@ async function doRepaint(bypassThrottling = false) {
     // More targeted search - only look for specific task IDs we need
     for (const taskId of unprocessedTaskIds) {
       const taskElements = document.querySelectorAll(
-        `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`,
+        `[data-eventid="tasks.${taskId}"], ` +
+        `[data-eventid="tasks_${taskId}"], ` +
+        `[data-eventid^="tasks_"][data-eventid$="${taskId}"], ` +
+        `[data-taskid="${taskId}"]`
       );
 
       for (const element of taskElements) {
