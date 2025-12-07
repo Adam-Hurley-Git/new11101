@@ -5,30 +5,21 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract base task ID from data-eventid attribute
- * Handles both regular and recurring task formats:
- * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ * Extract task ID from data-eventid attribute
+ * NOTE: Each recurring instance has a UNIQUE task ID (they are NOT related)
+ * We use fingerprint matching (title + time) to correlate recurring instances
  * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Base task ID
+ * @returns {string|null} Task ID
+ * @example
+ * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_gtCquemlQRditn7O → gtCquemlQRditn7O
  */
 function extractBaseTaskId(eventId) {
   if (!eventId) return null;
 
   // Remove tasks. or tasks_ prefix (6 characters)
   if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
-    let taskId = eventId.slice(6);
-
-    // Check for recurring task format: {number}_{baseTaskId}
-    // Example: 9_CLSRCLoNWypL2n → CLSRCLoNWypL2n
-    const recurringMatch = taskId.match(/^\d+_(.+)$/);
-    if (recurringMatch) {
-      console.log('[TaskColoring] Recurring task detected, stripping instance prefix:', taskId, '→', recurringMatch[1]);
-      return recurringMatch[1]; // Return base task ID without instance number
-    }
-
-    return taskId;
+    return eventId.slice(6);
   }
 
   return null;
