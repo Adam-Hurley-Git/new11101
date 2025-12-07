@@ -5,21 +5,30 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract task ID from data-eventid attribute
- * NOTE: Each recurring instance has a UNIQUE task ID (they are NOT related)
- * We use fingerprint matching (title + time) to correlate recurring instances
- * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Task ID
- * @example
+ * Extract base task ID from data-eventid attribute
+ * Handles both regular and recurring task formats:
  * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_gtCquemlQRditn7O → gtCquemlQRditn7O
+ * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ * @param {string} eventId - data-eventid attribute value
+ * @returns {string|null} Base task ID
  */
 function extractBaseTaskId(eventId) {
   if (!eventId) return null;
 
   // Remove tasks. or tasks_ prefix (6 characters)
   if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
-    return eventId.slice(6);
+    let taskId = eventId.slice(6);
+
+    // Check for recurring task format: {number}_{baseTaskId}
+    // Example: 9_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+    const recurringMatch = taskId.match(/^\d+_(.+)$/);
+    if (recurringMatch) {
+      console.log('[TaskColoring] Recurring task detected, stripping instance prefix:', taskId, '→', recurringMatch[1]);
+      return recurringMatch[1]; // Return base task ID without instance number
+    }
+
+    return taskId;
   }
 
   return null;
@@ -248,7 +257,6 @@ let listColorsCache = null;
 let listTextColorsCache = null;
 let completedStylingCache = null;
 let manualColorsCache = null;
-let recurringTaskColorsCache = null; // Manual colors for ALL instances of recurring tasks
 let cacheLastUpdated = 0;
 const CACHE_LIFETIME = 30000; // 30 seconds
 let cachedColorMap = null;
@@ -391,20 +399,13 @@ function invalidateCalendarMappingCache() {
  * @returns {{title: string|null, time: string|null, fingerprint: string|null}}
  */
 function extractTaskFingerprint(element) {
-  if (!element) {
-    console.log('[TaskColoring] extractTaskFingerprint: No element provided');
-    return { title: null, time: null, fingerprint: null };
-  }
+  if (!element) return { title: null, time: null, fingerprint: null };
 
   // Find the text content element (.XuJrye contains the task info)
   const textElement = element.querySelector('.XuJrye');
-  if (!textElement) {
-    console.log('[TaskColoring] extractTaskFingerprint: No .XuJrye element found in:', element);
-    return { title: null, time: null, fingerprint: null };
-  }
+  if (!textElement) return { title: null, time: null, fingerprint: null };
 
   const textContent = textElement.textContent || '';
-  console.log('[TaskColoring] extractTaskFingerprint: textContent =', textContent);
 
   // Extract title (after "task: " and before first comma)
   // Format: "task: recur tasksss, Not completed, December 7, 2025, 2pm"
@@ -930,95 +931,19 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     e.preventDefault();
 
     const selectedColor = colorPicker ? colorPicker.getColor() : colorInput.value;
-
-    // Check if "Apply to all instances" is checked
-    if (checkbox.checked) {
-      // Find task element to extract fingerprint - CRITICAL: Exclude modal elements!
-      // Modal elements don't have .XuJrye text needed for fingerprint extraction
-      const allTaskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
-      let taskElement = null;
-      for (const el of allTaskElements) {
-        // Skip if in modal - we need the calendar grid element for fingerprint
-        if (!el.closest('[role="dialog"]')) {
-          taskElement = el;
-          break;
-        }
-      }
-
-      if (!taskElement) {
-        console.warn('[TaskColoring] Could not find task element on calendar grid to extract fingerprint, falling back to single instance coloring');
-        await setTaskColor(taskId, selectedColor);
-      } else {
-        const fingerprint = extractTaskFingerprint(taskElement);
-        if (fingerprint.fingerprint) {
-          console.log('[TaskColoring] Applying color to ALL instances with fingerprint:', fingerprint.fingerprint);
-          await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
-          // Also clear single-instance color if it exists (recurring color takes precedence)
-          await clearTaskColor(taskId);
-        } else {
-          console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
-          await setTaskColor(taskId, selectedColor);
-        }
-      }
-    } else {
-      // Normal single-instance coloring
-      await setTaskColor(taskId, selectedColor);
-    }
-
+    await setTaskColor(taskId, selectedColor);
     onChanged?.(taskId, selectedColor);
 
-    // CRITICAL FIX: Invalidate cache immediately to force fresh data
-    invalidateColorCache();
+    await paintTaskImmediately(taskId, selectedColor);
 
-    // CRITICAL FIX: Wait a moment for storage write to complete
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    if (checkbox.checked) {
-      // For recurring colors: Storage listener will handle the repaint
-      // Don't schedule additional repaints that might read stale cache
-      // Just trigger one immediate full repaint to ensure everything updates
-      repaintSoon(true);
-    } else {
-      // For single-instance colors: Paint immediately with override
-      await paintTaskImmediately(taskId, selectedColor);
-
-      // Trigger one final repaint to catch any stragglers
-      setTimeout(() => repaintSoon(true), 100);
-    }
+    // Also trigger immediate repaint system for additional coverage
+    repaintSoon(true);
   });
 
   clearBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     e.preventDefault();
 
-    // Check if "Apply to all instances" is checked
-    if (checkbox.checked) {
-      // Find task element to extract fingerprint - CRITICAL: Exclude modal elements!
-      // Modal elements don't have .XuJrye text needed for fingerprint extraction
-      const allTaskElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
-      let taskElement = null;
-      for (const el of allTaskElements) {
-        // Skip if in modal - we need the calendar grid element for fingerprint
-        if (!el.closest('[role="dialog"]')) {
-          taskElement = el;
-          break;
-        }
-      }
-
-      if (!taskElement) {
-        console.warn('[TaskColoring] Could not find task element on calendar grid for clearing...');
-        // Fallback: Just clear the single-instance color
-        await clearTaskColor(taskId);
-      } else {
-        const fingerprint = extractTaskFingerprint(taskElement);
-        if (fingerprint.fingerprint) {
-          console.log('[TaskColoring] Clearing color for ALL instances with fingerprint:', fingerprint.fingerprint);
-          await window.cc3Storage.clearRecurringTaskColor(fingerprint.fingerprint);
-        }
-      }
-    }
-
-    // Always clear single-instance color as well
     await clearTaskColor(taskId);
     onChanged?.(taskId, null);
 
@@ -1029,78 +954,18 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
       colorInput.value = '#4285f4';
     }
 
-    // CRITICAL FIX: Invalidate cache immediately to force fresh data
-    invalidateColorCache();
+    // Immediately clear all instances of this task with reliable identification
+    await paintTaskImmediately(taskId, null);
 
-    // CRITICAL FIX: Wait a moment for storage write to complete
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    if (checkbox.checked) {
-      // For recurring colors: Storage listener will handle the repaint
-      // Don't schedule additional repaints that might read stale cache
-      repaintSoon(true);
-    } else {
-      // For single-instance colors: Paint immediately with null to clear
-      await paintTaskImmediately(taskId, null);
-
-      // Trigger one final repaint to catch any stragglers
-      setTimeout(() => repaintSoon(true), 100);
-    }
+    // Also trigger immediate repaint system for additional coverage
+    repaintSoon(true);
   });
-
-  // Create checkbox for "Apply to all instances" (recurring tasks)
-  const checkboxContainer = document.createElement('label');
-  checkboxContainer.style.cssText = `
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    cursor: pointer !important;
-    font-size: 11px !important;
-    color: #5f6368 !important;
-    user-select: none !important;
-    padding: 4px 0 !important;
-  `;
-
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = 'cf-apply-to-all-instances';
-  checkbox.style.cssText = `
-    cursor: pointer !important;
-    margin: 0 !important;
-  `;
-
-  const checkboxLabel = document.createElement('span');
-  checkboxLabel.textContent = 'Apply to all recurring instances';
-  checkboxLabel.style.cssText = `
-    font-size: 11px !important;
-    white-space: nowrap !important;
-  `;
-
-  checkboxContainer.appendChild(checkbox);
-  checkboxContainer.appendChild(checkboxLabel);
-
-  // Create TWO-ROW layout
-  const colorPickerRow = document.createElement('div');
-  colorPickerRow.style.cssText = `
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    margin-bottom: 8px !important;
-  `;
-
-  const checkboxRow = document.createElement('div');
-  checkboxRow.style.cssText = `
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-  `;
 
   const colorRow = document.createElement('div');
   colorRow.className = 'cf-task-color-inline-row';
   colorRow.style.cssText = `
     display: flex !important;
-    flex-direction: column !important;
+    align-items: center !important;
     padding: 8px 12px !important;
     border: 1px solid #dadce0 !important;
     border-radius: 8px !important;
@@ -1108,29 +973,26 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     margin: 8px 0 !important;
     font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
     font-size: 11px !important;
+    min-height: 40px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    gap: 0 !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
   `;
 
-  // Row 1: Color picker + buttons
+  // Add custom color picker or fallback input
   if (colorPicker) {
-    colorPickerRow.appendChild(colorPicker.container);
+    colorRow.appendChild(colorPicker.container);
   } else {
-    colorPickerRow.appendChild(colorInput);
+    colorRow.appendChild(colorInput);
     if (presetContainer) {
-      colorPickerRow.appendChild(presetContainer);
+      colorRow.appendChild(presetContainer);
     }
   }
-  colorPickerRow.appendChild(applyBtn);
-  colorPickerRow.appendChild(clearBtn);
 
-  // Row 2: Checkbox
-  checkboxRow.appendChild(checkboxContainer);
-
-  // Assemble the two rows
-  colorRow.appendChild(colorPickerRow);
-  colorRow.appendChild(checkboxRow);
+  // Add both Apply and Clear buttons back to the modal
+  colorRow.appendChild(applyBtn);
+  colorRow.appendChild(clearBtn);
 
   // Always place within the modal content area, never outside
   const modalContent = dialogEl.querySelector('[role="document"]') || dialogEl;
@@ -1606,7 +1468,6 @@ async function refreshColorCache() {
       taskToListMap: taskToListMapCache,
       listColors: listColorsCache,
       manualColors: manualColorsCache,
-      recurringTaskColors: recurringTaskColorsCache,
       listTextColors: listTextColorsCache,
       completedStyling: completedStylingCache,
     };
@@ -1615,13 +1476,12 @@ async function refreshColorCache() {
   // Fetch all data in parallel
   const [localData, syncData] = await Promise.all([
     chrome.storage.local.get('cf.taskToListMap'),
-    chrome.storage.sync.get(['cf.taskColors', 'cf.recurringTaskColors', 'cf.taskListColors', 'cf.taskListTextColors', 'settings']),
+    chrome.storage.sync.get(['cf.taskColors', 'cf.taskListColors', 'cf.taskListTextColors', 'settings']),
   ]);
 
   // Update cache
   taskToListMapCache = localData['cf.taskToListMap'] || {};
   manualColorsCache = syncData['cf.taskColors'] || {};
-  recurringTaskColorsCache = syncData['cf.recurringTaskColors'] || {};
   listColorsCache = syncData['cf.taskListColors'] || {};
   const settingsPending =
     syncData.settings?.taskListColoring?.pendingTextColors ||
@@ -1638,7 +1498,6 @@ async function refreshColorCache() {
     taskToListMap: taskToListMapCache,
     listColors: listColorsCache,
     manualColors: manualColorsCache,
-    recurringTaskColors: recurringTaskColorsCache,
     listTextColors: listTextColorsCache,
     completedStyling: completedStylingCache,
   };
@@ -1654,7 +1513,6 @@ function invalidateColorCache() {
   listTextColorsCache = null;
   completedStylingCache = null;
   manualColorsCache = null;
-  recurringTaskColorsCache = null;
   // Also invalidate calendar mapping cache (NEW UI)
   invalidateCalendarMappingCache();
 }
@@ -1673,11 +1531,7 @@ async function isTaskInCache(taskId) {
 /**
  * Get the appropriate color for a task
  * OPTIMIZED: Uses in-memory cache instead of storage reads
- * Priority:
- *   1. Manual color for this specific instance (cf.taskColors[taskId])
- *   2. Manual color for ALL instances of recurring task (cf.recurringTaskColors[fingerprint])
- *   3. List default color (cf.taskListColors[listId]) - uses fingerprint fallback to find listId
- *   4. No color (null)
+ * Priority: manual color > list default color > fingerprint match (recurring) > null
  * @param {string} taskId - Task ID
  * @param {Object} manualColorsMap - Map of manual task colors (DEPRECATED, uses cache now)
  * @param {Object} options - Options including element, isCompleted, overrideTextColor
@@ -1812,69 +1666,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     });
   }
 
-  // PRIORITY 2: Manual color for ALL instances of recurring task (fingerprint)
-  if (element && cache.recurringTaskColors) {
-    const fingerprint = extractTaskFingerprint(element);
-    console.log('[TaskColoring] Fingerprint extraction for task:', taskId, {
-      hasElement: !!element,
-      extractedFingerprint: fingerprint,
-      availableRecurringColors: Object.keys(cache.recurringTaskColors || {}),
-    });
-
-    if (fingerprint.fingerprint) {
-      const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
-      if (recurringColor) {
-        console.log('[TaskColoring] ✅ Using recurring manual color for fingerprint:', fingerprint.fingerprint);
-
-        if (isCompleted) {
-          // For completed recurring manual tasks: use manual color with opacity from list settings
-          let bgOpacity = 0.3;  // Default 30% for completed tasks
-          let textOpacity = 0.3;  // Default 30% for completed tasks
-
-          // Try to use list's opacity settings if available
-          if (completedStyling) {
-            if (completedStyling.bgOpacity !== undefined) {
-              bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-            }
-            if (completedStyling.textOpacity !== undefined) {
-              textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-            }
-          } else {
-            // No list for this task - find highest opacity across all lists
-            const allCompletedStyling = cache.completedStyling || {};
-            for (const listStyles of Object.values(allCompletedStyling)) {
-              if (listStyles?.bgOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-                if (normalized > bgOpacity) bgOpacity = normalized;
-              }
-              if (listStyles?.textOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-                if (normalized > textOpacity) textOpacity = normalized;
-              }
-            }
-          }
-
-          return {
-            backgroundColor: recurringColor,
-            textColor: overrideTextColor || pickContrastingText(recurringColor),
-            bgOpacity,
-            textOpacity,
-          };
-        }
-
-        // Pending recurring manual task: full opacity
-        return buildColorInfo({
-          baseColor: recurringColor,
-          pendingTextColor: null, // Don't use list text color for manual backgrounds
-          overrideTextColor,
-          isCompleted: false,
-          completedStyling: null,
-        });
-      }
-    }
-  }
-
-  // PRIORITY 3: Check for any list-based settings (background, text, or completed styling)
+  // Check for any list-based settings (background, text, or completed styling)
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
@@ -2458,13 +2250,6 @@ function initTasksColoring() {
       // CRITICAL: Don't repaint during reset
       if (!isResetting) {
         repaintSoon();
-      }
-    }
-    if (area === 'sync' && changes['cf.recurringTaskColors']) {
-      invalidateColorCache();
-      // CRITICAL: Don't repaint during reset
-      if (!isResetting) {
-        repaintSoon(); // Repaint with new recurring colors
       }
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
