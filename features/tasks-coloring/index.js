@@ -959,10 +959,17 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
 
     onChanged?.(taskId, selectedColor);
 
+    // CRITICAL FIX: Invalidate cache immediately to force fresh data
+    invalidateColorCache();
+
+    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Now paint with the color override to ensure this instance gets colored
     await paintTaskImmediately(taskId, selectedColor);
 
-    // Also trigger immediate repaint system for additional coverage
-    repaintSoon(true);
+    // Trigger one final repaint to catch any stragglers
+    setTimeout(() => repaintSoon(true), 150);
   });
 
   clearBtn.addEventListener('click', async (e) => {
@@ -993,11 +1000,17 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
       colorInput.value = '#4285f4';
     }
 
-    // Immediately clear all instances of this task with reliable identification
+    // CRITICAL FIX: Invalidate cache immediately to force fresh data
+    invalidateColorCache();
+
+    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Now paint with null to clear colors from this instance
     await paintTaskImmediately(taskId, null);
 
-    // Also trigger immediate repaint system for additional coverage
-    repaintSoon(true);
+    // Trigger one final repaint to catch any stragglers
+    setTimeout(() => repaintSoon(true), 150);
   });
 
   // Create checkbox for "Apply to all instances" (recurring tasks)
@@ -1009,8 +1022,8 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     cursor: pointer !important;
     font-size: 11px !important;
     color: #5f6368 !important;
-    flex: 1 !important;
     user-select: none !important;
+    padding: 4px 0 !important;
   `;
 
   const checkbox = document.createElement('input');
@@ -1031,11 +1044,28 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
   checkboxContainer.appendChild(checkbox);
   checkboxContainer.appendChild(checkboxLabel);
 
+  // Create TWO-ROW layout
+  const colorPickerRow = document.createElement('div');
+  colorPickerRow.style.cssText = `
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  `;
+
+  const checkboxRow = document.createElement('div');
+  checkboxRow.style.cssText = `
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  `;
+
   const colorRow = document.createElement('div');
   colorRow.className = 'cf-task-color-inline-row';
   colorRow.style.cssText = `
     display: flex !important;
-    align-items: center !important;
+    flex-direction: column !important;
     padding: 8px 12px !important;
     border: 1px solid #dadce0 !important;
     border-radius: 8px !important;
@@ -1043,29 +1073,29 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     margin: 8px 0 !important;
     font-family: 'Google Sans', Roboto, Arial, sans-serif !important;
     font-size: 11px !important;
-    min-height: 40px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
+    gap: 0 !important;
   `;
 
-  // Add custom color picker or fallback input
+  // Row 1: Color picker + buttons
   if (colorPicker) {
-    colorRow.appendChild(colorPicker.container);
+    colorPickerRow.appendChild(colorPicker.container);
   } else {
-    colorRow.appendChild(colorInput);
+    colorPickerRow.appendChild(colorInput);
     if (presetContainer) {
-      colorRow.appendChild(presetContainer);
+      colorPickerRow.appendChild(presetContainer);
     }
   }
+  colorPickerRow.appendChild(applyBtn);
+  colorPickerRow.appendChild(clearBtn);
 
-  // Add checkbox for "Apply to all instances"
-  colorRow.appendChild(checkboxContainer);
+  // Row 2: Checkbox
+  checkboxRow.appendChild(checkboxContainer);
 
-  // Add both Apply and Clear buttons back to the modal
-  colorRow.appendChild(applyBtn);
-  colorRow.appendChild(clearBtn);
+  // Assemble the two rows
+  colorRow.appendChild(colorPickerRow);
+  colorRow.appendChild(checkboxRow);
 
   // Always place within the modal content area, never outside
   const modalContent = dialogEl.querySelector('[role="document"]') || dialogEl;
