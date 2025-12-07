@@ -391,13 +391,20 @@ function invalidateCalendarMappingCache() {
  * @returns {{title: string|null, time: string|null, fingerprint: string|null}}
  */
 function extractTaskFingerprint(element) {
-  if (!element) return { title: null, time: null, fingerprint: null };
+  if (!element) {
+    console.log('[TaskColoring] extractTaskFingerprint: No element provided');
+    return { title: null, time: null, fingerprint: null };
+  }
 
   // Find the text content element (.XuJrye contains the task info)
   const textElement = element.querySelector('.XuJrye');
-  if (!textElement) return { title: null, time: null, fingerprint: null };
+  if (!textElement) {
+    console.log('[TaskColoring] extractTaskFingerprint: No .XuJrye element found in:', element);
+    return { title: null, time: null, fingerprint: null };
+  }
 
   const textContent = textElement.textContent || '';
+  console.log('[TaskColoring] extractTaskFingerprint: textContent =', textContent);
 
   // Extract title (after "task: " and before first comma)
   // Format: "task: recur tasksss, Not completed, December 7, 2025, 2pm"
@@ -1808,6 +1815,12 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   // PRIORITY 2: Manual color for ALL instances of recurring task (fingerprint)
   if (element && cache.recurringTaskColors) {
     const fingerprint = extractTaskFingerprint(element);
+    console.log('[TaskColoring] Fingerprint extraction for task:', taskId, {
+      hasElement: !!element,
+      extractedFingerprint: fingerprint,
+      availableRecurringColors: Object.keys(cache.recurringTaskColors || {}),
+    });
+
     if (fingerprint.fingerprint) {
       const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
       if (recurringColor) {
