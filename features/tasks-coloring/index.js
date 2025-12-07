@@ -5,6 +5,36 @@ function isTasksChip(el) {
 }
 
 /**
+ * Extract base task ID from data-eventid attribute
+ * Handles both regular and recurring task formats:
+ * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ * @param {string} eventId - data-eventid attribute value
+ * @returns {string|null} Base task ID
+ */
+function extractBaseTaskId(eventId) {
+  if (!eventId) return null;
+
+  // Remove tasks. or tasks_ prefix (6 characters)
+  if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
+    let taskId = eventId.slice(6);
+
+    // Check for recurring task format: {number}_{baseTaskId}
+    // Example: 9_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+    const recurringMatch = taskId.match(/^\d+_(.+)$/);
+    if (recurringMatch) {
+      console.log('[TaskColoring] Recurring task detected, stripping instance prefix:', taskId, '→', recurringMatch[1]);
+      return recurringMatch[1]; // Return base task ID without instance number
+    }
+
+    return taskId;
+  }
+
+  return null;
+}
+
+/**
  * Get task ID from a DOM element (supports both old and new UI)
  * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
  * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
@@ -19,7 +49,7 @@ function getTaskIdFromChip(el) {
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     console.log('[TaskColoring] OLD UI detected:', ev);
-    return ev.slice(6);
+    return extractBaseTaskId(ev);
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
@@ -52,7 +82,7 @@ function getTaskIdFromChip(el) {
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       console.log('[TaskColoring] OLD UI in parent:', parentEv);
-      return parentEv.slice(6);
+      return extractBaseTaskId(parentEv);
     }
 
     // NEW UI in parent
@@ -124,8 +154,13 @@ function getGridRoot() {
 }
 
 async function findTaskElementOnCalendarGrid(taskId) {
-  // OLD UI: Search by direct task ID
-  const oldUiElements = document.querySelectorAll(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"]`);
+  // OLD UI: Search by direct task ID (includes recurring instances)
+  // Matches: tasks.{taskId}, tasks_{taskId}, and tasks_{instanceNum}_{taskId} (recurring)
+  const oldUiElements = document.querySelectorAll(
+    `[data-eventid="tasks.${taskId}"], ` +
+    `[data-eventid="tasks_${taskId}"], ` +
+    `[data-eventid^="tasks_"][data-eventid$="${taskId}"]`
+  );
   for (const el of oldUiElements) {
     if (!el.closest('[role="dialog"]')) {
       return el;
@@ -232,6 +267,10 @@ const COLOR_MAP_CACHE_TIME = 1000; // Cache for 1 second
 let calendarEventMappingCache = null; // In-memory cache: calendarEventId → taskApiId
 let calendarMappingLastUpdated = 0;
 const CALENDAR_MAPPING_CACHE_LIFETIME = 30000; // 30 seconds
+
+// RECURRING TASK FINGERPRINT CACHE (title + time → listId)
+// Used to match recurring instances that aren't in the API mapping
+let recurringTaskFingerprintCache = new Map(); // In-memory cache: "title|time" → listId
 
 /**
  * Decode ttb_ prefixed data-eventid to calendar event ID
@@ -351,6 +390,75 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
 function invalidateCalendarMappingCache() {
   calendarMappingLastUpdated = 0;
   calendarEventMappingCache = null;
+}
+
+/**
+ * Extract title and time from task element to create a fingerprint
+ * Used for matching recurring task instances that aren't in the API mapping
+ * @param {HTMLElement} element - Task element
+ * @returns {{title: string|null, time: string|null, fingerprint: string|null}}
+ */
+function extractTaskFingerprint(element) {
+  if (!element) return { title: null, time: null, fingerprint: null };
+
+  // Find the text content element (.XuJrye contains the task info)
+  const textElement = element.querySelector('.XuJrye');
+  if (!textElement) return { title: null, time: null, fingerprint: null };
+
+  const textContent = textElement.textContent || '';
+
+  // Extract title (after "task: " and before first comma)
+  // Format: "task: recur tasksss, Not completed, December 7, 2025, 2pm"
+  const titleMatch = textContent.match(/task:\s*([^,]+)/);
+  const title = titleMatch ? titleMatch[1].trim() : null;
+
+  // Extract time (last segment, e.g., "2pm", "3pm", "10:30am")
+  // Matches: "2pm", "10am", "3:30pm", etc.
+  const timeMatch = textContent.match(/(\d+(?::\d+)?(?:am|pm))\s*$/i);
+  const time = timeMatch ? timeMatch[1].toLowerCase() : null;
+
+  // Create fingerprint (null if either title or time is missing)
+  const fingerprint = (title && time) ? `${title}|${time}` : null;
+
+  if (fingerprint) {
+    console.log('[TaskColoring] Extracted fingerprint:', { title, time, fingerprint });
+  }
+
+  return { title, time, fingerprint };
+}
+
+/**
+ * Store a task's fingerprint in the recurring task cache
+ * @param {HTMLElement} element - Task element that was successfully colored
+ * @param {string} listId - List ID that this task belongs to
+ */
+function storeFingerprintForRecurringTasks(element, listId) {
+  if (!element || !listId) return;
+
+  const { fingerprint } = extractTaskFingerprint(element);
+  if (fingerprint) {
+    recurringTaskFingerprintCache.set(fingerprint, listId);
+    console.log('[TaskColoring] Stored recurring task fingerprint:', fingerprint, '→', listId);
+  }
+}
+
+/**
+ * Try to find a list ID for a task using its fingerprint (for recurring instances)
+ * @param {HTMLElement} element - Task element
+ * @returns {string|null} List ID if found via fingerprint match
+ */
+function getListIdFromFingerprint(element) {
+  if (!element) return null;
+
+  const { fingerprint } = extractTaskFingerprint(element);
+  if (!fingerprint) return null;
+
+  const listId = recurringTaskFingerprintCache.get(fingerprint);
+  if (listId) {
+    console.log('[TaskColoring] ✅ Found list via fingerprint match:', fingerprint, '→', listId);
+  }
+
+  return listId || null;
 }
 
 // ========================================
@@ -725,8 +833,12 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
   const manualOverrideMap = colorOverride ? { [taskId]: colorOverride } : null;
 
-  // OLD UI: Search by direct task ID
-  const oldUiSelector = `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`;
+  // OLD UI: Search by direct task ID (includes recurring instances)
+  const oldUiSelector =
+    `[data-eventid="tasks.${taskId}"], ` +
+    `[data-eventid="tasks_${taskId}"], ` +
+    `[data-eventid^="tasks_"][data-eventid$="${taskId}"], ` +
+    `[data-taskid="${taskId}"]`;
   const oldUiElements = document.querySelectorAll(oldUiSelector);
 
   // NEW UI: Search all ttb_ elements and resolve them
@@ -761,6 +873,7 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
     const isCompleted = isTaskElementCompleted(taskElement);
     const colorInfo = await getColorForTask(taskId, manualReferenceMap, {
+      element: taskElement,
       isCompleted,
       overrideTextColor: textColorOverride,
     });
@@ -1418,14 +1531,16 @@ async function isTaskInCache(taskId) {
 /**
  * Get the appropriate color for a task
  * OPTIMIZED: Uses in-memory cache instead of storage reads
- * Priority: manual color > list default color > null
+ * Priority: manual color > list default color > fingerprint match (recurring) > null
  * @param {string} taskId - Task ID
  * @param {Object} manualColorsMap - Map of manual task colors (DEPRECATED, uses cache now)
+ * @param {Object} options - Options including element, isCompleted, overrideTextColor
  * @returns {Promise<string|null>} Color hex string or null
  */
 async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const cache = await refreshColorCache();
   const manualColors = manualColorsMap || cache.manualColors;
+  const element = options.element; // DOM element for fingerprint matching
 
   // CRITICAL FIX: Support both base64 and decoded task ID formats
   // cf.taskToListMap stores DECODED IDs (from buildTaskToListMapping)
@@ -1460,6 +1575,15 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       }
     } catch (e) {
       // Not encodable, ignore
+    }
+  }
+
+  // RECURRING TASK FALLBACK: Try fingerprint matching (title + time)
+  // This handles recurring task instances that aren't in the API mapping
+  if (!listId && element) {
+    listId = getListIdFromFingerprint(element);
+    if (listId) {
+      console.log('[TaskColoring] ✅ Using list from fingerprint match for task:', taskId);
     }
   }
 
@@ -1553,6 +1677,11 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
     // Apply colors if we have ANY setting (background, text, or completed styling)
     if (listBgColor || hasTextColor || hasCompletedStyling) {
+      // Store fingerprint for recurring task matching (if element provided)
+      if (element) {
+        storeFingerprintForRecurringTasks(element, listId);
+      }
+
       const colorInfo = buildColorInfo({
         baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
         pendingTextColor,
@@ -1780,7 +1909,7 @@ async function doRepaint(bypassThrottling = false) {
   for (const [taskId, element] of taskElementReferences.entries()) {
     if (element.isConnected) {
       const isCompleted = isTaskElementCompleted(element);
-      const colors = await getColorForTask(taskId, manualColorMap, { isCompleted });
+      const colors = await getColorForTask(taskId, manualColorMap, { element, isCompleted });
       if (colors && colors.backgroundColor) {
         const target = getPaintTarget(element);
         if (target) {
@@ -1816,7 +1945,7 @@ async function doRepaint(bypassThrottling = false) {
       if (isCompleted) {
         completedCount++;
       }
-      const colors = await getColorForTask(id, manualColorMap, { isCompleted });
+      const colors = await getColorForTask(id, manualColorMap, { element: chip, isCompleted });
 
       if (isCompleted && colors && colors.backgroundColor) {
         completedColoredCount++;
@@ -1880,7 +2009,10 @@ async function doRepaint(bypassThrottling = false) {
     // More targeted search - only look for specific task IDs we need
     for (const taskId of unprocessedTaskIds) {
       const taskElements = document.querySelectorAll(
-        `[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`,
+        `[data-eventid="tasks.${taskId}"], ` +
+        `[data-eventid="tasks_${taskId}"], ` +
+        `[data-eventid^="tasks_"][data-eventid$="${taskId}"], ` +
+        `[data-taskid="${taskId}"]`
       );
 
       for (const element of taskElements) {
@@ -1888,7 +2020,7 @@ async function doRepaint(bypassThrottling = false) {
           const target = getPaintTarget(element);
           if (target) {
             const isCompleted = isTaskElementCompleted(element);
-            const colors = await getColorForTask(taskId, manualColorMap, { isCompleted });
+            const colors = await getColorForTask(taskId, manualColorMap, { element, isCompleted });
             if (colors && colors.backgroundColor) {
               applyPaintIfNeeded(target, colors, isCompleted);
               taskElementReferences.set(taskId, element);
