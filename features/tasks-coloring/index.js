@@ -5,13 +5,42 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract base task ID from data-eventid attribute
+ * Extract task ID from data-eventid attribute
  * Handles both regular and recurring task formats:
  * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
  * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ * - tasks_9_CLSRCLoNWypL2n → 9_CLSRCLoNWypL2n (KEEPS instance prefix for unique identification)
+ *
+ * IMPORTANT: This function preserves the instance prefix so each recurring instance
+ * can have its own manual color in cf.taskColors. For list color lookups, use
+ * extractBaseTaskId() which strips the prefix.
+ *
  * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Base task ID
+ * @returns {string|null} Task ID (with instance prefix if recurring)
+ */
+function extractTaskIdWithInstance(eventId) {
+  if (!eventId) return null;
+
+  // Remove tasks. or tasks_ prefix (6 characters)
+  if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
+    return eventId.slice(6); // Keep the instance prefix (e.g., "9_baseId")
+  }
+
+  return null;
+}
+
+/**
+ * Extract BASE task ID from data-eventid attribute (strips instance prefix)
+ * Handles both regular and recurring task formats:
+ * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
+ * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (STRIPS instance prefix)
+ *
+ * IMPORTANT: Use this for looking up list colors in cf.taskToListMap
+ * Use extractTaskIdWithInstance() for manual colors in cf.taskColors
+ *
+ * @param {string} eventId - data-eventid attribute value
+ * @returns {string|null} Base task ID (without instance prefix)
  */
 function extractBaseTaskId(eventId) {
   if (!eventId) return null;
@@ -36,10 +65,15 @@ function extractBaseTaskId(eventId) {
 
 /**
  * Get task ID from a DOM element (supports both old and new UI)
- * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
+ * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously (WITH instance prefix)
  * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
+ *
+ * IMPORTANT: This preserves the instance prefix (e.g., "9_baseId") so each recurring
+ * instance can have its own manual color. The instance prefix is used as the key in
+ * cf.taskColors to uniquely identify each instance.
+ *
  * @param {HTMLElement} el - DOM element
- * @returns {string|Promise<string>|null} Task ID (may be Promise for new UI)
+ * @returns {string|Promise<string>|null} Task ID (may be Promise for new UI, includes instance prefix)
  */
 function getTaskIdFromChip(el) {
   if (!el || !el.getAttribute) return null;
@@ -49,7 +83,7 @@ function getTaskIdFromChip(el) {
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     console.log('[TaskColoring] OLD UI detected:', ev);
-    return extractBaseTaskId(ev);
+    return extractTaskIdWithInstance(ev); // CHANGED: Keep instance prefix
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
@@ -82,7 +116,7 @@ function getTaskIdFromChip(el) {
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       console.log('[TaskColoring] OLD UI in parent:', parentEv);
-      return extractBaseTaskId(parentEv);
+      return extractTaskIdWithInstance(parentEv); // CHANGED: Keep instance prefix
     }
 
     // NEW UI in parent
@@ -1653,11 +1687,23 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const manualColors = manualColorsMap || cache.manualColors;
   const element = options.element; // DOM element for fingerprint matching
 
-  // CRITICAL FIX: Support both base64 and decoded task ID formats
-  // cf.taskToListMap stores DECODED IDs (from buildTaskToListMapping)
-  // but ttb_ resolution returns BASE64 IDs (from resolveCalendarEventToTaskId)
-  // Try both formats to ensure compatibility with OLD UI and NEW UI (ttb_)
+  // CRITICAL FIX: Support multiple task ID formats for list color lookups
+  // cf.taskToListMap stores BASE IDs (without instance prefix)
+  // but taskId may have instance prefix (e.g., "9_baseId" from recurring tasks)
+  // Try multiple formats to ensure compatibility
   let listId = cache.taskToListMap[taskId];
+
+  // If not found, try stripping instance prefix (e.g., "9_baseId" → "baseId")
+  if (!listId && taskId) {
+    const recurringMatch = taskId.match(/^\d+_(.+)$/);
+    if (recurringMatch) {
+      const baseId = recurringMatch[1];
+      listId = cache.taskToListMap[baseId];
+      if (listId) {
+        console.log('[TaskColoring] Found list via base ID (stripped instance prefix):', { taskId, baseId, listId });
+      }
+    }
+  }
 
   // If not found and taskId looks like base64, try decoded format
   if (!listId && taskId) {
