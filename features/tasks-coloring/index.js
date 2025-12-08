@@ -5,30 +5,24 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract base task ID from data-eventid attribute
- * Handles both regular and recurring task formats:
+ * Extract task ID from data-eventid attribute
+ * Handles both regular task formats:
  * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
  * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_9_CLSRCLoNWypL2n → CLSRCLoNWypL2n (recurring instance)
+ *
+ * NOTE: Each recurring task instance has a COMPLETELY UNIQUE ID.
+ * Recurring tasks are NOT matched by shared base IDs - they are matched
+ * by fingerprint (title + time) in getListIdFromFingerprint().
+ *
  * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Base task ID
+ * @returns {string|null} Task ID
  */
 function extractBaseTaskId(eventId) {
   if (!eventId) return null;
 
   // Remove tasks. or tasks_ prefix (6 characters)
   if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
-    let taskId = eventId.slice(6);
-
-    // Check for recurring task format: {number}_{baseTaskId}
-    // Example: 9_CLSRCLoNWypL2n → CLSRCLoNWypL2n
-    const recurringMatch = taskId.match(/^\d+_(.+)$/);
-    if (recurringMatch) {
-      console.log('[TaskColoring] Recurring task detected, stripping instance prefix:', taskId, '→', recurringMatch[1]);
-      return recurringMatch[1]; // Return base task ID without instance number
-    }
-
-    return taskId;
+    return eventId.slice(6);
   }
 
   return null;
@@ -154,12 +148,11 @@ function getGridRoot() {
 }
 
 async function findTaskElementOnCalendarGrid(taskId) {
-  // OLD UI: Search by direct task ID (includes recurring instances)
-  // Matches: tasks.{taskId}, tasks_{taskId}, and tasks_{instanceNum}_{taskId} (recurring)
+  // OLD UI: Search by exact task ID
+  // NOTE: Recurring task instances have unique IDs and are matched by fingerprint, not by ID
   const oldUiElements = document.querySelectorAll(
     `[data-eventid="tasks.${taskId}"], ` +
-    `[data-eventid="tasks_${taskId}"], ` +
-    `[data-eventid^="tasks_"][data-eventid$="${taskId}"]`
+    `[data-eventid="tasks_${taskId}"]`
   );
   for (const el of oldUiElements) {
     if (!el.closest('[role="dialog"]')) {
@@ -834,11 +827,11 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
 
   const manualOverrideMap = colorOverride ? { [taskId]: colorOverride } : null;
 
-  // OLD UI: Search by direct task ID (includes recurring instances)
+  // OLD UI: Search by exact task ID
+  // NOTE: Recurring task instances have unique IDs and are matched by fingerprint, not by ID
   const oldUiSelector =
     `[data-eventid="tasks.${taskId}"], ` +
     `[data-eventid="tasks_${taskId}"], ` +
-    `[data-eventid^="tasks_"][data-eventid$="${taskId}"], ` +
     `[data-taskid="${taskId}"]`;
   const oldUiElements = document.querySelectorAll(oldUiSelector);
 
