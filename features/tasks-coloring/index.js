@@ -958,8 +958,9 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Now paint with the color override to ensure this instance gets colored
-    await paintTaskImmediately(taskId, selectedColor);
+    // Paint this instance using normal priority resolution (no override)
+    // This ensures recurring colors apply consistently to all instances including this one
+    await paintTaskImmediately(taskId, null);
 
     // Trigger one final repaint to catch any stragglers
     setTimeout(() => repaintSoon(true), 150);
