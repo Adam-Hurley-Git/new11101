@@ -9,7 +9,7 @@
     // Register a feature
     register: async function (feature) {
       if (!feature.id) {
-        console.warn('Feature missing ID:', feature);
+        // console.warn('Feature missing ID:', feature);
         return;
       }
       this.features.set(feature.id, feature);
@@ -27,7 +27,7 @@
           await feature.init(settings);
         }
       } catch (error) {
-        console.error('Error initializing feature:', feature.id, error);
+        // console.error('Error initializing feature:', feature.id, error);
       }
     },
 
@@ -57,7 +57,7 @@
           }
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        // console.error('Error loading settings:', error);
         this.settings = {};
       }
 
@@ -83,7 +83,7 @@
     updateFeature: function (featureId, newSettings) {
       const feature = this.features.get(featureId);
       if (!feature) {
-        console.warn('Feature not found:', featureId);
+        // console.warn('Feature not found:', featureId);
         return;
       }
 
@@ -119,7 +119,7 @@
           feature.init(settingsToPass);
         }
       } catch (error) {
-        console.error('Error updating feature:', featureId, error);
+        // console.error('Error updating feature:', featureId, error);
       }
     },
 
@@ -141,7 +141,7 @@
         this.updateFeature(featureId, settings);
         return true;
       } catch (error) {
-        console.error('Error saving settings for feature:', featureId, error);
+        // console.error('Error saving settings for feature:', featureId, error);
         return false;
       }
     },
@@ -154,7 +154,7 @@
         }
         return true;
       } catch (error) {
-        console.error('Error saving all settings:', error);
+        // console.error('Error saving all settings:', error);
         return false;
       }
     },

@@ -15,7 +15,7 @@ function clearMonthColors() {
     el.style.backgroundColor = '';
     el.removeAttribute('data-gce-month-painted');
   });
-  console.log('CC3 Month Coloring: Cleared div.MGaLHf.ChfiMc elements only');
+  // console.log('CC3 Month Coloring: Cleared div.MGaLHf.ChfiMc elements only');
 }
 
 function isLikelyMonthViewRoot() {
@@ -30,7 +30,7 @@ function isLikelyMonthViewRoot() {
 function selectMonthCells() {
   // Target ONLY the div.MGaLHf.ChfiMc elements (day squares) - NOT gridcells
   const daySquares = Array.from(document.querySelectorAll('div.MGaLHf.ChfiMc')).filter((c) => c.offsetParent !== null);
-  console.log(`CC3 Month Coloring: Found ${daySquares.length} div.MGaLHf.ChfiMc elements`);
+  // console.log(`CC3 Month Coloring: Found ${daySquares.length} div.MGaLHf.ChfiMc elements`);
 
   // Handle both 5-column (weekends hidden) and 7-column (weekends shown) layouts
   // 5 columns = ~25 cells, 7 columns = ~35 cells
@@ -221,7 +221,7 @@ function computeColumnPositionMap(cols, startWeekDay) {
   // Create a mapping from column index to weekday (0-6, Sun-Sat) based on user's week start setting
   const map = new Array(cols.length).fill(0);
 
-  console.log(
+  // console.log(
     'CC3 Month Coloring: Computing column position map with startWeekDay:',
     startWeekDay,
     'for',
@@ -235,7 +235,7 @@ function computeColumnPositionMap(cols, startWeekDay) {
     for (let colIndex = 0; colIndex < 5; colIndex++) {
       const weekday = colIndex + 1; // Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5
       map[colIndex] = weekday;
-      console.log(
+      // console.log(
         `CC3 Month Coloring: Column ${colIndex} -> Weekday ${weekday} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]}) - weekends hidden`,
       );
     }
@@ -245,13 +245,13 @@ function computeColumnPositionMap(cols, startWeekDay) {
     for (let colIndex = 0; colIndex < 7; colIndex++) {
       const weekday = (colIndex + startWeekDay) % 7;
       map[colIndex] = weekday;
-      console.log(
+      // console.log(
         `CC3 Month Coloring: Column ${colIndex} -> Weekday ${weekday} (${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]}) based on user setting`,
       );
     }
   }
 
-  console.log('CC3 Month Coloring: Final column mapping:', map);
+  // console.log('CC3 Month Coloring: Final column mapping:', map);
   return map;
 }
 
@@ -278,11 +278,11 @@ function applyMonthViewColors(userColors, opts) {
 
     // Handle both 5-column (weekends hidden) and 7-column (weekends shown) layouts
     if (cols.length !== 5 && cols.length !== 7) {
-      console.log(`CC3 Month Coloring: Unexpected column count: ${cols.length}, expected 5 or 7`);
+      // console.log(`CC3 Month Coloring: Unexpected column count: ${cols.length}, expected 5 or 7`);
       return;
     }
 
-    console.log(
+    // console.log(
       `CC3 Month Coloring: Found ${cols.length} columns (weekends ${cols.length === 5 ? 'hidden' : 'shown'})`,
     );
 
@@ -293,7 +293,7 @@ function applyMonthViewColors(userColors, opts) {
       const weekday = colToPosition[cIdx];
       const color = userColors[weekday];
       const opacity = userOpacity[weekday] || 30; // Default to 30% if not set
-      console.log(
+      // console.log(
         `CC3 Month Coloring: Column ${cIdx} (weekday ${weekday} - ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]}) -> color:`,
         color,
         'opacity:',

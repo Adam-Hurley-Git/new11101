@@ -42,29 +42,29 @@ function getTaskIdFromChip(el) {
 
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
-    console.log('[TaskColoring] OLD UI detected:', ev);
+    // console.log('[TaskColoring] OLD UI detected:', ev);
     return extractBaseTaskId(ev);
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
   if (ev && ev.startsWith('ttb_')) {
-    console.log('[TaskColoring] NEW UI (ttb_) detected:', ev.substring(0, 40) + '...');
+    // console.log('[TaskColoring] NEW UI (ttb_) detected:', ev.substring(0, 40) + '...');
     // Decode ttb_ to get calendar event ID
     const calendarEventId = decodeCalendarEventIdFromTtb(ev);
-    console.log('[TaskColoring] Decoded Calendar Event ID:', calendarEventId);
+    // console.log('[TaskColoring] Decoded Calendar Event ID:', calendarEventId);
     if (calendarEventId) {
       // Return Promise that resolves to task API ID
-      console.log('[TaskColoring] Calling resolveCalendarEventToTaskId()...');
+      // console.log('[TaskColoring] Calling resolveCalendarEventToTaskId()...');
       return resolveCalendarEventToTaskId(calendarEventId);
     }
-    console.warn('[TaskColoring] Failed to decode ttb_');
+    // console.warn('[TaskColoring] Failed to decode ttb_');
     return null;
   }
 
   // Fallback: data-taskid attribute
   const taskId = el.getAttribute('data-taskid');
   if (taskId) {
-    console.log('[TaskColoring] Using data-taskid fallback:', taskId);
+    // console.log('[TaskColoring] Using data-taskid fallback:', taskId);
     return taskId;
   }
 
@@ -75,16 +75,16 @@ function getTaskIdFromChip(el) {
 
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
-      console.log('[TaskColoring] OLD UI in parent:', parentEv);
+      // console.log('[TaskColoring] OLD UI in parent:', parentEv);
       return extractBaseTaskId(parentEv);
     }
 
     // NEW UI in parent
     if (parentEv && parentEv.startsWith('ttb_')) {
-      console.log('[TaskColoring] NEW UI in parent:', parentEv.substring(0, 40) + '...');
+      // console.log('[TaskColoring] NEW UI in parent:', parentEv.substring(0, 40) + '...');
       const calendarEventId = decodeCalendarEventIdFromTtb(parentEv);
       if (calendarEventId) {
-        console.log('[TaskColoring] Calling resolveCalendarEventToTaskId() from parent...');
+        // console.log('[TaskColoring] Calling resolveCalendarEventToTaskId() from parent...');
         return resolveCalendarEventToTaskId(calendarEventId);
       }
     }
@@ -92,14 +92,14 @@ function getTaskIdFromChip(el) {
     // data-taskid in parent
     const parentTaskId = current.getAttribute?.('data-taskid');
     if (parentTaskId) {
-      console.log('[TaskColoring] Using parent data-taskid fallback:', parentTaskId);
+      // console.log('[TaskColoring] Using parent data-taskid fallback:', parentTaskId);
       return parentTaskId;
     }
 
     current = current.parentNode;
   }
 
-  console.log('[TaskColoring] No task ID found for element');
+  // console.log('[TaskColoring] No task ID found for element');
   return null;
 }
 
@@ -282,7 +282,7 @@ function decodeCalendarEventIdFromTtb(ttbString) {
     const parts = decoded.split(' '); // Split on space
     return parts[0] || null; // Return calendar event ID
   } catch (error) {
-    console.error('[TaskColoring] Failed to decode ttb_ string:', ttbString, error);
+    // console.error('[TaskColoring] Failed to decode ttb_ string:', ttbString, error);
     return null;
   }
 }
@@ -317,21 +317,21 @@ async function refreshCalendarMappingCache() {
  */
 async function resolveCalendarEventToTaskId(calendarEventId) {
   if (!calendarEventId) {
-    console.warn('[TaskColoring] resolveCalendarEventToTaskId called with empty ID');
+    // console.warn('[TaskColoring] resolveCalendarEventToTaskId called with empty ID');
     return null;
   }
 
-  console.log('[TaskColoring] resolveCalendarEventToTaskId called for:', calendarEventId);
+  // console.log('[TaskColoring] resolveCalendarEventToTaskId called for:', calendarEventId);
 
   try {
     // Check cache first
     const cache = await refreshCalendarMappingCache();
     if (cache[calendarEventId]) {
-      console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskFragment);
+      // console.log('[TaskColoring] ✅ Found in cache:', cache[calendarEventId].taskFragment);
       return cache[calendarEventId].taskFragment; // Return decoded fragment (matches OLD UI format)
     }
 
-    console.log('[TaskColoring] ⚠️ NOT in cache, sending message to background...');
+    // console.log('[TaskColoring] ⚠️ NOT in cache, sending message to background...');
 
     // Cache miss - need to fetch from Calendar API
     // Send message to background script to handle API call
@@ -343,19 +343,19 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
         },
         (response) => {
           if (chrome.runtime.lastError) {
-            console.error('[TaskColoring] ❌ Chrome runtime error:', chrome.runtime.lastError.message);
+            // console.error('[TaskColoring] ❌ Chrome runtime error:', chrome.runtime.lastError.message);
             resolve(null);
             return;
           }
 
           if (!response) {
-            console.error('[TaskColoring] ❌ No response from background script');
+            // console.error('[TaskColoring] ❌ No response from background script');
             resolve(null);
             return;
           }
 
           if (response.success && response.taskFragment) {
-            console.log('[TaskColoring] ✅ Background resolved:', response.taskFragment);
+            // console.log('[TaskColoring] ✅ Background resolved:', response.taskFragment);
             // Update cache (use taskFragment as primary - it's the decoded format compatible with OLD UI)
             if (calendarEventMappingCache) {
               calendarEventMappingCache[calendarEventId] = {
@@ -366,14 +366,14 @@ async function resolveCalendarEventToTaskId(calendarEventId) {
             }
             resolve(response.taskFragment); // Return decoded fragment (matches OLD UI format)
           } else {
-            console.error('[TaskColoring] ❌ Background resolution failed:', response.error);
+            // console.error('[TaskColoring] ❌ Background resolution failed:', response.error);
             resolve(null);
           }
         },
       );
     });
   } catch (error) {
-    console.error('[TaskColoring] ❌ Exception in resolveCalendarEventToTaskId:', error);
+    // console.error('[TaskColoring] ❌ Exception in resolveCalendarEventToTaskId:', error);
     return null;
   }
 }
@@ -415,7 +415,7 @@ function extractTaskFingerprint(element) {
   const fingerprint = (title && time) ? `${title}|${time}` : null;
 
   if (fingerprint) {
-    console.log('[TaskColoring] Extracted fingerprint:', { title, time, fingerprint });
+    // console.log('[TaskColoring] Extracted fingerprint:', { title, time, fingerprint });
   }
 
   return { title, time, fingerprint };
@@ -432,7 +432,7 @@ function storeFingerprintForRecurringTasks(element, listId) {
   const { fingerprint } = extractTaskFingerprint(element);
   if (fingerprint) {
     recurringTaskFingerprintCache.set(fingerprint, listId);
-    console.log('[TaskColoring] Stored recurring task fingerprint:', fingerprint, '→', listId);
+    // console.log('[TaskColoring] Stored recurring task fingerprint:', fingerprint, '→', listId);
   }
 }
 
@@ -449,7 +449,7 @@ function getListIdFromFingerprint(element) {
 
   const listId = recurringTaskFingerprintCache.get(fingerprint);
   if (listId) {
-    console.log('[TaskColoring] ✅ Found list via fingerprint match:', fingerprint, '→', listId);
+    // console.log('[TaskColoring] ✅ Found list via fingerprint match:', fingerprint, '→', listId);
   }
 
   return listId || null;
@@ -464,7 +464,7 @@ function getListIdFromFingerprint(element) {
 let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => {
   // Handle TASK_LISTS_UPDATED (sent after OAuth grant or sync)
   if (message.type === 'TASK_LISTS_UPDATED') {
-    console.log('[Task Coloring] Received TASK_LISTS_UPDATED');
+    // console.log('[Task Coloring] Received TASK_LISTS_UPDATED');
 
     try {
       const settings = await window.cc3Storage.getSettings();
@@ -472,7 +472,7 @@ let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => 
 
       // Dynamic initialization: If OAuth granted but feature not yet initialized
       if (taskListColoring?.oauthGranted && !initialized) {
-        console.log('[Task Coloring] OAuth granted - dynamically initializing feature');
+        // console.log('[Task Coloring] OAuth granted - dynamically initializing feature');
         initTasksColoring();
       }
 
@@ -487,7 +487,7 @@ let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => 
         setTimeout(() => repaintSoon(true), 1000);
       }
     } catch (error) {
-      console.error('[Task Coloring] Error handling TASK_LISTS_UPDATED:', error);
+      // console.error('[Task Coloring] Error handling TASK_LISTS_UPDATED:', error);
     }
   }
 
@@ -502,7 +502,7 @@ let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => 
       const { listId } = message;
       if (listId) {
         await unpaintTasksFromList(listId);
-        console.log(`[ColorKit] Reset colors for list: ${listId}`);
+        // console.log(`[ColorKit] Reset colors for list: ${listId}`);
       }
 
       // Reset flag after a delay (page will reload anyway)
@@ -523,7 +523,7 @@ let globalTaskColoringMessageHandler = async (message, sender, sendResponse) => 
 
 // Register the global message handler immediately (always listening)
 chrome.runtime.onMessage.addListener(globalTaskColoringMessageHandler);
-console.log('[Task Coloring] Global message handler registered');
+// console.log('[Task Coloring] Global message handler registered');
 
 function cleanupStaleReferences() {
   for (const [taskId, element] of taskElementReferences.entries()) {
@@ -623,7 +623,7 @@ async function setTaskColor(taskId, color) {
     await saveMap(map);
     return map;
   }).catch(err => {
-    console.error('Error in setTaskColor:', err);
+    // console.error('Error in setTaskColor:', err);
     // Return cached map on error to maintain functionality
     return cachedColorMap || {};
   });
@@ -644,7 +644,7 @@ async function clearTaskColor(taskId) {
     await saveMap(map);
     return map;
   }).catch(err => {
-    console.error('Error in clearTaskColor:', err);
+    // console.error('Error in clearTaskColor:', err);
     // Return cached map on error to maintain functionality
     return cachedColorMap || {};
   });
@@ -660,7 +660,7 @@ async function buildInlineTaskColorRow(initial) {
 
   // Check if shared utilities are available
   if (!window.cc3SharedUtils?.createCustomColorPicker) {
-    console.warn('Custom color picker utilities not available, falling back to HTML5 picker');
+    // console.warn('Custom color picker utilities not available, falling back to HTML5 picker');
     return buildFallbackColorRow(initialColor);
   }
 
@@ -672,7 +672,7 @@ async function buildInlineTaskColorRow(initial) {
       inlineColors = settings?.taskColoring?.inlineColors;
     }
   } catch (error) {
-    console.warn('Could not load inline colors from settings:', error);
+    // console.warn('Could not load inline colors from settings:', error);
   }
 
   let currentColor = initialColor;
@@ -849,7 +849,7 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
     }
   }
 
-  console.log('[TaskColoring] paintTaskImmediately: Found', allTaskElements.length, 'elements for task', taskId);
+  // console.log('[TaskColoring] paintTaskImmediately: Found', allTaskElements.length, 'elements for task', taskId);
 
   const manualReferenceMap = manualOverrideMap;
 
@@ -931,17 +931,17 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
       // Find task element to extract fingerprint
       const taskElement = document.querySelector(`[data-eventid="tasks.${taskId}"], [data-eventid="tasks_${taskId}"], [data-taskid="${taskId}"]`);
       if (!taskElement) {
-        console.warn('[TaskColoring] Could not find task element to extract fingerprint, falling back to single instance coloring');
+        // console.warn('[TaskColoring] Could not find task element to extract fingerprint, falling back to single instance coloring');
         await setTaskColor(taskId, selectedColor);
       } else {
         const fingerprint = extractTaskFingerprint(taskElement);
         if (fingerprint.fingerprint) {
-          console.log('[TaskColoring] Applying color to ALL instances with fingerprint:', fingerprint.fingerprint);
+          // console.log('[TaskColoring] Applying color to ALL instances with fingerprint:', fingerprint.fingerprint);
           await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
           // Also clear single-instance color if it exists (recurring color takes precedence)
           await clearTaskColor(taskId);
         } else {
-          console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
+          // console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
           await setTaskColor(taskId, selectedColor);
         }
       }
@@ -976,7 +976,7 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
       if (taskElement) {
         const fingerprint = extractTaskFingerprint(taskElement);
         if (fingerprint.fingerprint) {
-          console.log('[TaskColoring] Clearing color for ALL instances with fingerprint:', fingerprint.fingerprint);
+          // console.log('[TaskColoring] Clearing color for ALL instances with fingerprint:', fingerprint.fingerprint);
           await window.cc3Storage.clearRecurringTaskColor(fingerprint.fingerprint);
         }
       }
@@ -1178,10 +1178,10 @@ function captureGoogleTaskColors() {
       if (typeof console !== 'undefined') {
         if (taskIdOrPromise && typeof taskIdOrPromise.then === 'function') {
           taskIdOrPromise.then(taskId => {
-            console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskId, googleBg);
+            // console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskId, googleBg);
           });
         } else {
-          console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskIdOrPromise, googleBg);
+          // console.log(`[ColorKit] Captured ${isCompleted ? 'COMPLETED' : 'pending'} task bg:`, taskIdOrPromise, googleBg);
         }
       }
     }
@@ -1388,7 +1388,7 @@ async function unpaintTasksFromList(listId) {
       // CRITICAL: Skip tasks with manual colors - only unpaint list default colored tasks
       if (manualColors[taskId]) {
         skippedManualCount++;
-        console.log(`[ColorKit] Skipping manually colored task: ${taskId}`);
+        // console.log(`[ColorKit] Skipping manually colored task: ${taskId}`);
         continue;
       }
 
@@ -1407,8 +1407,8 @@ async function unpaintTasksFromList(listId) {
     }
   }
 
-  console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}, preserved ${skippedManualCount} manually colored tasks`);
-  console.log(`[ColorKit] User should refresh page to see pure Google default`);
+  // console.log(`[ColorKit] Unpainted ${unpaintedCount} tasks from list ${listId}, preserved ${skippedManualCount} manually colored tasks`);
+  // console.log(`[ColorKit] User should refresh page to see pure Google default`);
 
   // DO NOT trigger repaint - that would reapply colors from potentially stale cache
   // User will refresh page, and with storage cleared, pure Google default will show
@@ -1659,7 +1659,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       if (decoded !== taskId) {
         listId = cache.taskToListMap[decoded];
         if (listId) {
-          console.log('[TaskColoring] Found list via decoded ID:', { taskId, decoded, listId });
+          // console.log('[TaskColoring] Found list via decoded ID:', { taskId, decoded, listId });
         }
       }
     } catch (e) {
@@ -1674,7 +1674,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       if (encoded !== taskId) {
         listId = cache.taskToListMap[encoded];
         if (listId) {
-          console.log('[TaskColoring] Found list via encoded ID:', { taskId, encoded, listId });
+          // console.log('[TaskColoring] Found list via encoded ID:', { taskId, encoded, listId });
         }
       }
     } catch (e) {
@@ -1687,7 +1687,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   if (!listId && element) {
     listId = getListIdFromFingerprint(element);
     if (listId) {
-      console.log('[TaskColoring] ✅ Using list from fingerprint match for task:', taskId);
+      // console.log('[TaskColoring] ✅ Using list from fingerprint match for task:', taskId);
     }
   }
 
@@ -1776,7 +1776,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     if (fingerprint.fingerprint) {
       const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
       if (recurringColor) {
-        console.log('[TaskColoring] ✅ Using recurring manual color for fingerprint:', fingerprint.fingerprint);
+        // console.log('[TaskColoring] ✅ Using recurring manual color for fingerprint:', fingerprint.fingerprint);
 
         if (isCompleted) {
           // For completed recurring manual tasks: use manual color with opacity from list settings
@@ -2015,7 +2015,7 @@ async function handleNewTaskCreated(taskId, element) {
           repaintSoon(true);
         }
       } catch (error) {
-        console.error('[Task List Colors] Error applying instant color:', error);
+        // console.error('[Task List Colors] Error applying instant color:', error);
       } finally {
         pendingLookups.delete(taskId);
       }
@@ -2258,7 +2258,7 @@ function initTasksColoring() {
         }
       }
     } catch (error) {
-      console.error('[Task Colors] Auto-sync check failed:', error);
+      // console.error('[Task Colors] Auto-sync check failed:', error);
     }
   })();
 
@@ -2277,7 +2277,7 @@ function initTasksColoring() {
             try {
               await injectTaskColorControls(openDialog, taskId);
             } catch (e) {
-              console.error('Error refreshing modal color controls:', e);
+              // console.error('Error refreshing modal color controls:', e);
             }
           }, 50);
         }
@@ -2351,7 +2351,7 @@ function initTasksColoring() {
       subtree: true,
     });
   } else {
-    console.warn('[Task Coloring] Grid element not ready, will observe document.body after delay');
+    // console.warn('[Task Coloring] Grid element not ready, will observe document.body after delay');
     // Fallback: wait for DOM to be fully ready, then try again
     setTimeout(() => {
       const fallbackGrid = document.querySelector('[role="grid"]') || document.body;

@@ -106,7 +106,7 @@
     const dayColoringSettings = window.cc3Features?.getSettings('dayColoring');
     if (dayColoringSettings?.enabled) {
       removeStyle(STYLE_ID);
-      console.log('columnCss: Skipping due to dayColoring being enabled');
+      // console.log('columnCss: Skipping due to dayColoring being enabled');
       return;
     }
     const style = ensureStyle(STYLE_ID);

@@ -14,12 +14,12 @@
         hasActiveSubscription = true;
         return true;
       } else {
-        console.log('[ColorKit] No active subscription - features disabled');
+        // console.log('[ColorKit] No active subscription - features disabled');
         hasActiveSubscription = false;
         return false;
       }
     } catch (error) {
-      console.error('[ColorKit] Subscription validation error:', error);
+      // console.error('[ColorKit] Subscription validation error:', error);
       // Fail closed - don't enable features if validation fails
       hasActiveSubscription = false;
       return false;
@@ -28,7 +28,7 @@
 
   // Disable all features
   async function disableAllFeatures() {
-    console.log('[ColorKit] Disabling all features...');
+    // console.log('[ColorKit] Disabling all features...');
     featuresEnabled = false;
 
     // Remove all applied colors and styles
@@ -63,19 +63,19 @@
     }
 
     if (!window.cc3Features) {
-      console.error('cc3Features not available after waiting');
+      // console.error('cc3Features not available after waiting');
       return;
     }
 
     if (!window.cc3Storage) {
-      console.error('cc3Storage not available after waiting');
+      // console.error('cc3Storage not available after waiting');
       return;
     }
 
     // VALIDATE SUBSCRIPTION BEFORE INITIALIZING
     const isValid = await validateSubscriptionBeforeInit();
     if (!isValid) {
-      console.log('[ColorKit] Subscription validation failed - not initializing features');
+      // console.log('[ColorKit] Subscription validation failed - not initializing features');
       return; // Don't initialize features
     }
 
@@ -100,7 +100,7 @@
     try {
       window.cc3Toolbar && window.cc3Toolbar.mount();
     } catch (e) {
-      console.warn('Toolbar init failed:', e);
+      // console.warn('Toolbar init failed:', e);
     }
 
     // Task coloring is initialized via the feature registry (cc3Features.boot())
@@ -170,7 +170,7 @@
       }
     });
 
-    console.log('[Task List Colors] Activity tracking initialized');
+    // console.log('[Task List Colors] Activity tracking initialized');
   }
 
   // Check if colors should be applied immediately on page load
@@ -212,7 +212,7 @@
       } else {
       }
     } catch (error) {
-      console.error('Error checking initial color settings:', error);
+      // console.error('Error checking initial color settings:', error);
     }
   }
 
@@ -244,15 +244,15 @@
       }
     } else if (message.type === 'SUBSCRIPTION_CANCELLED') {
       // Subscription was cancelled - disable all features immediately
-      console.log('[ColorKit] Received SUBSCRIPTION_CANCELLED - disabling features');
+      // console.log('[ColorKit] Received SUBSCRIPTION_CANCELLED - disabling features');
       disableAllFeatures();
     } else if (message.type === 'SUBSCRIPTION_UPDATED') {
       // Subscription status changed - revalidate and potentially re-enable
-      console.log('[ColorKit] Received SUBSCRIPTION_UPDATED - revalidating');
+      // console.log('[ColorKit] Received SUBSCRIPTION_UPDATED - revalidating');
       validateSubscriptionBeforeInit().then((isValid) => {
         if (isValid && !featuresEnabled) {
           // Subscription is now active - reload page to reinitialize
-          console.log('[ColorKit] Subscription now active - reloading page');
+          // console.log('[ColorKit] Subscription now active - reloading page');
           location.reload();
         } else if (!isValid && featuresEnabled) {
           // Subscription became inactive - disable features
@@ -261,7 +261,7 @@
       });
     } else if (message.type === 'SETTINGS_RESET') {
       // Complete reset detected - clean up and reload page
-      console.log('[ColorKit] Settings reset detected - cleaning up and reloading page...');
+      // console.log('[ColorKit] Settings reset detected - cleaning up and reloading page...');
 
       // Clear any cached data in features
       if (window.cc3Features) {
@@ -271,7 +271,7 @@
             try {
               feature.cleanup();
             } catch (error) {
-              console.warn(`[ColorKit] Cleanup failed for feature ${id}:`, error);
+              // console.warn(`[ColorKit] Cleanup failed for feature ${id}:`, error);
             }
           }
         }
