@@ -15,12 +15,12 @@ function _parseLocalYMD(ymd) {
 function getActualDateFromCalendarGrid(cellEl, dayNumber) {
   if (!cellEl || !dayNumber) return null;
 
-  console.log('getActualDateFromCalendarGrid: Analyzing cell with day', dayNumber);
+  // console.log('getActualDateFromCalendarGrid: Analyzing cell with day', dayNumber);
 
   // Find the main calendar grid
   const grid = findMonthGrid();
   if (!grid) {
-    console.log('getActualDateFromCalendarGrid: No grid found');
+    // console.log('getActualDateFromCalendarGrid: No grid found');
     return null;
   }
 
@@ -28,35 +28,35 @@ function getActualDateFromCalendarGrid(cellEl, dayNumber) {
   const allCells = Array.from(
     grid.querySelectorAll('[data-datekey], [data-dragsource-type], [role="gridcell"], td, th'),
   );
-  console.log('getActualDateFromCalendarGrid: Found', allCells.length, 'cells in grid');
+  // console.log('getActualDateFromCalendarGrid: Found', allCells.length, 'cells in grid');
 
   // Find the row and column of our target cell
   const targetRow = cellEl.closest('[role="row"], tr');
   if (!targetRow) {
-    console.log('getActualDateFromCalendarGrid: No row found for cell');
+    // console.log('getActualDateFromCalendarGrid: No row found for cell');
     return null;
   }
 
   const allRows = Array.from(grid.querySelectorAll('[role="row"], tr'));
   const rowIndex = allRows.indexOf(targetRow);
-  console.log('getActualDateFromCalendarGrid: Target cell is in row', rowIndex);
+  // console.log('getActualDateFromCalendarGrid: Target cell is in row', rowIndex);
 
   // Get the cells in the target row
   const rowCells = Array.from(
     targetRow.querySelectorAll('[data-datekey], [data-dragsource-type], [role="gridcell"], td, th'),
   );
   const colIndex = rowCells.indexOf(cellEl);
-  console.log('getActualDateFromCalendarGrid: Target cell is in column', colIndex);
+  // console.log('getActualDateFromCalendarGrid: Target cell is in column', colIndex);
 
   if (rowIndex < 0 || colIndex < 0) {
-    console.log('getActualDateFromCalendarGrid: Could not determine position');
+    // console.log('getActualDateFromCalendarGrid: Could not determine position');
     return null;
   }
 
   // Get the current month/year context
   const currentMonthYear = getCurrentMonthYear();
   if (!currentMonthYear) {
-    console.log('getActualDateFromCalendarGrid: Could not get current month/year');
+    // console.log('getActualDateFromCalendarGrid: Could not get current month/year');
     return null;
   }
 
@@ -66,7 +66,7 @@ function getActualDateFromCalendarGrid(cellEl, dayNumber) {
   const firstDayOfMonth = new Date(currentMonthYear.year, currentMonthYear.month, 1);
   const firstDayWeekday = firstDayOfMonth.getDay(); // 0=Sunday, 1=Monday, etc.
 
-  console.log(
+  // console.log(
     'getActualDateFromCalendarGrid: First day of month is',
     firstDayOfMonth.toDateString(),
     'weekday',
@@ -121,10 +121,10 @@ function getActualDateFromCalendarGrid(cellEl, dayNumber) {
     const m = String(actualDate.getMonth() + 1).padStart(2, '0');
     const d = String(actualDate.getDate()).padStart(2, '0');
     const result = `${y}-${m}-${d}`;
-    console.log('getActualDateFromCalendarGrid: Calculated date', result, 'for day', dayNumber);
+    // console.log('getActualDateFromCalendarGrid: Calculated date', result, 'for day', dayNumber);
     return result;
   } else {
-    console.log(
+    // console.log(
       'getActualDateFromCalendarGrid: Date mismatch - calculated',
       actualDate.getDate(),
       'but expected',
@@ -144,7 +144,7 @@ function getCurrentMonthYear() {
   if (urlMatch) {
     const year = parseInt(urlMatch[1]);
     const month = parseInt(urlMatch[2]) - 1; // JS months are 0-based
-    console.log(`getCurrentMonthYear: URL match - Year: ${year}, Month: ${month}`);
+    // console.log(`getCurrentMonthYear: URL match - Year: ${year}, Month: ${month}`);
     return { year, month };
   }
 
@@ -174,7 +174,7 @@ function getCurrentMonthYear() {
         for (const textSource of [text, ariaLabel]) {
           if (!textSource) continue;
 
-          console.log(`getCurrentMonthYear: Checking text: "${textSource}"`);
+          // console.log(`getCurrentMonthYear: Checking text: "${textSource}"`);
 
           // Try to extract year
           const yearMatch = textSource.match(/\b(20\d{2})\b/);
@@ -250,7 +250,7 @@ function getCurrentMonthYear() {
 
             for (const [monthName, monthIndex] of Object.entries(monthNames)) {
               if (textSource.toLowerCase().includes(monthName)) {
-                console.log(`getCurrentMonthYear: Found via DOM - Year: ${year}, Month: ${monthIndex} (${monthName})`);
+                // console.log(`getCurrentMonthYear: Found via DOM - Year: ${year}, Month: ${monthIndex} (${monthName})`);
                 return { year, month: monthIndex };
               }
             }
@@ -260,7 +260,7 @@ function getCurrentMonthYear() {
             if (numericMatch) {
               const month = parseInt(numericMatch[1]) - 1; // Convert to 0-based
               if (month >= 0 && month <= 11) {
-                console.log(`getCurrentMonthYear: Found numeric format - Year: ${year}, Month: ${month}`);
+                // console.log(`getCurrentMonthYear: Found numeric format - Year: ${year}, Month: ${month}`);
                 return { year, month };
               }
             }
@@ -268,13 +268,13 @@ function getCurrentMonthYear() {
         }
       }
     } catch (e) {
-      console.log(`getCurrentMonthYear: Error with selector "${selector}":`, e);
+      // console.log(`getCurrentMonthYear: Error with selector "${selector}":`, e);
     }
   }
 
   // Method 3: Use current date as fallback
   const now = new Date();
-  console.log(
+  // console.log(
     `getCurrentMonthYear: Using fallback current date - Year: ${now.getFullYear()}, Month: ${now.getMonth()}`,
   );
   return { year: now.getFullYear(), month: now.getMonth() };
@@ -283,18 +283,18 @@ function getCurrentMonthYear() {
 // Helper function to try parsing various date formats
 function tryParseDate(text) {
   if (!text) {
-    console.log('tryParseDate: Empty text provided');
+    // console.log('tryParseDate: Empty text provided');
     return null;
   }
 
-  console.log(`tryParseDate: Attempting to parse: "${text}"`);
+  // console.log(`tryParseDate: Attempting to parse: "${text}"`);
 
   // Clean the text
   const cleanText = text.trim();
 
   // Try ISO format first (YYYY-MM-DD)
   if (/^\d{4}-\d{2}-\d{2}$/.test(cleanText)) {
-    console.log(`tryParseDate: Found ISO format: ${cleanText}`);
+    // console.log(`tryParseDate: Found ISO format: ${cleanText}`);
     return cleanText;
   }
 
@@ -320,10 +320,10 @@ function tryParseDate(text) {
 
   if (dayMatch) {
     const day = parseInt(dayMatch[1]);
-    console.log(`tryParseDate: Found day number: ${day}`);
+    // console.log(`tryParseDate: Found day number: ${day}`);
     if (day >= 1 && day <= 31) {
       const currentDate = getCurrentMonthYear();
-      console.log('tryParseDate: currentDate from getCurrentMonthYear:', currentDate);
+      // console.log('tryParseDate: currentDate from getCurrentMonthYear:', currentDate);
       if (currentDate) {
         try {
           // Parse the month from the text if available, otherwise use current month
@@ -359,11 +359,11 @@ function tryParseDate(text) {
             const m = String(constructedDate.getMonth() + 1).padStart(2, '0');
             const d = String(constructedDate.getDate()).padStart(2, '0');
             const result = `${y}-${m}-${d}`;
-            console.log(`tryParseDate: Constructed date: ${result}`);
+            // console.log(`tryParseDate: Constructed date: ${result}`);
             return result;
           }
         } catch (e) {
-          console.log('tryParseDate: Error constructing date:', e);
+          // console.log('tryParseDate: Error constructing date:', e);
           // Ignore construction errors
         }
       }
@@ -399,11 +399,11 @@ function tryParseDate(text) {
           const m = String(d.getMonth() + 1).padStart(2, '0');
           const day = String(d.getDate()).padStart(2, '0');
           const result = `${y}-${m}-${day}`;
-          console.log(`tryParseDate: Parsed formatted date "${dateStr}" to: ${result}`);
+          // console.log(`tryParseDate: Parsed formatted date "${dateStr}" to: ${result}`);
           return result;
         }
       } catch (e) {
-        console.log(`tryParseDate: Error parsing format match "${match[0]}":`, e);
+        // console.log(`tryParseDate: Error parsing format match "${match[0]}":`, e);
       }
     }
   }
@@ -416,14 +416,14 @@ function tryParseDate(text) {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const result = `${y}-${m}-${day}`;
-      console.log(`tryParseDate: Parsed general date "${cleanText}" to: ${result}`);
+      // console.log(`tryParseDate: Parsed general date "${cleanText}" to: ${result}`);
       return result;
     }
   } catch (e) {
-    console.log(`tryParseDate: Failed to parse "${cleanText}" as general date:`, e);
+    // console.log(`tryParseDate: Failed to parse "${cleanText}" as general date:`, e);
   }
 
-  console.log(`tryParseDate: Could not parse: "${cleanText}"`);
+  // console.log(`tryParseDate: Could not parse: "${cleanText}"`);
   return null;
 }
 

@@ -26,7 +26,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       ensureWebPushSubscription();
     }, 2000);
   } else {
-    console.warn('⚠️ VAPID public key not configured, skipping push registration');
+    // console.warn('⚠️ VAPID public key not configured, skipping push registration');
   }
 
   // OPTIMIZED: Setup 3-day validation alarm (backup check at 4 AM every 3 days)
@@ -77,7 +77,7 @@ chrome.runtime.onStartup.addListener(async () => {
     // Restore correct polling state based on actual tabs
     await updatePollingState();
   } catch (error) {
-    console.error('Failed to query calendar tabs on startup:', error);
+    // console.error('Failed to query calendar tabs on startup:', error);
   }
 
   if (CONFIG.VAPID_PUBLIC_KEY) {
@@ -119,7 +119,7 @@ self.addEventListener('push', async (event) => {
     // Notify popup if open to refresh display
     notifyPopup({ type: 'SUBSCRIPTION_UPDATED' });
   } catch (error) {
-    console.error('Error handling push notification:', error);
+    // console.error('Error handling push notification:', error);
   }
 });
 
@@ -143,7 +143,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         // Features already unlocked, storage already updated
       }
     } catch (error) {
-      console.error('Periodic validation failed:', error);
+      // console.error('Periodic validation failed:', error);
     }
   }
 
@@ -275,7 +275,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true });
         })
         .catch((error) => {
-          console.error('Failed to clear OAuth token:', error);
+          // console.error('Failed to clear OAuth token:', error);
           sendResponse({ success: false, error: error.message });
         });
       return true;
@@ -476,7 +476,7 @@ async function checkSubscriptionStatus() {
       reason: result.reason || null,
     };
   } catch (error) {
-    console.error('Subscription check failed:', error);
+    // console.error('Subscription check failed:', error);
 
     // FAIL-OPEN: Preserve current state on error to avoid locking paying users
     try {
@@ -490,7 +490,7 @@ async function checkSubscriptionStatus() {
         };
       }
     } catch (storageError) {
-      console.error('Failed to read subscription status from storage:', storageError);
+      // console.error('Failed to read subscription status from storage:', storageError);
     }
 
     return {
@@ -516,7 +516,7 @@ async function broadcastToCalendarTabs(message) {
       }
     }
   } catch (error) {
-    console.error('Failed to broadcast to tabs:', error);
+    // console.error('Failed to broadcast to tabs:', error);
   }
 }
 
@@ -646,8 +646,8 @@ async function ensureWebPushSubscription() {
     // Send to backend (or save as pending if no session yet)
     await registerPushSubscription(subscriptionJson);
   } catch (e) {
-    console.error('❌ Web Push subscription failed:', e?.message || e);
-    console.error('   Will retry on next service worker wake.');
+    // console.error('❌ Web Push subscription failed:', e?.message || e);
+    // console.error('   Will retry on next service worker wake.');
   } finally {
     subscribing = false;
   }
@@ -691,7 +691,7 @@ async function registerPushSubscription(subscription) {
     // Clear pending subscription if it was stored
     await chrome.storage.local.remove('pendingPushSubscription');
   } catch (error) {
-    console.error('Failed to register push subscription with server:', error);
+    // console.error('Failed to register push subscription with server:', error);
     // Store subscription to retry later
     await chrome.storage.local.set({ pendingPushSubscription: subscription });
   }
@@ -728,7 +728,7 @@ async function persistStateMachineState() {
       }
     });
   } catch (error) {
-    console.error('Failed to persist state machine state:', error);
+    // console.error('Failed to persist state machine state:', error);
   }
 }
 
@@ -747,7 +747,7 @@ async function restoreStateMachineState() {
       });
     }
   } catch (error) {
-    console.error('Failed to restore state machine state:', error);
+    // console.error('Failed to restore state machine state:', error);
   }
 }
 
@@ -804,7 +804,7 @@ async function restoreStateMachineState() {
       }
     }
   } catch (error) {
-    console.error('Failed to initialize state on wake:', error);
+    // console.error('Failed to initialize state on wake:', error);
 
     // Even if storage fails, try to detect actual calendar tabs
     // so the state machine can start properly
@@ -831,7 +831,7 @@ async function restoreStateMachineState() {
         debugLog(`Service worker wake (recovery): found ${activeCalendarTabs.size} tabs, starting in ACTIVE state`);
       }
     } catch (tabError) {
-      console.error('Failed to query tabs during recovery:', tabError);
+      // console.error('Failed to query tabs during recovery:', tabError);
       // Continue with SLEEP state as final fallback
     }
   }
@@ -868,7 +868,7 @@ async function handleOAuthRequest() {
 
     return { success: false, error: 'NO_TOKEN' };
   } catch (error) {
-    console.error('OAuth request failed:', error);
+    // console.error('OAuth request failed:', error);
 
     if (error.message === 'OAUTH_NOT_GRANTED') {
       return { success: false, error: 'USER_DENIED', message: 'User denied OAuth access' };
@@ -975,7 +975,7 @@ async function syncTaskLists(fullSync = false) {
       sampleTaskIds: sampleTaskIds.slice(0, 5) // Return first 5 for debugging
     };
   } catch (error) {
-    console.error('Task list sync failed:', error);
+    // console.error('Task list sync failed:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1013,7 +1013,7 @@ async function checkOAuthStatus() {
 
     return { granted: true };
   } catch (error) {
-    console.error('Error checking OAuth status:', error);
+    // console.error('Error checking OAuth status:', error);
     return { granted: false };
   }
 }
@@ -1024,7 +1024,7 @@ async function getTaskListsMeta() {
     const { 'cf.taskListsMeta': lists } = await chrome.storage.local.get('cf.taskListsMeta');
     return lists || [];
   } catch (error) {
-    console.error('Error getting task lists meta:', error);
+    // console.error('Error getting task lists meta:', error);
     return [];
   }
 }
@@ -1087,7 +1087,7 @@ async function handleResolveCalendarEvent(calendarEventId) {
       taskFragment,
     };
   } catch (error) {
-    console.error('Error resolving calendar event:', error);
+    // console.error('Error resolving calendar event:', error);
     return {
       success: false,
       error: error.message || 'Unknown error',
@@ -1127,7 +1127,7 @@ async function handleNewTaskDetected(taskId) {
 
     return { success: false, error: 'TASK_NOT_FOUND' };
   } catch (error) {
-    console.error('[Background] Error handling new task detection:', error);
+    // console.error('[Background] Error handling new task detection:', error);
     return { success: false, error: error.message };
   }
 }
@@ -1192,7 +1192,7 @@ async function applyListColorToExistingTasks(listId, color) {
 
     return { success: true, appliedCount, totalTasks: taskIds.length };
   } catch (error) {
-    console.error('Error applying list color to existing tasks:', error);
+    // console.error('Error applying list color to existing tasks:', error);
     return { success: false, error: error.message };
   }
 }

@@ -543,7 +543,7 @@ checkAuthAndSubscription();
       const result = await chrome.storage.sync.get('customDayColors');
       customColors = result.customDayColors || [];
     } catch (error) {
-      console.error('Error loading custom colors:', error);
+      // console.error('Error loading custom colors:', error);
       customColors = [];
     }
   }
@@ -553,7 +553,7 @@ checkAuthAndSubscription();
     try {
       await chrome.storage.sync.set({ customDayColors: customColors });
     } catch (error) {
-      console.error('Error saving custom colors:', error);
+      // console.error('Error saving custom colors:', error);
     }
   }
 
@@ -1171,7 +1171,7 @@ checkAuthAndSubscription();
       // Use the main storage system - this returns the full settings object
       settings = await window.cc3Storage.getSettings();
     } catch (error) {
-      console.error('❌ Error loading settings:', error);
+      // console.error('❌ Error loading settings:', error);
       settings = {
         enabled: false,
         weekdayColors: { ...defaultColors },
@@ -1200,7 +1200,7 @@ checkAuthAndSubscription();
         } catch (e) {}
       }
     } catch (error) {
-      console.error('❌ Error saving settings:', error);
+      // console.error('❌ Error saving settings:', error);
     }
   }
 
@@ -1394,7 +1394,7 @@ checkAuthAndSubscription();
       taskListsLoading.style.display = 'none';
       taskListsGrid.style.display = 'block';
     } catch (error) {
-      console.error('[Task List Colors] Error loading lists:', error);
+      // console.error('[Task List Colors] Error loading lists:', error);
       taskListsLoading.style.display = 'none';
       taskListsEmpty.style.display = 'block';
     }
@@ -5214,7 +5214,7 @@ checkAuthAndSubscription();
         }
       }
     } catch (error) {
-      console.error('Error notifying time blocking change:', error);
+      // console.error('Error notifying time blocking change:', error);
     }
   }
 
@@ -5233,7 +5233,7 @@ checkAuthAndSubscription();
         }
       }
     } catch (error) {
-      console.error('Error notifying time blocking color change:', error);
+      // console.error('Error notifying time blocking color change:', error);
     }
   }
 
@@ -5253,7 +5253,7 @@ checkAuthAndSubscription();
         }
       }
     } catch (error) {
-      console.error('Error notifying feature toggle:', error);
+      // console.error('Error notifying feature toggle:', error);
     }
   }
 
@@ -5441,7 +5441,7 @@ checkAuthAndSubscription();
         }
       }
     } catch (error) {
-      console.error('Error saving task color:', error);
+      // console.error('Error saving task color:', error);
     }
   }
 
@@ -5716,7 +5716,7 @@ checkAuthAndSubscription();
       updateTimeBlockingSchedule(); // Refresh to show new default color
       notifyTimeBlockingColorChange();
     } catch (error) {
-      console.error('Error saving time block global color:', error);
+      // console.error('Error saving time block global color:', error);
     }
   }
 
@@ -6226,7 +6226,7 @@ checkAuthAndSubscription();
           grantOAuthButton.textContent = 'Grant Access';
           grantOAuthButton.disabled = false;
 
-          console.error('[Task List Colors] OAuth grant error:', error);
+          // console.error('[Task List Colors] OAuth grant error:', error);
           showToast('Error granting access. Please try again.');
         }
       };
@@ -6464,11 +6464,11 @@ checkAuthAndSubscription();
             updateSyncStatus();
             await loadTaskLists();
           } else {
-            console.error('[Popup] Sync failed:', response);
+            // console.error('[Popup] Sync failed:', response);
             showToast('Sync failed. Please try again.');
           }
         } catch (error) {
-          console.error('[Task List Colors] Sync error:', error);
+          // console.error('[Task List Colors] Sync error:', error);
           showToast('Sync error. Please try again.');
         } finally {
           manualSyncButton.disabled = false;
@@ -6811,7 +6811,7 @@ checkAuthAndSubscription();
         const schedules = settings?.timeBlocking?.weeklySchedule || {};
         timeBlockCount = Object.values(schedules).reduce((sum, blocks) => sum + blocks.length, 0);
       } catch (error) {
-        console.warn('Failed to get counts:', error);
+        // console.warn('Failed to get counts:', error);
       }
 
       // First confirmation - detailed warning
@@ -6902,14 +6902,14 @@ If issues persist, reinstall the extension.`,
             });
           }
         } catch (error) {
-          console.warn('Failed to notify content scripts:', error);
+          // console.warn('Failed to notify content scripts:', error);
         }
 
         // Notify background service worker
         try {
           await chrome.runtime.sendMessage({ type: 'SETTINGS_RESET_COMPLETE' });
         } catch (error) {
-          console.warn('Failed to notify background:', error);
+          // console.warn('Failed to notify background:', error);
         }
 
         // Visual feedback - green success state
@@ -6953,7 +6953,7 @@ Would you like to refresh all Google Calendar tabs?`;
           window.location.reload();
         }, 100);
       } catch (error) {
-        console.error('Reset error:', error);
+        // console.error('Reset error:', error);
         alert(`❌ Reset failed: ${error.message}\n\nPlease try again or contact support.`);
 
         // Re-enable button
@@ -7058,7 +7058,7 @@ Would you like to refresh all Google Calendar tabs?`;
     const whiteColor = '#ffffff';
     const defaultOpacity = 30;
 
-    console.log(`Clearing day ${dayIndex} to white`);
+    // console.log(`Clearing day ${dayIndex} to white`);
 
     try {
       // 1. Set color to white
@@ -7087,7 +7087,7 @@ Would you like to refresh all Google Calendar tabs?`;
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       showToast(`${dayNames[dayIndex]} color cleared to default`);
     } catch (error) {
-      console.error('Error clearing day color:', error);
+      // console.error('Error clearing day color:', error);
       showToast('Failed to clear color', 'error');
     }
   }
@@ -7099,7 +7099,7 @@ Would you like to refresh all Google Calendar tabs?`;
     const whiteColor = '#ffffff';
     const defaultOpacity = 30;
 
-    console.log('Clearing all days to white');
+    // console.log('Clearing all days to white');
 
     try {
       // Clear all 7 days
@@ -7125,7 +7125,7 @@ Would you like to refresh all Google Calendar tabs?`;
       // 5. Show feedback
       showToast('All day colors cleared to default');
     } catch (error) {
-      console.error('Error clearing all day colors:', error);
+      // console.error('Error clearing all day colors:', error);
       showToast('Failed to clear all colors', 'error');
     }
   }
@@ -7835,7 +7835,7 @@ Would you like to refresh all Google Calendar tabs?`;
 
         await importColorsToLab(colors, file.name);
       } catch (error) {
-        console.error('Error importing template:', error);
+        // console.error('Error importing template:', error);
         alert("Error reading file. Please ensure it's a valid JSON or text file with hex colors.");
       }
     };

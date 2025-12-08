@@ -267,6 +267,6 @@
   if (window.cc3Features) {
     window.cc3Features.register(feature);
   } else {
-    console.warn('Feature registry not available for time blocking');
+    // console.warn('Feature registry not available for time blocking');
   }
 })();

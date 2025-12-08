@@ -201,7 +201,7 @@
       const height = ((endMinutes - startMinutes) / 60) * pixelsPerHour;
 
       if (height <= 0) {
-        console.warn(`Invalid time block: ${startTime} - ${endTime}`);
+        // console.warn(`Invalid time block: ${startTime} - ${endTime}`);
         return;
       }
 

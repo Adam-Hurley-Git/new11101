@@ -81,7 +81,7 @@
         return rawSettings[featureId] || {};
       }
     } catch (error) {
-      console.error('Error loading settings for feature:', featureId, error);
+      // console.error('Error loading settings for feature:', featureId, error);
       return {};
     }
   }
@@ -93,7 +93,7 @@
     return {
       id: featureId,
       init: async (settings) => {
-        console.log(`=== INITIALIZING FEATURE: ${featureId} ===`);
+        // console.log(`=== INITIALIZING FEATURE: ${featureId} ===`);
 
         // Load settings if not provided
         if (!settings || Object.keys(settings).length === 0) {
@@ -103,14 +103,14 @@
         // Initialize the feature
         await initFunction(settings);
 
-        console.log(`=== FEATURE INITIALIZED: ${featureId} ===`);
+        // console.log(`=== FEATURE INITIALIZED: ${featureId} ===`);
       },
       onSettingsChanged: (settings) => {
-        console.log(`Feature settings changed: ${featureId}`, settings);
+        // console.log(`Feature settings changed: ${featureId}`, settings);
         onSettingsChanged(settings);
       },
       teardown: () => {
-        console.log(`Feature teardown: ${featureId}`);
+        // console.log(`Feature teardown: ${featureId}`);
         teardown();
       },
     };
@@ -568,7 +568,7 @@
           }
         }
       } catch (error) {
-        console.warn('Could not save custom color to extension storage:', error);
+        // console.warn('Could not save custom color to extension storage:', error);
         // Fallback: still create the swatch locally
         const customSwatch = createCustomColorSwatch(color, customColorsGrid);
         customColorsGrid.appendChild(customSwatch);
@@ -647,7 +647,7 @@
           }
         }
       } catch (error) {
-        console.warn('Could not load custom colors from extension storage:', error);
+        // console.warn('Could not load custom colors from extension storage:', error);
       }
     }
 
@@ -889,5 +889,5 @@
     createCustomColorPicker,
   };
 
-  console.log('Shared utilities loaded for all features');
+  // console.log('Shared utilities loaded for all features');
 })();

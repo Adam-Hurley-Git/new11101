@@ -47,7 +47,7 @@
                   // Ensure positive result (handle Saturday start correctly)
                   if (startWeek < 0) startWeek += 7;
 
-                  console.log(`Detected start week: ${startWeek} (day ${dayOfWeek} in column ${cellIndex})`);
+                  // console.log(`Detected start week: ${startWeek} (day ${dayOfWeek} in column ${cellIndex})`);
                   return startWeek;
                 }
               }
@@ -69,17 +69,17 @@
 
           // Check for Saturday indicators (when it's first day)
           if (headerText.includes('sat') || headerText.includes('sab') || headerText.includes('土')) {
-            console.log('Detected Saturday start from header:', headerText);
+            // console.log('Detected Saturday start from header:', headerText);
             return 6; // Saturday start
           }
           // Check for Sunday indicators
           if (headerText.includes('sun') || headerText.includes('dom') || headerText.includes('日')) {
-            console.log('Detected Sunday start from header:', headerText);
+            // console.log('Detected Sunday start from header:', headerText);
             return 0; // Sunday start
           }
           // Check for Monday indicators
           if (headerText.includes('mon') || headerText.includes('lun') || headerText.includes('月')) {
-            console.log('Detected Monday start from header:', headerText);
+            // console.log('Detected Monday start from header:', headerText);
             return 1; // Monday start
           }
           // Only check first day column
@@ -89,7 +89,7 @@
     }
 
     // Fallback: assume Sunday start
-    console.log('Using fallback start week: 0 (Sunday)');
+    // console.log('Using fallback start week: 0 (Sunday)');
     return 0;
   }
 
@@ -100,16 +100,16 @@
   }
 
   function debugDayViewStructure() {
-    console.log('=== DAY VIEW DEBUG - PRECISE TARGETING ===');
-    console.log('URL:', window.location.href);
-    console.log('Body data-viewkey:', document.body.dataset.viewkey);
+    // console.log('=== DAY VIEW DEBUG - PRECISE TARGETING ===');
+    // console.log('URL:', window.location.href);
+    // console.log('Body data-viewkey:', document.body.dataset.viewkey);
 
     // Focus on QIYAPb elements (our precise targets)
     const allQiyapb = document.querySelectorAll('.QIYAPb');
-    console.log('🎯 TARGET: QIYAPb elements found:', allQiyapb.length);
+    // console.log('🎯 TARGET: QIYAPb elements found:', allQiyapb.length);
 
     allQiyapb.forEach((elem, i) => {
-      console.log(`🎯 QIYAPb ${i}:`, {
+      // console.log(`🎯 QIYAPb ${i}:`, {
         element: elem,
         className: elem.className,
         background: getComputedStyle(elem).backgroundColor,
@@ -120,7 +120,7 @@
       // Check children for event elements
       Array.from(elem.children).forEach((child, j) => {
         const hasEvent = child.classList.contains('feMFof') && child.classList.contains('A3o4Oe');
-        console.log(`  Child ${j}:`, {
+        // console.log(`  Child ${j}:`, {
           element: child,
           className: child.className,
           isEventElement: hasEvent,
@@ -132,20 +132,20 @@
     // Check if we have the elements we expect
     const main = document.querySelector('[role="main"]');
     const grids = document.querySelectorAll('[role="grid"]');
-    console.log('ℹ️  Context: Main element exists:', !!main);
-    console.log('ℹ️  Context: Grid elements found:', grids.length);
+    // console.log('ℹ️  Context: Main element exists:', !!main);
+    // console.log('ℹ️  Context: Grid elements found:', grids.length);
 
     if (allQiyapb.length === 0) {
-      console.warn('⚠️  NO QIYAPb ELEMENTS FOUND - Day view targeting will fail!');
+      // console.warn('⚠️  NO QIYAPb ELEMENTS FOUND - Day view targeting will fail!');
     }
   }
 
   function getCurrentDateInDayView() {
-    console.log('Getting current date for day view...');
+    // console.log('Getting current date for day view...');
 
     // Method 1: Try to find date from URL - most reliable
     const url = window.location.href;
-    console.log('Current URL:', url);
+    // console.log('Current URL:', url);
 
     // Google Calendar day view URLs have patterns like:
     // /calendar/u/0/r/day/2024/1/15
@@ -166,11 +166,11 @@
 
       // Validate the date is correct
       if (isNaN(date.getTime())) {
-        console.warn('Invalid date detected, using fallback');
+        // console.warn('Invalid date detected, using fallback');
         return new Date();
       }
 
-      console.log('Day view date from URL:', {
+      // console.log('Day view date from URL:', {
         year,
         month,
         day,
@@ -183,7 +183,7 @@
 
     // Fallback: use today's date
     const today = new Date();
-    console.log('Day view using fallback date (today):', today);
+    // console.log('Day view using fallback date (today):', today);
     return today;
   }
 
@@ -214,13 +214,13 @@
   }
 
   function removeDirectStyling() {
-    console.log('Removing direct DOM styling...');
+    // console.log('Removing direct DOM styling...');
 
     // Remove direct styling from QIYAPb elements
     const qiyapbElements = document.querySelectorAll('div.QIYAPb');
     qiyapbElements.forEach((element) => {
       element.style.removeProperty('background-color');
-      console.log('Removed direct styling from QIYAPb element:', element);
+      // console.log('Removed direct styling from QIYAPb element:', element);
 
       // Remove from child elements
       const children = element.children;
@@ -241,7 +241,7 @@
       element.style.removeProperty('background-color');
     });
 
-    console.log('Direct DOM styling removed');
+    // console.log('Direct DOM styling removed');
   }
 
   // Generate reliable CSS using dynamic day-to-column mapping
@@ -251,22 +251,22 @@
     const columnMapping = detectColumnToWeekdayMapping();
     const currentView = detectCurrentView();
 
-    console.log('Generating CSS with mapping:', columnMapping);
-    console.log('Current view:', currentView);
-    console.log('Weekday colors:', settings.weekdayColors);
+    // console.log('Generating CSS with mapping:', columnMapping);
+    // console.log('Current view:', currentView);
+    // console.log('Weekday colors:', settings.weekdayColors);
 
     let css = `/* Calendar Day Coloring - Dynamic Mapping */\n`;
 
     // Validate that we have a complete mapping
     const mappingKeys = Object.keys(columnMapping);
     if (mappingKeys.length === 0) {
-      console.warn('No column mapping detected, colors may not apply correctly');
+      // console.warn('No column mapping detected, colors may not apply correctly');
       return css;
     }
 
     // Day view - ultra-precise targeting for event column only
     if (currentView === 'day') {
-      console.log('Processing day view CSS generation...');
+      // console.log('Processing day view CSS generation...');
       debugDayViewStructure();
 
       const currentDate = getCurrentDateInDayView();
@@ -279,7 +279,7 @@
           const opacity = settings.weekdayOpacity?.[String(dayOfWeek)] || 30; // Default to 30% if not set
           const alpha = opacity / 100; // Convert percentage to decimal
           const rgba = hexToRgba(color, alpha);
-          console.log(`Day view: applying color ${rgba} for day ${dayOfWeek}`);
+          // console.log(`Day view: applying color ${rgba} for day ${dayOfWeek}`);
 
           // Day view - PRECISE targeting using ONLY QIYAPb elements (like old implementation)
           css += `/* Day View Coloring - Only QIYAPb elements, avoid feMFof.A3o4Oe */\n`;
@@ -304,19 +304,19 @@
           css += `body[data-viewkey="day"] [data-month] [data-date="${currentDateStr}"] { background-color: var(--cc3-day-color) !important; }\n`;
           css += `body[data-viewkey="day"] [jsname="PkgjIb"] [data-date="${currentDateStr}"] { background-color: var(--cc3-day-color) !important; }\n`;
 
-          console.log('Day view CSS generated:', css);
+          // console.log('Day view CSS generated:', css);
         } else {
-          console.log('No color for day view - dayOfWeek:', dayOfWeek, 'color:', color);
+          // console.log('No color for day view - dayOfWeek:', dayOfWeek, 'color:', color);
         }
       } else {
-        console.log('No current date found for day view');
+        // console.log('No current date found for day view');
       }
       return css;
     }
 
     // Skip CSS generation for month view - handled by monthColoring.js
     if (currentView === 'month') {
-      console.log('Month view: Skipping CSS generation, using JavaScript-based coloring');
+      // console.log('Month view: Skipping CSS generation, using JavaScript-based coloring');
       return css;
     }
 
@@ -325,13 +325,13 @@
     for (let col = 0; col < 7; col++) {
       const weekday = columnMapping[col];
       if (weekday === undefined) {
-        console.log(`No weekday mapping for column ${col}`);
+        // console.log(`No weekday mapping for column ${col}`);
         continue;
       }
 
       const color = settings.weekdayColors?.[String(weekday)];
       if (!color) {
-        console.log(`No color for weekday ${weekday} (column ${col})`);
+        // console.log(`No color for weekday ${weekday} (column ${col})`);
         continue;
       }
 
@@ -339,7 +339,7 @@
       const opacity = settings.weekdayOpacity?.[String(weekday)] || 30; // Default to 30% if not set
       const alpha = opacity / 100; // Convert percentage to decimal
       const rgba = hexToRgba(color, alpha);
-      console.log(`Applying color ${color} (${rgba}) to column ${col} for weekday ${weekday}`);
+      // console.log(`Applying color ${color} (${rgba}) to column ${col} for weekday ${weekday}`);
 
       // Column headers - more precise targeting to avoid bleeding
       css += `${base} > [role='presentation'] > [role='columnheader']:nth-child(${col + 1}):nth-last-child(${7 - col}) { background-color: ${rgba} !important; }\n`;
@@ -408,11 +408,11 @@
     // Method 2: Fallback to calculated mapping based on start week
     if (Object.keys(mapping).length === 0) {
       const startWeek = detectStartWeek();
-      console.log('Using fallback mapping with start week:', startWeek);
+      // console.log('Using fallback mapping with start week:', startWeek);
 
       // Ensure startWeek is a valid number
       if (isNaN(startWeek) || startWeek < 0 || startWeek > 6) {
-        console.warn('Invalid start week detected, using fallback: 1 (Monday)');
+        // console.warn('Invalid start week detected, using fallback: 1 (Monday)');
         for (let col = 0; col < 7; col++) {
           let weekday = (col + 1) % 7; // Monday start fallback
           mapping[col] = weekday;
@@ -427,7 +427,7 @@
       }
     }
 
-    console.log('Column to weekday mapping:', mapping);
+    // console.log('Column to weekday mapping:', mapping);
     return mapping;
   }
 
@@ -437,14 +437,14 @@
 
     const grid = findMonthGrid();
     if (!grid) {
-      console.log('Month view: No main grid found');
+      // console.log('Month view: No main grid found');
       return mapping;
     }
 
     const colOf = getColumnMapper(grid);
     const cells = getMonthCells(grid);
 
-    console.log(`Month view: Found grid with ${cells.length} cells`);
+    // console.log(`Month view: Found grid with ${cells.length} cells`);
 
     // Sample some cells to determine weekday mapping
     let mappedCount = 0;
@@ -459,7 +459,7 @@
         if (!isNaN(weekday) && mapping[col] === undefined) {
           mapping[col] = weekday;
           mappedCount++;
-          console.log(`Month view: Column ${col} -> Weekday ${weekday} (${iso})`);
+          // console.log(`Month view: Column ${col} -> Weekday ${weekday} (${iso})`);
 
           // Stop once we have all 7 columns mapped
           if (mappedCount >= 7) break;
@@ -467,7 +467,7 @@
       }
     }
 
-    console.log('Month view column mapping:', mapping);
+    // console.log('Month view column mapping:', mapping);
     return mapping;
   }
 
@@ -556,16 +556,16 @@
     const alpha = opacity / 100; // Convert percentage to decimal
     const rgba = hexToRgba(color, alpha);
 
-    console.log('Applying ultra-precise direct DOM styling for event column only:', rgba);
+    // console.log('Applying ultra-precise direct DOM styling for event column only:', rgba);
 
     // Target ONLY QIYAPb elements, avoid feMFof.A3o4Oe elements
-    console.log('Applying direct DOM styling - targeting only QIYAPb elements');
+    // console.log('Applying direct DOM styling - targeting only QIYAPb elements');
 
     // Target ONLY QIYAPb elements
     const qiyapbElements = document.querySelectorAll('div.QIYAPb');
     qiyapbElements.forEach((element) => {
       element.style.setProperty('background-color', rgba, 'important');
-      console.log('Applied color to QIYAPb element:', element);
+      // console.log('Applied color to QIYAPb element:', element);
 
       // Only apply to direct children that are not event elements
       const children = element.children;
@@ -592,7 +592,7 @@
       });
     }
 
-    console.log('Precise direct DOM styling applied for day view - ONLY QIYAPb elements');
+    // console.log('Precise direct DOM styling applied for day view - ONLY QIYAPb elements');
   }
 
   // === LOCKED MAIN APPLICATION FUNCTION ===
@@ -602,9 +602,9 @@
       return;
     }
 
-    console.log('Applying day coloring with settings:', settings);
+    // console.log('Applying day coloring with settings:', settings);
     const currentView = detectCurrentView();
-    console.log('Current view:', currentView);
+    // console.log('Current view:', currentView);
 
     // Handle month view with new month painter - ONLY targets div.MGaLHf.ChfiMc (NOT gridcells)
     if (currentView === 'month') {
@@ -627,12 +627,12 @@
 
         // Apply month view colors using user's week start setting
         const userWeekStart = settings.weekStart !== undefined ? settings.weekStart : 0; // Default to Sunday if not set
-        console.log('CC3 Month View: Using user week start setting:', userWeekStart);
+        // console.log('CC3 Month View: Using user week start setting:', userWeekStart);
         window.cc3MonthColoring.applyMonthViewColors(userColors, {
           assumeWeekStartsOn: userWeekStart,
           opacity: userOpacity,
         });
-        console.log('CC3 Month View Coloring Applied via New Month Painter - ONLY div.MGaLHf.ChfiMc (NOT gridcells)');
+        // console.log('CC3 Month View Coloring Applied via New Month Painter - ONLY div.MGaLHf.ChfiMc (NOT gridcells)');
       }
 
       // Clear any existing CSS to prevent conflicts
@@ -644,14 +644,14 @@
     // For day/week views, use existing CSS approach
     const style = ensureStyleElement();
     const css = generateCalendarCSS(settings);
-    console.log('Generated CSS length:', css.length);
+    // console.log('Generated CSS length:', css.length);
 
     style.textContent = css;
 
     // For day view, force immediate style recalculation AND apply direct styling
     if (currentView === 'day') {
-      console.log('Day view CSS being applied:');
-      console.log(css);
+      // console.log('Day view CSS being applied:');
+      // console.log(css);
 
       // Force browser to recalculate styles
       document.body.offsetHeight; // Trigger reflow
@@ -659,7 +659,7 @@
       // Apply direct DOM styling as fallback - immediate application
       createTrackedTimeout(() => {
         if (currentSettings && currentSettings.enabled) {
-          console.log('Applying direct styling fallback for day view');
+          // console.log('Applying direct styling fallback for day view');
           applyDayViewDirectStyling(currentSettings);
         }
       }, 50);
@@ -671,7 +671,7 @@
           const qiyapb = document.querySelector('.QIYAPb');
 
           if (qiyapb && getComputedStyle(qiyapb).backgroundColor === 'rgba(0, 0, 0, 0)') {
-            console.log("CSS didn't work on QIYAPb, applying direct styling");
+            // console.log("CSS didn't work on QIYAPb, applying direct styling");
             applyDayViewDirectStyling(currentSettings);
           }
         }
@@ -682,15 +682,15 @@
         if (currentSettings && currentSettings.enabled) {
           const qiyapbElement = document.querySelector('.QIYAPb');
           if (qiyapbElement) {
-            console.log('QIYAPb element background after apply:', getComputedStyle(qiyapbElement).backgroundColor);
+            // console.log('QIYAPb element background after apply:', getComputedStyle(qiyapbElement).backgroundColor);
           } else {
-            console.log('No QIYAPb element found in day view');
+            // console.log('No QIYAPb element found in day view');
           }
         }
       }, 300);
     }
 
-    console.log('CC3 Day Coloring Applied - Start Week:', detectStartWeek());
+    // console.log('CC3 Day Coloring Applied - Start Week:', detectStartWeek());
   }
 
   // === LOCKED DOM MONITORING ===
@@ -714,7 +714,7 @@
       clearTimeout(timeoutId);
     }
     pendingTimeouts.clear();
-    console.log('Cleared all pending timeouts');
+    // console.log('Cleared all pending timeouts');
   }
 
   function setupDOMObserver(settings) {
@@ -726,7 +726,7 @@
       domObserver = null;
     }
 
-    console.log('Setting up DOM observer for day coloring');
+    // console.log('Setting up DOM observer for day coloring');
 
     // Create debounced mutation observer with view-specific handling
     let debounceTimer = null;
@@ -739,7 +739,7 @@
       // Check if view key changed
       const currentViewKey = document.body.dataset.viewkey;
       if (currentViewKey !== lastViewKey) {
-        console.log('View change detected:', lastViewKey, '->', currentViewKey);
+        // console.log('View change detected:', lastViewKey, '->', currentViewKey);
         lastViewKey = currentViewKey;
         viewChanged = true;
         shouldReapply = true;
@@ -779,10 +779,10 @@
         debounceTimer = createTrackedTimeout(() => {
           // Check current settings before reapplying
           if (currentSettings && currentSettings.enabled) {
-            console.log('DOM mutation detected, reapplying day colors');
+            // console.log('DOM mutation detected, reapplying day colors');
             applyDayColoring(currentSettings);
           } else {
-            console.log('DOM mutation detected but day coloring is disabled, skipping');
+            // console.log('DOM mutation detected but day coloring is disabled, skipping');
           }
         }, delay);
       }
@@ -809,7 +809,7 @@
         const hasViewKey = document.body.dataset.viewkey;
 
         if ((hasGrid || hasMainContent) && hasViewKey) {
-          console.log('Calendar ready - grid:', !!hasGrid, 'main:', !!hasMainContent, 'viewkey:', hasViewKey);
+          // console.log('Calendar ready - grid:', !!hasGrid, 'main:', !!hasMainContent, 'viewkey:', hasViewKey);
           resolve(true);
           return;
         }
@@ -817,7 +817,7 @@
         if (Date.now() - startTime < maxWait) {
           setTimeout(checkReady, 100);
         } else {
-          console.log('Calendar readiness timeout reached, proceeding anyway');
+          // console.log('Calendar readiness timeout reached, proceeding anyway');
           resolve(false);
         }
       };
@@ -830,30 +830,30 @@
   const feature = {
     id: FEATURE_ID,
     init: async (settings) => {
-      console.log('=== INITIALIZING LOCKED DAY COLORING FEATURE ===');
-      console.log('Settings received:', settings);
-      console.log('Current URL:', window.location.href);
-      console.log('Body viewkey:', document.body.dataset.viewkey);
+      // console.log('=== INITIALIZING LOCKED DAY COLORING FEATURE ===');
+      // console.log('Settings received:', settings);
+      // console.log('Current URL:', window.location.href);
+      // console.log('Body viewkey:', document.body.dataset.viewkey);
 
       // If settings are empty or missing, try to load them directly
       if (!settings || Object.keys(settings).length === 0) {
-        console.log('Empty settings received, loading from storage...');
+        // console.log('Empty settings received, loading from storage...');
         try {
           if (window.cc3Storage) {
             const rawSettings = await window.cc3Storage.getAll();
-            console.log('Raw settings from storage:', rawSettings);
+            // console.log('Raw settings from storage:', rawSettings);
 
             // Handle nested settings structure
             if (rawSettings && rawSettings.settings) {
               settings = rawSettings.settings.dayColoring || {};
-              console.log('Extracted nested dayColoring settings:', settings);
+              // console.log('Extracted nested dayColoring settings:', settings);
             } else {
               settings = rawSettings.dayColoring || {};
-              console.log('Direct dayColoring settings:', settings);
+              // console.log('Direct dayColoring settings:', settings);
             }
           }
         } catch (error) {
-          console.error('Error loading settings from storage:', error);
+          // console.error('Error loading settings from storage:', error);
           settings = {};
         }
       }
@@ -863,7 +863,7 @@
 
       // Apply colors immediately if enabled
       if (settings && settings.enabled) {
-        console.log('Day coloring is enabled, setting up monitoring and applying colors');
+        // console.log('Day coloring is enabled, setting up monitoring and applying colors');
 
         // Wait for calendar to be ready
         await waitForCalendarReady();
@@ -886,16 +886,16 @@
           }
         }, 1000);
       } else {
-        console.log('Day coloring is disabled or no settings available');
+        // console.log('Day coloring is disabled or no settings available');
       }
 
-      console.log('=== LOCKED DAY COLORING FEATURE INITIALIZED ===');
+      // console.log('=== LOCKED DAY COLORING FEATURE INITIALIZED ===');
     },
     onSettingsChanged: (settings) => {
-      console.log('=== DAY COLORING SETTINGS CHANGED ===');
-      console.log('New settings received:', settings);
-      console.log('Feature enabled:', settings?.enabled);
-      console.log('Current view:', detectCurrentView());
+      // console.log('=== DAY COLORING SETTINGS CHANGED ===');
+      // console.log('New settings received:', settings);
+      // console.log('Feature enabled:', settings?.enabled);
+      // console.log('Current view:', detectCurrentView());
 
       // Prevent redundant updates if settings haven't actually changed
       if (
@@ -904,14 +904,14 @@
         JSON.stringify(currentSettings.weekdayColors) === JSON.stringify(settings?.weekdayColors) &&
         JSON.stringify(currentSettings.weekdayOpacity) === JSON.stringify(settings?.weekdayOpacity)
       ) {
-        console.log('Settings unchanged, skipping update');
+        // console.log('Settings unchanged, skipping update');
         return;
       }
 
       currentSettings = settings;
 
       if (settings && settings.enabled) {
-        console.log('🟢 ENABLING day coloring');
+        // console.log('🟢 ENABLING day coloring');
 
         // Set up DOM observer
         setupDOMObserver(settings);
@@ -919,15 +919,15 @@
         // Apply colors immediately
         applyDayColoring(settings);
 
-        console.log('✅ Day coloring enabled and applied');
+        // console.log('✅ Day coloring enabled and applied');
       } else {
-        console.log('🔴 DISABLING day coloring - cleaning up observer and styles');
+        // console.log('🔴 DISABLING day coloring - cleaning up observer and styles');
 
         // Clean up DOM observer when disabled
         if (domObserver) {
           domObserver.disconnect();
           domObserver = null;
-          console.log('✅ DOM observer cleaned up');
+          // console.log('✅ DOM observer cleaned up');
         }
 
         // Clear all pending timeouts
@@ -945,14 +945,14 @@
           window.cc3MonthColoring.clearMonthViewColors();
         }
 
-        console.log('✅ All styles and direct styling removed');
-        console.log('🔴 Day coloring fully disabled');
+        // console.log('✅ All styles and direct styling removed');
+        // console.log('🔴 Day coloring fully disabled');
       }
 
-      console.log('=== DAY COLORING SETTINGS CHANGE COMPLETE ===');
+      // console.log('=== DAY COLORING SETTINGS CHANGE COMPLETE ===');
     },
     teardown: () => {
-      console.log('Day coloring feature teardown');
+      // console.log('Day coloring feature teardown');
 
       // Clean up DOM observer
       if (domObserver) {
