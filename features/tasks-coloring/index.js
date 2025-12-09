@@ -1699,81 +1699,9 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
-  // CRITICAL FIX: Also support dual-format lookup for manual colors
-  let manualColor = manualColors?.[taskId];
-
-  // If not found and taskId is base64, try decoded
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const decoded = atob(taskId);
-      if (decoded !== taskId) {
-        manualColor = manualColors[decoded];
-      }
-    } catch (e) {}
-  }
-
-  // If not found and taskId is decoded, try base64
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const encoded = btoa(taskId);
-      if (encoded !== taskId) {
-        manualColor = manualColors[encoded];
-      }
-    } catch (e) {}
-  }
-
-  if (manualColor) {
-    // Manual background color: always preserve it, even when completed
-    // Don't let list's completed styling mode override manual colors
-
-    if (isCompleted) {
-      // For completed manual tasks: use manual color with opacity from list settings
-      // If task has no list or list has no opacity settings, find highest across all lists
-      let bgOpacity = 0.3;  // Default 30% for completed tasks
-      let textOpacity = 0.3;  // Default 30% for completed tasks
-
-      // First try the task's own list
-      if (completedStyling) {
-        if (completedStyling.bgOpacity !== undefined) {
-          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-        }
-        if (completedStyling.textOpacity !== undefined) {
-          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-        }
-      } else {
-        // No list for this task - find highest opacity across all lists
-        const allCompletedStyling = cache.completedStyling || {};
-        for (const listStyles of Object.values(allCompletedStyling)) {
-          if (listStyles?.bgOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-            if (normalized > bgOpacity) bgOpacity = normalized;
-          }
-          if (listStyles?.textOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-            if (normalized > textOpacity) textOpacity = normalized;
-          }
-        }
-      }
-
-      return {
-        backgroundColor: manualColor,
-        textColor: overrideTextColor || pickContrastingText(manualColor),
-        bgOpacity,
-        textOpacity,
-      };
-    }
-
-    // Pending manual task: full opacity
-    return buildColorInfo({
-      baseColor: manualColor,
-      pendingTextColor: null, // Don't use list text color for manual backgrounds
-      overrideTextColor,
-      isCompleted: false,
-      completedStyling: null,
-    });
-  }
-
-  // PRIORITY 2: Manual color for ALL instances of recurring task (fingerprint)
+  // PRIORITY 1: Manual color for ALL instances of recurring task (fingerprint)
+  // This must be FIRST priority - if a recurring color is set, it applies to ALL instances
+  // regardless of whether they have single-instance colors or list colors
   if (element && cache.recurringTaskColors) {
     const fingerprint = extractTaskFingerprint(element);
     if (fingerprint.fingerprint) {
@@ -1827,6 +1755,75 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
         });
       }
     }
+  }
+
+  // PRIORITY 2: Single-instance manual color (only if no recurring color)
+  // CRITICAL FIX: Also support dual-format lookup for manual colors
+  let manualColor = manualColors?.[taskId];
+
+  // If not found and taskId is base64, try decoded
+  if (!manualColor && taskId && manualColors) {
+    try {
+      const decoded = atob(taskId);
+      if (decoded !== taskId) {
+        manualColor = manualColors[decoded];
+      }
+    } catch (e) {}
+  }
+
+  // If not found and taskId is decoded, try base64
+  if (!manualColor && taskId && manualColors) {
+    try {
+      const encoded = btoa(taskId);
+      if (encoded !== taskId) {
+        manualColor = manualColors[encoded];
+      }
+    } catch (e) {}
+  }
+
+  if (manualColor) {
+    console.log('[TaskColoring] ✅ Using single-instance manual color for task:', taskId);
+
+    if (isCompleted) {
+      let bgOpacity = 0.3;
+      let textOpacity = 0.3;
+
+      if (completedStyling) {
+        if (completedStyling.bgOpacity !== undefined) {
+          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
+        }
+        if (completedStyling.textOpacity !== undefined) {
+          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
+        }
+      } else {
+        const allCompletedStyling = cache.completedStyling || {};
+        for (const listStyles of Object.values(allCompletedStyling)) {
+          if (listStyles?.bgOpacity !== undefined) {
+            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
+            if (normalized > bgOpacity) bgOpacity = normalized;
+          }
+          if (listStyles?.textOpacity !== undefined) {
+            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
+            if (normalized > textOpacity) textOpacity = normalized;
+          }
+        }
+      }
+
+      return {
+        backgroundColor: manualColor,
+        textColor: overrideTextColor || pickContrastingText(manualColor),
+        bgOpacity,
+        textOpacity,
+      };
+    }
+
+    return buildColorInfo({
+      baseColor: manualColor,
+      pendingTextColor: null,
+      overrideTextColor,
+      isCompleted: false,
+      completedStyling: null,
+    });
   }
 
   // PRIORITY 3: Check for any list-based settings (background, text, or completed styling)
