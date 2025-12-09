@@ -2059,7 +2059,9 @@ async function doRepaint(bypassThrottling = false) {
   lastRepaintTime = now;
 
   cleanupStaleReferences();
-  const manualColorMap = await loadMap();
+  // REMOVED: const manualColorMap = await loadMap();
+  // Don't pass OLD cache to getColorForTask - let it use NEW cache (refreshColorCache)
+  // which properly syncs cf.taskColors with cf.recurringTaskColors
 
   // Note: We don't early exit here anymore because we might have:
   // - Text colors set (even without background colors)
@@ -2072,7 +2074,7 @@ async function doRepaint(bypassThrottling = false) {
   for (const [taskId, element] of taskElementReferences.entries()) {
     if (element.isConnected) {
       const isCompleted = isTaskElementCompleted(element);
-      const colors = await getColorForTask(taskId, manualColorMap, { element, isCompleted });
+      const colors = await getColorForTask(taskId, null, { element, isCompleted });
       if (colors && colors.backgroundColor) {
         const target = getPaintTarget(element);
         if (target) {
@@ -2108,7 +2110,7 @@ async function doRepaint(bypassThrottling = false) {
       if (isCompleted) {
         completedCount++;
       }
-      const colors = await getColorForTask(id, manualColorMap, { element: chip, isCompleted });
+      const colors = await getColorForTask(id, null, { element: chip, isCompleted });
 
       if (isCompleted && colors && colors.backgroundColor) {
         completedColoredCount++;
@@ -2167,6 +2169,8 @@ async function doRepaint(bypassThrottling = false) {
   }
 
   // Third: Fallback search for any task IDs we haven't found yet
+  // Load manual colors from NEW cache to check for unprocessed tasks
+  const manualColorMap = await loadMap();
   const unprocessedTaskIds = Object.keys(manualColorMap).filter((id) => !processedTaskIds.has(id));
   if (unprocessedTaskIds.length > 0) {
     // More targeted search - only look for specific task IDs we need
@@ -2183,7 +2187,7 @@ async function doRepaint(bypassThrottling = false) {
           const target = getPaintTarget(element);
           if (target) {
             const isCompleted = isTaskElementCompleted(element);
-            const colors = await getColorForTask(taskId, manualColorMap, { element, isCompleted });
+            const colors = await getColorForTask(taskId, null, { element, isCompleted });
             if (colors && colors.backgroundColor) {
               applyPaintIfNeeded(target, colors, isCompleted);
               taskElementReferences.set(taskId, element);
