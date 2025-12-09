@@ -884,7 +884,8 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
     }
   }
 
-  doRepaint(true);
+  // REMOVED: doRepaint(true) was causing first instance to be repainted with wrong color
+  // The elements are already painted in the loop above, no need for full repaint
 }
 
 async function injectTaskColorControls(dialogEl, taskId, onChanged) {
