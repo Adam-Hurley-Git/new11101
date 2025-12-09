@@ -963,8 +963,8 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     // This ensures recurring colors apply consistently to all instances
     await paintTaskImmediately(taskId, null);
 
-    // Trigger one final repaint to catch any stragglers
-    setTimeout(() => repaintSoon(true), 150);
+    // REMOVED: repaintSoon was causing first instance to be repainted with wrong color
+    // paintTaskImmediately already painted all instances correctly above
   });
 
   clearBtn.addEventListener('click', async (e) => {
@@ -1004,8 +1004,8 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
     // Now paint with null to clear colors from this instance
     await paintTaskImmediately(taskId, null);
 
-    // Trigger one final repaint to catch any stragglers
-    setTimeout(() => repaintSoon(true), 150);
+    // REMOVED: repaintSoon was causing issues with color application
+    // paintTaskImmediately already handled all instances correctly above
   });
 
   // Create checkbox for "Apply to all instances" (recurring tasks)
