@@ -2124,6 +2124,12 @@ async function doRepaint(bypassThrottling = false) {
     const id = await getResolvedTaskId(chip);
 
     if (id) {
+      // CRITICAL: Skip if already processed in first loop (cached elements)
+      // This prevents double-processing which was breaking fingerprint extraction
+      if (processedTaskIds.has(id)) {
+        continue;
+      }
+
       // Check for any color (manual or list default)
       const isCompleted = isTaskElementCompleted(chip);
       if (isCompleted) {
