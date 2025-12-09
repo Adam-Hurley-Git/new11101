@@ -938,9 +938,10 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
         const fingerprint = extractTaskFingerprint(taskElement);
         if (fingerprint.fingerprint) {
           console.log('[TaskColoring] Applying color to ALL instances with fingerprint:', fingerprint.fingerprint);
-          await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
-          // Also clear single-instance color if it exists (recurring color takes precedence)
+          // CRITICAL: Clear single-instance color FIRST to prevent storage listener from using stale color
+          // Storage listener fires when setRecurringTaskColor writes, and checks Priority 1 before Priority 2
           await clearTaskColor(taskId);
+          await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
         } else {
           console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
           await setTaskColor(taskId, selectedColor);
