@@ -1779,7 +1779,26 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     if (fingerprint.fingerprint) {
       const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
       if (recurringColor) {
-        console.log('[TaskColoring] ✅ Using recurring manual color for fingerprint:', fingerprint.fingerprint);
+        console.log('[TaskColoring] ✅ PRIORITY 2 MATCH - Using recurring color:', fingerprint.fingerprint, recurringColor);
+      } else {
+        console.log('[TaskColoring] ⚠️ PRIORITY 2 - Fingerprint found but NO color in cache:', fingerprint.fingerprint, 'Available:', Object.keys(cache.recurringTaskColors));
+      }
+    } else {
+      console.log('[TaskColoring] ⚠️ PRIORITY 2 - Could not extract fingerprint from element');
+    }
+  } else {
+    if (!element) {
+      console.log('[TaskColoring] ⚠️ PRIORITY 2 SKIPPED - No element provided for taskId:', taskId);
+    } else if (!cache.recurringTaskColors) {
+      console.log('[TaskColoring] ⚠️ PRIORITY 2 SKIPPED - No recurringTaskColors in cache');
+    }
+  }
+
+  if (element && cache.recurringTaskColors) {
+    const fingerprint = extractTaskFingerprint(element);
+    if (fingerprint.fingerprint) {
+      const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
+      if (recurringColor) {
 
         if (isCompleted) {
           // For completed recurring manual tasks: use manual color with opacity from list settings
