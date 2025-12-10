@@ -2182,6 +2182,15 @@ async function doRepaint(bypassThrottling = false) {
     const id = await getResolvedTaskId(chip);
 
     if (id) {
+      // CRITICAL FIX: Skip if already processed in first loop (cached elements)
+      // Google Calendar has nested DIVs with same data-eventid attribute
+      // Only the outer DIV has .XuJrye child needed for fingerprint extraction
+      // Processing the nested DIV would fail fingerprint extraction and overwrite correct colors
+      if (processedTaskIds.has(id)) {
+        console.log('[DEEP ANALYSIS] Skipping duplicate taskId:', id);
+        continue;
+      }
+
       // Check for any color (manual or list default)
       const isCompleted = isTaskElementCompleted(chip);
       if (isCompleted) {
