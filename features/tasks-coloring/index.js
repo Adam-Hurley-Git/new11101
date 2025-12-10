@@ -5,30 +5,6 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract task ID from data-eventid attribute
- * Handles both regular task formats:
- * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
- *
- * NOTE: Each recurring task instance has a COMPLETELY UNIQUE ID.
- * Recurring tasks are NOT matched by shared base IDs - they are matched
- * by fingerprint (title + time) in getListIdFromFingerprint().
- *
- * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Task ID
- */
-function extractBaseTaskId(eventId) {
-  if (!eventId) return null;
-
-  // Remove tasks. or tasks_ prefix (6 characters)
-  if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
-    return eventId.slice(6);
-  }
-
-  return null;
-}
-
-/**
  * Get task ID from a DOM element (supports both old and new UI)
  * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
  * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
@@ -43,7 +19,7 @@ function getTaskIdFromChip(el) {
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     console.log('[TaskColoring] OLD UI detected:', ev);
-    return extractBaseTaskId(ev);
+    return ev.slice(6); // Remove tasks. or tasks_ prefix
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
@@ -76,7 +52,7 @@ function getTaskIdFromChip(el) {
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       console.log('[TaskColoring] OLD UI in parent:', parentEv);
-      return extractBaseTaskId(parentEv);
+      return parentEv.slice(6); // Remove tasks. or tasks_ prefix
     }
 
     // NEW UI in parent
@@ -265,6 +241,74 @@ const CALENDAR_MAPPING_CACHE_LIFETIME = 30000; // 30 seconds
 // RECURRING TASK FINGERPRINT CACHE (title + time → listId)
 // Used to match recurring instances that aren't in the API mapping
 let recurringTaskFingerprintCache = new Map(); // In-memory cache: "title|time" → listId
+
+/**
+ * Lookup value in map with base64 fallbacks
+ * Tries: direct → decoded (atob) → encoded (btoa)
+ * @param {Object} map - Object to search
+ * @param {string} taskId - Task ID to lookup
+ * @returns {*} Value if found, null otherwise
+ */
+function lookupWithBase64Fallback(map, taskId) {
+  if (!map || !taskId) return null;
+
+  // Try direct lookup
+  if (map[taskId]) return map[taskId];
+
+  // Try decoded (if taskId is base64)
+  try {
+    const decoded = atob(taskId);
+    if (decoded !== taskId && map[decoded]) {
+      return map[decoded];
+    }
+  } catch (e) {}
+
+  // Try encoded (if taskId is decoded)
+  try {
+    const encoded = btoa(taskId);
+    if (encoded !== taskId && map[encoded]) {
+      return map[encoded];
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Get opacity values for completed manual/recurring tasks
+ * @param {Object} completedStyling - Completed styling config for this list
+ * @param {Object} cache - Color cache
+ * @returns {{bgOpacity: number, textOpacity: number}}
+ */
+function getCompletedOpacities(completedStyling, cache) {
+  let bgOpacity = 0.3;  // Default 30% for completed tasks
+  let textOpacity = 0.3;  // Default 30% for completed tasks
+
+  if (completedStyling) {
+    // Use the task's own list opacity settings
+    if (completedStyling.bgOpacity !== undefined) {
+      bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
+    }
+    if (completedStyling.textOpacity !== undefined) {
+      textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
+    }
+  } else {
+    // No list for this task - find highest opacity across all lists
+    const allCompletedStyling = cache.completedStyling || {};
+    for (const listStyles of Object.values(allCompletedStyling)) {
+      if (listStyles?.bgOpacity !== undefined) {
+        const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
+        if (normalized > bgOpacity) bgOpacity = normalized;
+      }
+      if (listStyles?.textOpacity !== undefined) {
+        const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
+        if (normalized > textOpacity) textOpacity = normalized;
+      }
+    }
+  }
+
+  return { bgOpacity, textOpacity };
+}
 
 /**
  * Decode ttb_ prefixed data-eventid to calendar event ID
@@ -1642,41 +1686,10 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const manualColors = manualColorsMap || cache.manualColors;
   const element = options.element; // DOM element for fingerprint matching
 
-  // CRITICAL FIX: Support both base64 and decoded task ID formats
+  // Support both base64 and decoded task ID formats
   // cf.taskToListMap stores DECODED IDs (from buildTaskToListMapping)
   // but ttb_ resolution returns BASE64 IDs (from resolveCalendarEventToTaskId)
-  // Try both formats to ensure compatibility with OLD UI and NEW UI (ttb_)
-  let listId = cache.taskToListMap[taskId];
-
-  // If not found and taskId looks like base64, try decoded format
-  if (!listId && taskId) {
-    try {
-      const decoded = atob(taskId);
-      if (decoded !== taskId) {
-        listId = cache.taskToListMap[decoded];
-        if (listId) {
-          console.log('[TaskColoring] Found list via decoded ID:', { taskId, decoded, listId });
-        }
-      }
-    } catch (e) {
-      // Not base64 encoded, ignore
-    }
-  }
-
-  // If not found and taskId looks decoded, try base64 format
-  if (!listId && taskId) {
-    try {
-      const encoded = btoa(taskId);
-      if (encoded !== taskId) {
-        listId = cache.taskToListMap[encoded];
-        if (listId) {
-          console.log('[TaskColoring] Found list via encoded ID:', { taskId, encoded, listId });
-        }
-      }
-    } catch (e) {
-      // Not encodable, ignore
-    }
-  }
+  let listId = lookupWithBase64Fallback(cache.taskToListMap, taskId);
 
   // RECURRING TASK FALLBACK: Try fingerprint matching (title + time)
   // This handles recurring task instances that aren't in the API mapping
@@ -1692,28 +1705,8 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
-  // CRITICAL FIX: Also support dual-format lookup for manual colors
-  let manualColor = manualColors?.[taskId];
-
-  // If not found and taskId is base64, try decoded
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const decoded = atob(taskId);
-      if (decoded !== taskId) {
-        manualColor = manualColors[decoded];
-      }
-    } catch (e) {}
-  }
-
-  // If not found and taskId is decoded, try base64
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const encoded = btoa(taskId);
-      if (encoded !== taskId) {
-        manualColor = manualColors[encoded];
-      }
-    } catch (e) {}
-  }
+  // Support dual-format lookup for manual colors (base64 and decoded)
+  let manualColor = lookupWithBase64Fallback(manualColors, taskId);
 
   // PRIORITY 1: Single-instance manual color (highest priority)
   if (manualColor) {
@@ -1722,33 +1715,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
     if (isCompleted) {
       // For completed manual tasks: use manual color with opacity from list settings
-      // If task has no list or list has no opacity settings, find highest across all lists
-      let bgOpacity = 0.3;  // Default 30% for completed tasks
-      let textOpacity = 0.3;  // Default 30% for completed tasks
-
-      // First try the task's own list
-      if (completedStyling) {
-        if (completedStyling.bgOpacity !== undefined) {
-          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-        }
-        if (completedStyling.textOpacity !== undefined) {
-          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-        }
-      } else {
-        // No list for this task - find highest opacity across all lists
-        const allCompletedStyling = cache.completedStyling || {};
-        for (const listStyles of Object.values(allCompletedStyling)) {
-          if (listStyles?.bgOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-            if (normalized > bgOpacity) bgOpacity = normalized;
-          }
-          if (listStyles?.textOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-            if (normalized > textOpacity) textOpacity = normalized;
-          }
-        }
-      }
-
+      const { bgOpacity, textOpacity } = getCompletedOpacities(completedStyling, cache);
       return {
         backgroundColor: manualColor,
         textColor: overrideTextColor || pickContrastingText(manualColor),
@@ -1776,32 +1743,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
         if (isCompleted) {
           // For completed recurring manual tasks: use manual color with opacity from list settings
-          let bgOpacity = 0.3;  // Default 30% for completed tasks
-          let textOpacity = 0.3;  // Default 30% for completed tasks
-
-          // Try to use list's opacity settings if available
-          if (completedStyling) {
-            if (completedStyling.bgOpacity !== undefined) {
-              bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-            }
-            if (completedStyling.textOpacity !== undefined) {
-              textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-            }
-          } else {
-            // No list for this task - find highest opacity across all lists
-            const allCompletedStyling = cache.completedStyling || {};
-            for (const listStyles of Object.values(allCompletedStyling)) {
-              if (listStyles?.bgOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-                if (normalized > bgOpacity) bgOpacity = normalized;
-              }
-              if (listStyles?.textOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-                if (normalized > textOpacity) textOpacity = normalized;
-              }
-            }
-          }
-
+          const { bgOpacity, textOpacity } = getCompletedOpacities(completedStyling, cache);
           return {
             backgroundColor: recurringColor,
             textColor: overrideTextColor || pickContrastingText(recurringColor),
