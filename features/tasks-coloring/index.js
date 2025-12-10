@@ -883,9 +883,6 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
       taskElementReferences.delete(taskId);
     }
   }
-
-  // REMOVED: doRepaint(true) was causing first instance to be repainted with wrong color
-  // The elements are already painted in the loop above, no need for full repaint
 }
 
 async function injectTaskColorControls(dialogEl, taskId, onChanged) {
@@ -936,19 +933,12 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
         await setTaskColor(taskId, selectedColor);
       } else {
         const fingerprint = extractTaskFingerprint(taskElement);
-        console.log('[DEEP ANALYSIS] ========== APPLY TO ALL INSTANCES ==========');
-        console.log('[DEEP ANALYSIS] TaskId:', taskId);
-        console.log('[DEEP ANALYSIS] Selected color:', selectedColor);
-        console.log('[DEEP ANALYSIS] Extracted fingerprint:', fingerprint);
 
         if (fingerprint.fingerprint) {
-          console.log('[DEEP ANALYSIS] Step 1: Clearing single-instance color...');
           // CRITICAL: Clear single-instance color FIRST to prevent storage listener from using stale color
           // Storage listener fires when setRecurringTaskColor writes, and checks Priority 1 before Priority 2
           await clearTaskColor(taskId);
-          console.log('[DEEP ANALYSIS] Step 2: Setting recurring color in storage...');
           await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
-          console.log('[DEEP ANALYSIS] Step 3: Recurring color saved to cf.recurringTaskColors');
         } else {
           console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
           await setTaskColor(taskId, selectedColor);
@@ -961,21 +951,14 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
 
     onChanged?.(taskId, selectedColor);
 
-    // CRITICAL FIX: Invalidate cache immediately to force fresh data
-    console.log('[DEEP ANALYSIS] Step 4: Invalidating cache...');
+    // Invalidate cache immediately to force fresh data
     invalidateColorCache();
 
-    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
-    console.log('[DEEP ANALYSIS] Step 5: Waiting 100ms for storage listeners...');
+    // Wait a moment for storage listeners to finish their repaints
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Paint this instance using natural priority resolution (no override)
-    // This ensures recurring colors apply consistently to all instances
-    console.log('[DEEP ANALYSIS] Step 6: Calling paintTaskImmediately...');
     await paintTaskImmediately(taskId, null);
-
-    // REMOVED: repaintSoon was causing first instance to be repainted with wrong color
-    // paintTaskImmediately already painted all instances correctly above
   });
 
   clearBtn.addEventListener('click', async (e) => {
@@ -1655,16 +1638,7 @@ async function isTaskInCache(taskId) {
  * @returns {Promise<string|null>} Color hex string or null
  */
 async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
-  console.log('[DEEP ANALYSIS] ========== getColorForTask START ==========');
-  console.log('[DEEP ANALYSIS] taskId:', taskId);
-  console.log('[DEEP ANALYSIS] element provided:', !!options.element);
-  console.log('[DEEP ANALYSIS] manualColorsMap provided:', !!manualColorsMap);
-
   const cache = await refreshColorCache();
-  console.log('[DEEP ANALYSIS] Cache recurringTaskColors:', Object.keys(cache.recurringTaskColors || {}));
-  console.log('[DEEP ANALYSIS] Cache manualColors:', Object.keys(cache.manualColors || {}));
-  console.log('[DEEP ANALYSIS] Cache listColors:', Object.keys(cache.listColors || {}));
-
   const manualColors = manualColorsMap || cache.manualColors;
   const element = options.element; // DOM element for fingerprint matching
 
@@ -1741,12 +1715,8 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     } catch (e) {}
   }
 
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 1 CHECK ==========');
-  console.log('[DEEP ANALYSIS] Manual color found:', manualColor);
-  console.log('[DEEP ANALYSIS] TaskId in manualColors:', taskId in manualColors);
-
+  // PRIORITY 1: Single-instance manual color (highest priority)
   if (manualColor) {
-    console.log('[DEEP ANALYSIS] ✅ PRIORITY 1 MATCH - Returning manual color:', manualColor);
     // Manual background color: always preserve it, even when completed
     // Don't let list's completed styling mode override manual colors
 
@@ -1797,47 +1767,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     });
   }
 
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 2 CHECK ==========');
-  console.log('[DEEP ANALYSIS] Element provided:', !!element);
-  console.log('[DEEP ANALYSIS] recurringTaskColors in cache:', !!cache.recurringTaskColors);
-  if (element) {
-    console.log('[DEEP ANALYSIS] Element tag:', element.tagName);
-    console.log('[DEEP ANALYSIS] Element data-eventid:', element.getAttribute('data-eventid'));
-    console.log('[DEEP ANALYSIS] Element has .XuJrye child:', !!element.querySelector('.XuJrye'));
-    if (element.querySelector('.XuJrye')) {
-      console.log('[DEEP ANALYSIS] .XuJrye textContent:', element.querySelector('.XuJrye').textContent);
-    }
-  }
-
-  // PRIORITY 2: Manual color for ALL instances of recurring task (fingerprint)
-  if (element && cache.recurringTaskColors) {
-    const fingerprint = extractTaskFingerprint(element);
-    console.log('[DEEP ANALYSIS] Fingerprint extraction result:', fingerprint);
-
-    if (fingerprint.fingerprint) {
-      const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
-      console.log('[DEEP ANALYSIS] Looking for fingerprint in cache:', fingerprint.fingerprint);
-      console.log('[DEEP ANALYSIS] Found recurring color:', recurringColor);
-
-      if (recurringColor) {
-        console.log('[DEEP ANALYSIS] ✅ PRIORITY 2 MATCH - Will return recurring color:', recurringColor);
-      } else {
-        console.log('[DEEP ANALYSIS] ❌ PRIORITY 2 - Fingerprint NOT in cache');
-        console.log('[DEEP ANALYSIS] Available fingerprints:', Object.keys(cache.recurringTaskColors));
-      }
-    } else {
-      console.log('[DEEP ANALYSIS] ❌ PRIORITY 2 - Could not extract fingerprint');
-    }
-  } else {
-    console.log('[DEEP ANALYSIS] ⚠️ PRIORITY 2 SKIPPED');
-    if (!element) {
-      console.log('[DEEP ANALYSIS] Reason: No element provided');
-    }
-    if (!cache.recurringTaskColors) {
-      console.log('[DEEP ANALYSIS] Reason: No recurringTaskColors in cache');
-    }
-  }
-
+  // PRIORITY 2: Recurring color for ALL instances (fingerprint-based matching)
   if (element && cache.recurringTaskColors) {
     const fingerprint = extractTaskFingerprint(element);
     if (fingerprint.fingerprint) {
@@ -1892,10 +1822,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     }
   }
 
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 3 CHECK ==========');
-  console.log('[DEEP ANALYSIS] listId found:', listId);
-
-  // PRIORITY 3: Check for any list-based settings (background, text, or completed styling)
+  // PRIORITY 3: List default color (lowest priority)
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
@@ -1904,36 +1831,23 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       (completedStyling.mode || completedStyling.bgColor || completedStyling.textColor ||
        completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
-    console.log('[DEEP ANALYSIS] listBgColor:', listBgColor);
-    console.log('[DEEP ANALYSIS] hasTextColor:', hasTextColor);
-    console.log('[DEEP ANALYSIS] hasCompletedStyling:', hasCompletedStyling);
-
     // Apply colors if we have ANY setting (background, text, or completed styling)
     if (listBgColor || hasTextColor || hasCompletedStyling) {
-      console.log('[DEEP ANALYSIS] ✅ PRIORITY 3 MATCH - Will return list-based color');
       // Store fingerprint for recurring task matching (if element provided)
       if (element) {
         storeFingerprintForRecurringTasks(element, listId);
       }
 
-      const colorInfo = buildColorInfo({
+      return buildColorInfo({
         baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
         pendingTextColor,
         overrideTextColor,
         isCompleted,
         completedStyling,
       });
-
-      console.log('[DEEP ANALYSIS] ========== RETURNING PRIORITY 3 COLOR ==========');
-      return colorInfo;
-    } else {
-      console.log('[DEEP ANALYSIS] Priority 3 conditions not met, falling through');
     }
-  } else {
-    console.log('[DEEP ANALYSIS] No listId, skipping Priority 3');
   }
 
-  console.log('[DEEP ANALYSIS] ========== RETURNING NULL (no color) ==========');
   return null;
 }
 
@@ -2136,11 +2050,8 @@ async function doRepaint(bypassThrottling = false) {
   lastRepaintTime = now;
 
   cleanupStaleReferences();
-  // REMOVED: const manualColorMap = await loadMap();
-  // Don't pass OLD cache to getColorForTask - let it use NEW cache (refreshColorCache)
-  // which properly syncs cf.taskColors with cf.recurringTaskColors
 
-  // Note: We don't early exit here anymore because we might have:
+  // Note: We don't early exit here because we might have:
   // - Text colors set (even without background colors)
   // - Completed styling set (even without pending colors)
   // These should work independently
@@ -2187,7 +2098,6 @@ async function doRepaint(bypassThrottling = false) {
       // Only the outer DIV has .XuJrye child needed for fingerprint extraction
       // Processing the nested DIV would fail fingerprint extraction and overwrite correct colors
       if (processedTaskIds.has(id)) {
-        console.log('[DEEP ANALYSIS] Skipping duplicate taskId:', id);
         continue;
       }
 
@@ -2506,14 +2416,10 @@ function initTasksColoring() {
       }
     }
     if (area === 'sync' && changes['cf.recurringTaskColors']) {
-      console.log('[DEEP ANALYSIS] ========== STORAGE LISTENER: cf.recurringTaskColors changed ==========');
-      console.log('[DEEP ANALYSIS] Old value:', changes['cf.recurringTaskColors'].oldValue);
-      console.log('[DEEP ANALYSIS] New value:', changes['cf.recurringTaskColors'].newValue);
       invalidateColorCache();
-      console.log('[DEEP ANALYSIS] Cache invalidated, triggering repaint...');
-      // CRITICAL: Don't repaint during reset
+      // Don't repaint during reset
       if (!isResetting) {
-        repaintSoon(); // Repaint with new recurring colors
+        repaintSoon();
       }
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
