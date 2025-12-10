@@ -5,30 +5,6 @@ function isTasksChip(el) {
 }
 
 /**
- * Extract task ID from data-eventid attribute
- * Handles both regular task formats:
- * - tasks.CLSRCLoNWypL2n → CLSRCLoNWypL2n
- * - tasks_CLSRCLoNWypL2n → CLSRCLoNWypL2n
- *
- * NOTE: Each recurring task instance has a COMPLETELY UNIQUE ID.
- * Recurring tasks are NOT matched by shared base IDs - they are matched
- * by fingerprint (title + time) in getListIdFromFingerprint().
- *
- * @param {string} eventId - data-eventid attribute value
- * @returns {string|null} Task ID
- */
-function extractBaseTaskId(eventId) {
-  if (!eventId) return null;
-
-  // Remove tasks. or tasks_ prefix (6 characters)
-  if (eventId.startsWith('tasks.') || eventId.startsWith('tasks_')) {
-    return eventId.slice(6);
-  }
-
-  return null;
-}
-
-/**
  * Get task ID from a DOM element (supports both old and new UI)
  * OLD UI: data-eventid="tasks.{taskId}" → returns taskId synchronously
  * NEW UI: data-eventid="ttb_{base64}" → returns Promise<taskId>
@@ -43,7 +19,7 @@ function getTaskIdFromChip(el) {
   // OLD UI: tasks. or tasks_ prefix (direct task ID)
   if (ev && (ev.startsWith('tasks.') || ev.startsWith('tasks_'))) {
     console.log('[TaskColoring] OLD UI detected:', ev);
-    return extractBaseTaskId(ev);
+    return ev.slice(6); // Remove tasks. or tasks_ prefix
   }
 
   // NEW UI: ttb_ prefix (requires calendar event mapping)
@@ -76,7 +52,7 @@ function getTaskIdFromChip(el) {
     // OLD UI in parent
     if (parentEv && (parentEv.startsWith('tasks.') || parentEv.startsWith('tasks_'))) {
       console.log('[TaskColoring] OLD UI in parent:', parentEv);
-      return extractBaseTaskId(parentEv);
+      return parentEv.slice(6); // Remove tasks. or tasks_ prefix
     }
 
     // NEW UI in parent
@@ -265,6 +241,74 @@ const CALENDAR_MAPPING_CACHE_LIFETIME = 30000; // 30 seconds
 // RECURRING TASK FINGERPRINT CACHE (title + time → listId)
 // Used to match recurring instances that aren't in the API mapping
 let recurringTaskFingerprintCache = new Map(); // In-memory cache: "title|time" → listId
+
+/**
+ * Lookup value in map with base64 fallbacks
+ * Tries: direct → decoded (atob) → encoded (btoa)
+ * @param {Object} map - Object to search
+ * @param {string} taskId - Task ID to lookup
+ * @returns {*} Value if found, null otherwise
+ */
+function lookupWithBase64Fallback(map, taskId) {
+  if (!map || !taskId) return null;
+
+  // Try direct lookup
+  if (map[taskId]) return map[taskId];
+
+  // Try decoded (if taskId is base64)
+  try {
+    const decoded = atob(taskId);
+    if (decoded !== taskId && map[decoded]) {
+      return map[decoded];
+    }
+  } catch (e) {}
+
+  // Try encoded (if taskId is decoded)
+  try {
+    const encoded = btoa(taskId);
+    if (encoded !== taskId && map[encoded]) {
+      return map[encoded];
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Get opacity values for completed manual/recurring tasks
+ * @param {Object} completedStyling - Completed styling config for this list
+ * @param {Object} cache - Color cache
+ * @returns {{bgOpacity: number, textOpacity: number}}
+ */
+function getCompletedOpacities(completedStyling, cache) {
+  let bgOpacity = 0.3;  // Default 30% for completed tasks
+  let textOpacity = 0.3;  // Default 30% for completed tasks
+
+  if (completedStyling) {
+    // Use the task's own list opacity settings
+    if (completedStyling.bgOpacity !== undefined) {
+      bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
+    }
+    if (completedStyling.textOpacity !== undefined) {
+      textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
+    }
+  } else {
+    // No list for this task - find highest opacity across all lists
+    const allCompletedStyling = cache.completedStyling || {};
+    for (const listStyles of Object.values(allCompletedStyling)) {
+      if (listStyles?.bgOpacity !== undefined) {
+        const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
+        if (normalized > bgOpacity) bgOpacity = normalized;
+      }
+      if (listStyles?.textOpacity !== undefined) {
+        const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
+        if (normalized > textOpacity) textOpacity = normalized;
+      }
+    }
+  }
+
+  return { bgOpacity, textOpacity };
+}
 
 /**
  * Decode ttb_ prefixed data-eventid to calendar event ID
@@ -883,9 +927,6 @@ async function paintTaskImmediately(taskId, colorOverride = null, textColorOverr
       taskElementReferences.delete(taskId);
     }
   }
-
-  // REMOVED: doRepaint(true) was causing first instance to be repainted with wrong color
-  // The elements are already painted in the loop above, no need for full repaint
 }
 
 async function injectTaskColorControls(dialogEl, taskId, onChanged) {
@@ -936,19 +977,12 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
         await setTaskColor(taskId, selectedColor);
       } else {
         const fingerprint = extractTaskFingerprint(taskElement);
-        console.log('[DEEP ANALYSIS] ========== APPLY TO ALL INSTANCES ==========');
-        console.log('[DEEP ANALYSIS] TaskId:', taskId);
-        console.log('[DEEP ANALYSIS] Selected color:', selectedColor);
-        console.log('[DEEP ANALYSIS] Extracted fingerprint:', fingerprint);
 
         if (fingerprint.fingerprint) {
-          console.log('[DEEP ANALYSIS] Step 1: Clearing single-instance color...');
           // CRITICAL: Clear single-instance color FIRST to prevent storage listener from using stale color
           // Storage listener fires when setRecurringTaskColor writes, and checks Priority 1 before Priority 2
           await clearTaskColor(taskId);
-          console.log('[DEEP ANALYSIS] Step 2: Setting recurring color in storage...');
           await window.cc3Storage.setRecurringTaskColor(fingerprint.fingerprint, selectedColor);
-          console.log('[DEEP ANALYSIS] Step 3: Recurring color saved to cf.recurringTaskColors');
         } else {
           console.warn('[TaskColoring] Could not extract fingerprint, falling back to single instance coloring');
           await setTaskColor(taskId, selectedColor);
@@ -961,21 +995,14 @@ async function injectTaskColorControls(dialogEl, taskId, onChanged) {
 
     onChanged?.(taskId, selectedColor);
 
-    // CRITICAL FIX: Invalidate cache immediately to force fresh data
-    console.log('[DEEP ANALYSIS] Step 4: Invalidating cache...');
+    // Invalidate cache immediately to force fresh data
     invalidateColorCache();
 
-    // CRITICAL FIX: Wait a moment for storage listeners to finish their repaints
-    console.log('[DEEP ANALYSIS] Step 5: Waiting 100ms for storage listeners...');
+    // Wait a moment for storage listeners to finish their repaints
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Paint this instance using natural priority resolution (no override)
-    // This ensures recurring colors apply consistently to all instances
-    console.log('[DEEP ANALYSIS] Step 6: Calling paintTaskImmediately...');
     await paintTaskImmediately(taskId, null);
-
-    // REMOVED: repaintSoon was causing first instance to be repainted with wrong color
-    // paintTaskImmediately already painted all instances correctly above
   });
 
   clearBtn.addEventListener('click', async (e) => {
@@ -1655,54 +1682,14 @@ async function isTaskInCache(taskId) {
  * @returns {Promise<string|null>} Color hex string or null
  */
 async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
-  console.log('[DEEP ANALYSIS] ========== getColorForTask START ==========');
-  console.log('[DEEP ANALYSIS] taskId:', taskId);
-  console.log('[DEEP ANALYSIS] element provided:', !!options.element);
-  console.log('[DEEP ANALYSIS] manualColorsMap provided:', !!manualColorsMap);
-
   const cache = await refreshColorCache();
-  console.log('[DEEP ANALYSIS] Cache recurringTaskColors:', Object.keys(cache.recurringTaskColors || {}));
-  console.log('[DEEP ANALYSIS] Cache manualColors:', Object.keys(cache.manualColors || {}));
-  console.log('[DEEP ANALYSIS] Cache listColors:', Object.keys(cache.listColors || {}));
-
   const manualColors = manualColorsMap || cache.manualColors;
   const element = options.element; // DOM element for fingerprint matching
 
-  // CRITICAL FIX: Support both base64 and decoded task ID formats
+  // Support both base64 and decoded task ID formats
   // cf.taskToListMap stores DECODED IDs (from buildTaskToListMapping)
   // but ttb_ resolution returns BASE64 IDs (from resolveCalendarEventToTaskId)
-  // Try both formats to ensure compatibility with OLD UI and NEW UI (ttb_)
-  let listId = cache.taskToListMap[taskId];
-
-  // If not found and taskId looks like base64, try decoded format
-  if (!listId && taskId) {
-    try {
-      const decoded = atob(taskId);
-      if (decoded !== taskId) {
-        listId = cache.taskToListMap[decoded];
-        if (listId) {
-          console.log('[TaskColoring] Found list via decoded ID:', { taskId, decoded, listId });
-        }
-      }
-    } catch (e) {
-      // Not base64 encoded, ignore
-    }
-  }
-
-  // If not found and taskId looks decoded, try base64 format
-  if (!listId && taskId) {
-    try {
-      const encoded = btoa(taskId);
-      if (encoded !== taskId) {
-        listId = cache.taskToListMap[encoded];
-        if (listId) {
-          console.log('[TaskColoring] Found list via encoded ID:', { taskId, encoded, listId });
-        }
-      }
-    } catch (e) {
-      // Not encodable, ignore
-    }
-  }
+  let listId = lookupWithBase64Fallback(cache.taskToListMap, taskId);
 
   // RECURRING TASK FALLBACK: Try fingerprint matching (title + time)
   // This handles recurring task instances that aren't in the API mapping
@@ -1718,67 +1705,17 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
   const completedStyling = listId ? cache.completedStyling?.[listId] : null;
   const pendingTextColor = listId && cache.listTextColors ? cache.listTextColors[listId] : null;
 
-  // CRITICAL FIX: Also support dual-format lookup for manual colors
-  let manualColor = manualColors?.[taskId];
+  // Support dual-format lookup for manual colors (base64 and decoded)
+  let manualColor = lookupWithBase64Fallback(manualColors, taskId);
 
-  // If not found and taskId is base64, try decoded
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const decoded = atob(taskId);
-      if (decoded !== taskId) {
-        manualColor = manualColors[decoded];
-      }
-    } catch (e) {}
-  }
-
-  // If not found and taskId is decoded, try base64
-  if (!manualColor && taskId && manualColors) {
-    try {
-      const encoded = btoa(taskId);
-      if (encoded !== taskId) {
-        manualColor = manualColors[encoded];
-      }
-    } catch (e) {}
-  }
-
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 1 CHECK ==========');
-  console.log('[DEEP ANALYSIS] Manual color found:', manualColor);
-  console.log('[DEEP ANALYSIS] TaskId in manualColors:', taskId in manualColors);
-
+  // PRIORITY 1: Single-instance manual color (highest priority)
   if (manualColor) {
-    console.log('[DEEP ANALYSIS] ✅ PRIORITY 1 MATCH - Returning manual color:', manualColor);
     // Manual background color: always preserve it, even when completed
     // Don't let list's completed styling mode override manual colors
 
     if (isCompleted) {
       // For completed manual tasks: use manual color with opacity from list settings
-      // If task has no list or list has no opacity settings, find highest across all lists
-      let bgOpacity = 0.3;  // Default 30% for completed tasks
-      let textOpacity = 0.3;  // Default 30% for completed tasks
-
-      // First try the task's own list
-      if (completedStyling) {
-        if (completedStyling.bgOpacity !== undefined) {
-          bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-        }
-        if (completedStyling.textOpacity !== undefined) {
-          textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-        }
-      } else {
-        // No list for this task - find highest opacity across all lists
-        const allCompletedStyling = cache.completedStyling || {};
-        for (const listStyles of Object.values(allCompletedStyling)) {
-          if (listStyles?.bgOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-            if (normalized > bgOpacity) bgOpacity = normalized;
-          }
-          if (listStyles?.textOpacity !== undefined) {
-            const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-            if (normalized > textOpacity) textOpacity = normalized;
-          }
-        }
-      }
-
+      const { bgOpacity, textOpacity } = getCompletedOpacities(completedStyling, cache);
       return {
         backgroundColor: manualColor,
         textColor: overrideTextColor || pickContrastingText(manualColor),
@@ -1797,47 +1734,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     });
   }
 
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 2 CHECK ==========');
-  console.log('[DEEP ANALYSIS] Element provided:', !!element);
-  console.log('[DEEP ANALYSIS] recurringTaskColors in cache:', !!cache.recurringTaskColors);
-  if (element) {
-    console.log('[DEEP ANALYSIS] Element tag:', element.tagName);
-    console.log('[DEEP ANALYSIS] Element data-eventid:', element.getAttribute('data-eventid'));
-    console.log('[DEEP ANALYSIS] Element has .XuJrye child:', !!element.querySelector('.XuJrye'));
-    if (element.querySelector('.XuJrye')) {
-      console.log('[DEEP ANALYSIS] .XuJrye textContent:', element.querySelector('.XuJrye').textContent);
-    }
-  }
-
-  // PRIORITY 2: Manual color for ALL instances of recurring task (fingerprint)
-  if (element && cache.recurringTaskColors) {
-    const fingerprint = extractTaskFingerprint(element);
-    console.log('[DEEP ANALYSIS] Fingerprint extraction result:', fingerprint);
-
-    if (fingerprint.fingerprint) {
-      const recurringColor = cache.recurringTaskColors[fingerprint.fingerprint];
-      console.log('[DEEP ANALYSIS] Looking for fingerprint in cache:', fingerprint.fingerprint);
-      console.log('[DEEP ANALYSIS] Found recurring color:', recurringColor);
-
-      if (recurringColor) {
-        console.log('[DEEP ANALYSIS] ✅ PRIORITY 2 MATCH - Will return recurring color:', recurringColor);
-      } else {
-        console.log('[DEEP ANALYSIS] ❌ PRIORITY 2 - Fingerprint NOT in cache');
-        console.log('[DEEP ANALYSIS] Available fingerprints:', Object.keys(cache.recurringTaskColors));
-      }
-    } else {
-      console.log('[DEEP ANALYSIS] ❌ PRIORITY 2 - Could not extract fingerprint');
-    }
-  } else {
-    console.log('[DEEP ANALYSIS] ⚠️ PRIORITY 2 SKIPPED');
-    if (!element) {
-      console.log('[DEEP ANALYSIS] Reason: No element provided');
-    }
-    if (!cache.recurringTaskColors) {
-      console.log('[DEEP ANALYSIS] Reason: No recurringTaskColors in cache');
-    }
-  }
-
+  // PRIORITY 2: Recurring color for ALL instances (fingerprint-based matching)
   if (element && cache.recurringTaskColors) {
     const fingerprint = extractTaskFingerprint(element);
     if (fingerprint.fingerprint) {
@@ -1846,32 +1743,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
 
         if (isCompleted) {
           // For completed recurring manual tasks: use manual color with opacity from list settings
-          let bgOpacity = 0.3;  // Default 30% for completed tasks
-          let textOpacity = 0.3;  // Default 30% for completed tasks
-
-          // Try to use list's opacity settings if available
-          if (completedStyling) {
-            if (completedStyling.bgOpacity !== undefined) {
-              bgOpacity = normalizeOpacityValue(completedStyling.bgOpacity, 0.3);
-            }
-            if (completedStyling.textOpacity !== undefined) {
-              textOpacity = normalizeOpacityValue(completedStyling.textOpacity, 0.3);
-            }
-          } else {
-            // No list for this task - find highest opacity across all lists
-            const allCompletedStyling = cache.completedStyling || {};
-            for (const listStyles of Object.values(allCompletedStyling)) {
-              if (listStyles?.bgOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.bgOpacity, 0.3);
-                if (normalized > bgOpacity) bgOpacity = normalized;
-              }
-              if (listStyles?.textOpacity !== undefined) {
-                const normalized = normalizeOpacityValue(listStyles.textOpacity, 0.3);
-                if (normalized > textOpacity) textOpacity = normalized;
-              }
-            }
-          }
-
+          const { bgOpacity, textOpacity } = getCompletedOpacities(completedStyling, cache);
           return {
             backgroundColor: recurringColor,
             textColor: overrideTextColor || pickContrastingText(recurringColor),
@@ -1892,10 +1764,7 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
     }
   }
 
-  console.log('[DEEP ANALYSIS] ========== PRIORITY 3 CHECK ==========');
-  console.log('[DEEP ANALYSIS] listId found:', listId);
-
-  // PRIORITY 3: Check for any list-based settings (background, text, or completed styling)
+  // PRIORITY 3: List default color (lowest priority)
   if (listId) {
     const listBgColor = cache.listColors[listId];
     const hasTextColor = !!pendingTextColor;
@@ -1904,36 +1773,23 @@ async function getColorForTask(taskId, manualColorsMap = null, options = {}) {
       (completedStyling.mode || completedStyling.bgColor || completedStyling.textColor ||
        completedStyling.bgOpacity !== undefined || completedStyling.textOpacity !== undefined);
 
-    console.log('[DEEP ANALYSIS] listBgColor:', listBgColor);
-    console.log('[DEEP ANALYSIS] hasTextColor:', hasTextColor);
-    console.log('[DEEP ANALYSIS] hasCompletedStyling:', hasCompletedStyling);
-
     // Apply colors if we have ANY setting (background, text, or completed styling)
     if (listBgColor || hasTextColor || hasCompletedStyling) {
-      console.log('[DEEP ANALYSIS] ✅ PRIORITY 3 MATCH - Will return list-based color');
       // Store fingerprint for recurring task matching (if element provided)
       if (element) {
         storeFingerprintForRecurringTasks(element, listId);
       }
 
-      const colorInfo = buildColorInfo({
+      return buildColorInfo({
         baseColor: listBgColor, // May be undefined - buildColorInfo will handle it
         pendingTextColor,
         overrideTextColor,
         isCompleted,
         completedStyling,
       });
-
-      console.log('[DEEP ANALYSIS] ========== RETURNING PRIORITY 3 COLOR ==========');
-      return colorInfo;
-    } else {
-      console.log('[DEEP ANALYSIS] Priority 3 conditions not met, falling through');
     }
-  } else {
-    console.log('[DEEP ANALYSIS] No listId, skipping Priority 3');
   }
 
-  console.log('[DEEP ANALYSIS] ========== RETURNING NULL (no color) ==========');
   return null;
 }
 
@@ -2136,11 +1992,8 @@ async function doRepaint(bypassThrottling = false) {
   lastRepaintTime = now;
 
   cleanupStaleReferences();
-  // REMOVED: const manualColorMap = await loadMap();
-  // Don't pass OLD cache to getColorForTask - let it use NEW cache (refreshColorCache)
-  // which properly syncs cf.taskColors with cf.recurringTaskColors
 
-  // Note: We don't early exit here anymore because we might have:
+  // Note: We don't early exit here because we might have:
   // - Text colors set (even without background colors)
   // - Completed styling set (even without pending colors)
   // These should work independently
@@ -2187,7 +2040,6 @@ async function doRepaint(bypassThrottling = false) {
       // Only the outer DIV has .XuJrye child needed for fingerprint extraction
       // Processing the nested DIV would fail fingerprint extraction and overwrite correct colors
       if (processedTaskIds.has(id)) {
-        console.log('[DEEP ANALYSIS] Skipping duplicate taskId:', id);
         continue;
       }
 
@@ -2506,14 +2358,10 @@ function initTasksColoring() {
       }
     }
     if (area === 'sync' && changes['cf.recurringTaskColors']) {
-      console.log('[DEEP ANALYSIS] ========== STORAGE LISTENER: cf.recurringTaskColors changed ==========');
-      console.log('[DEEP ANALYSIS] Old value:', changes['cf.recurringTaskColors'].oldValue);
-      console.log('[DEEP ANALYSIS] New value:', changes['cf.recurringTaskColors'].newValue);
       invalidateColorCache();
-      console.log('[DEEP ANALYSIS] Cache invalidated, triggering repaint...');
-      // CRITICAL: Don't repaint during reset
+      // Don't repaint during reset
       if (!isResetting) {
-        repaintSoon(); // Repaint with new recurring colors
+        repaintSoon();
       }
     }
     if (area === 'local' && changes['cf.taskToListMap']) {
